@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "frontend-mobile",
+    "name": "PawCruz",
     "slug": "frontend-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/screens/assets/icon.png",
+    "icon": "./src/screens/assets/pawi.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
