@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabaseClient";
+import { validateImageBlob } from "../utils/imageValidation";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -78,6 +79,8 @@ async function uploadPhotoIfNeeded(uri, ownerId) {
 
   const response = await fetch(uri);
   const blob = await response.blob();
+  const validationError = validateImageBlob(blob, uri);
+  if (validationError) throw new Error(validationError);
   const extMatch = String(uri).match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
   const ext = extMatch?.[1] || "jpg";
   const path = `${ownerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;

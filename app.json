@@ -4,28 +4,29 @@
     "slug": "frontend-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/screens/assets/pawi.png",
+    "icon": "./src/screens/assets/paw2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "splash": {
-      "image": "./src/screens/assets/splash-icon.png",
+      "image": "./src/screens/assets/formal.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#063B55"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/screens/assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./src/screens/assets/paw2.png",
+        "backgroundColor": "#063B55"
       },
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "package": "PawCruz.App"
     },
     "web": {
-      "favicon": "./src/screens/assets/favicon.png"
+      "favicon": "./src/screens/assets/webpaw.png"
     },
     "plugins": [
       "expo-video",

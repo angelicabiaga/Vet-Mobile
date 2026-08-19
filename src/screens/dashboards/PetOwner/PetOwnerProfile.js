@@ -3,6 +3,7 @@ import PetOwnerSideDrawer from './PetOwnerSideDrawer';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
+  Alert,
   Animated,
   Easing,
   Image,
@@ -21,6 +22,8 @@ import { styles } from '../../styles/PetOwnerProfileDesign';
 import CustomModal from '../../../components/CustomModal';
 import ProfileOtpModal from '../../../components/ProfileOtpModal';
 import { getProfile, updateProfile, uploadProfileAvatar, subscribeProfile, requestEmailChangeOtp, confirmEmailChangeOtp, requestPasswordChangeOtp, confirmPasswordChangeOtp } from '../../../api/profileService';
+import { validatePickedImageAsset } from '../../../utils/imageValidation';
+import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../../../utils/contactValidation';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 const EYE_SHOW = require('../../assets/eye-show.png');
@@ -40,21 +43,27 @@ const splitFullName = (value) => {
   const trimmedValue = (value || '').trim();
 
   if (!trimmedValue) {
-    return { firstName: '', middleInitial: '', lastName: '' };
+    return { firstName: '', middleName: '', lastName: '' };
   }
 
   const parts = trimmedValue.split(/\s+/);
 
+  if (parts.length < 3) {
+    return { firstName: parts[0] || '', middleName: '', lastName: parts.slice(1).join(' ') };
+  }
+
+  const middleName = parts.slice(1, -1).join(' ').replace(/^([A-Za-z])\.$/, '$1');
+
   return {
     firstName: parts[0] || '',
-    middleInitial: parts.length > 2 && /^[A-Za-z]\.?$/.test(parts[1]) ? parts[1].replace('.', '') : '',
-    lastName: parts.length > 2 && /^[A-Za-z]\.?$/.test(parts[1]) ? parts.slice(2).join(' ') : parts.slice(1).join(' '),
+    middleName,
+    lastName: parts[parts.length - 1],
   };
 };
 
 const buildProfileFromUser = (user) => {
   const resolvedName = user?.full_name || user?.fullName || user?.name || '';
-  const { firstName, middleInitial, lastName } = splitFullName(resolvedName);
+  const { firstName, middleName, lastName } = splitFullName(resolvedName);
 
   return {
     username:
@@ -63,7 +72,7 @@ const buildProfileFromUser = (user) => {
       user?.fullName ||
       'Pet Owner',
     firstName,
-    middleInitial,
+    middleName,
     lastName,
     fullName: resolvedName,
     email:
@@ -90,6 +99,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
   const [showProfileToast, setShowProfileToast] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [showRequiredFieldsModal, setShowRequiredFieldsModal] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
@@ -161,19 +171,21 @@ const PetOwnerProfile = ({ navigation, route }) => {
 
   const openEditMode = () => {
     setDraftProfile(profileData);
+    setFieldErrors({});
     setIsEditing(true);
   };
 
   const cancelEditMode = () => {
     setDraftProfile(profileData);
+    setFieldErrors({});
     setIsEditing(false);
     setShowPhotoOptions(false);
   };
 
   const saveProfile = async () => {
     const profileId = loggedInUser?.id;
-    const middleInitial = String(draftProfile.middleInitial || '').trim().replace(/\.$/, '').toUpperCase();
-    const fullName = [draftProfile.firstName, middleInitial ? `${middleInitial}.` : '', draftProfile.lastName].filter(Boolean).join(' ').trim();
+    const middleName = String(draftProfile.middleName || '').trim();
+    const fullName = [draftProfile.firstName.trim(), middleName, draftProfile.lastName.trim()].filter(Boolean).join(' ');
 
     try {
       let avatarUrl = profileData.profileImageUri || null;
@@ -223,6 +235,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
 
   const updateDraftField = (field, value) => {
     setDraftProfile((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => (current[field] ? { ...current, [field]: undefined } : current));
   };
 
   const hasEmptyRequiredField = (profile) =>
@@ -231,7 +244,23 @@ const PetOwnerProfile = ({ navigation, route }) => {
     !profile?.username?.trim() ||
     !profile?.email?.trim();
 
+  const validateProfileFields = (profile) => {
+    const nextErrors = {};
+    if (!profile?.firstName?.trim()) nextErrors.firstName = 'First name is required.';
+    if (!profile?.lastName?.trim()) nextErrors.lastName = 'Last name is required.';
+    if (!profile?.contact?.trim()) nextErrors.contact = 'Contact number is required.';
+    else if (!isValidPhMobile(profile.contact)) nextErrors.contact = PH_MOBILE_FORMAT_ERROR;
+    if (!profile?.address?.trim()) nextErrors.address = 'Address is required.';
+    return nextErrors;
+  };
+
   const handleDonePress = () => {
+    const nextFieldErrors = validateProfileFields(draftProfile);
+    if (Object.keys(nextFieldErrors).length) {
+      setFieldErrors(nextFieldErrors);
+      return;
+    }
+
     if (hasEmptyRequiredField(draftProfile)) {
       setShowRequiredFieldsModal(true);
       return;
@@ -325,6 +354,12 @@ const PetOwnerProfile = ({ navigation, route }) => {
         return;
       }
 
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
+        return;
+      }
+
       updateDraftField('profileImageUri', result.assets[0].uri);
     } catch (error) {
       console.warn('Failed to open album picker for profile photo:', error);
@@ -340,6 +375,12 @@ const PetOwnerProfile = ({ navigation, route }) => {
       });
 
       if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
         return;
       }
 
@@ -363,6 +404,12 @@ const PetOwnerProfile = ({ navigation, route }) => {
       });
 
       if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
         return;
       }
 
@@ -767,20 +814,20 @@ const PetOwnerProfile = ({ navigation, route }) => {
                 <TextInput
                   value={draftProfile.firstName}
                   onChangeText={(value) => updateDraftField('firstName', value)}
-                  style={styles.inputField}
+                  style={[styles.inputField, fieldErrors.firstName && styles.inputFieldError]}
                   placeholder="Enter first name"
                   placeholderTextColor="#87a0b1"
                 />
+                {fieldErrors.firstName ? <Text style={styles.fieldErrorText}>{fieldErrors.firstName}</Text> : null}
 
-                <Text style={styles.formLabel}>Middle Initial (Optional)</Text>
+                <Text style={styles.formLabel}>Middle Name (Optional)</Text>
                 <TextInput
-                  value={draftProfile.middleInitial}
-                  onChangeText={(value) => updateDraftField('middleInitial', value.replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase())}
+                  value={draftProfile.middleName}
+                  onChangeText={(value) => updateDraftField('middleName', value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g, ''))}
                   style={styles.inputField}
-                  placeholder="Enter middle initial"
+                  placeholder="Enter middle name"
                   placeholderTextColor="#87a0b1"
-                  autoCapitalize="characters"
-                  maxLength={1}
+                  maxLength={50}
                 />
 
                 <Text style={styles.formLabel}>
@@ -789,10 +836,11 @@ const PetOwnerProfile = ({ navigation, route }) => {
                 <TextInput
                   value={draftProfile.lastName}
                   onChangeText={(value) => updateDraftField('lastName', value)}
-                  style={styles.inputField}
+                  style={[styles.inputField, fieldErrors.lastName && styles.inputFieldError]}
                   placeholder="Enter last name"
                   placeholderTextColor="#87a0b1"
                 />
+                {fieldErrors.lastName ? <Text style={styles.fieldErrorText}>{fieldErrors.lastName}</Text> : null}
 
                 <Text style={styles.formLabel}>
                   Username<Text style={styles.requiredMark}> *</Text>
@@ -848,19 +896,20 @@ const PetOwnerProfile = ({ navigation, route }) => {
                 {sensitiveError ? <Text style={{ color: '#dc2626', fontSize: 12, fontWeight: '700', marginBottom: 12 }}>{sensitiveError}</Text> : null}
 
                 <Text style={styles.formLabel}>
-                  Contact (Optional)
+                  Contact Number<Text style={styles.requiredMark}> *</Text>
                 </Text>
                 <TextInput
                   value={draftProfile.contact}
                   onChangeText={(value) =>
-                    updateDraftField('contact', value.replace(/[^0-9]/g, ''))
+                    updateDraftField('contact', value.replace(/[^0-9+]/g, '').replace(/(?!^)\+/g, ''))
                   }
-                  style={styles.inputField}
-                  placeholder="Enter contact number"
+                  style={[styles.inputField, fieldErrors.contact && styles.inputFieldError]}
+                  placeholder="09XXXXXXXXX or +639XXXXXXXXX"
                   placeholderTextColor="#87a0b1"
-                  keyboardType="number-pad"
-                  maxLength={11}
+                  keyboardType="phone-pad"
+                  maxLength={13}
                 />
+                {fieldErrors.contact ? <Text style={styles.fieldErrorText}>{fieldErrors.contact}</Text> : null}
 
                 <Text style={styles.formLabel}>
                   Emergency Contact (Optional)
@@ -881,15 +930,16 @@ const PetOwnerProfile = ({ navigation, route }) => {
                 />
 
                 <Text style={styles.formLabel}>
-                  Address (Optional)
+                  Address<Text style={styles.requiredMark}> *</Text>
                 </Text>
                 <TextInput
                   value={draftProfile.address}
                   onChangeText={(value) => updateDraftField('address', value)}
-                  style={styles.inputField}
+                  style={[styles.inputField, fieldErrors.address && styles.inputFieldError]}
                   placeholder="Enter address"
                   placeholderTextColor="#87a0b1"
                 />
+                {fieldErrors.address ? <Text style={styles.fieldErrorText}>{fieldErrors.address}</Text> : null}
               </View>
             ) : (
               <View style={styles.infoGrid}>
@@ -902,7 +952,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
                   <Text style={styles.infoValue}>{profileData.email || 'No email found'}</Text>
                 </View>
                 <View style={styles.infoItem}>
-                  <Text style={styles.infoLabel}>Contact</Text>
+                  <Text style={styles.infoLabel}>Contact Number</Text>
                   <Text style={styles.infoValue}>{profileData.contact}</Text>
                 </View>
                 <View style={styles.infoItem}>

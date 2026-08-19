@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabaseClient";
+import { createNotification } from "./notificationService";
 
 const FALLBACK_CODES = new Set(["PGRST200", "PGRST201", "PGRST204", "PGRST205", "42P01", "42703"]);
 
@@ -168,6 +169,27 @@ export async function uploadMessageAttachment(file, profileId) {
   return { path, url: data.publicUrl, name: originalName };
 }
 
+async function notifyOtherParticipants(conversationId, sender, body) {
+  const { data: participantRows } = await supabase
+    .from("conversation_participants")
+    .select("profile_id")
+    .eq("conversation_id", conversationId)
+    .neq("profile_id", sender.id);
+  const recipients = (participantRows || []).map((row) => row.profile_id).filter(Boolean);
+  if (!recipients.length) return;
+  const senderName = sender.full_name || sender.username || "PawCruz";
+  const preview = (body || "").trim().slice(0, 140) || "Sent an attachment";
+  await Promise.all(recipients.map((recipientId) => createNotification({
+    recipientId,
+    type: "Message",
+    title: `New message from ${senderName}`,
+    message: preview,
+    relatedModule: "Messages",
+    relatedRecord: conversationId,
+    createdBy: sender.id,
+  })));
+}
+
 export async function sendMessage(conversationId, profile, body, file) {
   if (!conversationId) throw new Error("Select a conversation first.");
   if (!profile?.id) throw new Error("Your login session is incomplete.");
@@ -180,6 +202,7 @@ export async function sendMessage(conversationId, profile, body, file) {
   const { data, error } = await supabase.from("messages").insert(payload).select("*").single();
   if (!error) {
     await markConversationRead(conversationId, profile.id);
+    notifyOtherParticipants(conversationId, profile, payload.body).catch(() => {});
     return data;
   }
   const { data: rpcData, error: rpcError } = await supabase.rpc("pawcruz_send_message", {
@@ -187,6 +210,7 @@ export async function sendMessage(conversationId, profile, body, file) {
     p_attachment_url: payload.attachment_url, p_attachment_name: payload.attachment_name,
   });
   if (rpcError) throw readableError("Unable to send message", rpcError);
+  notifyOtherParticipants(conversationId, profile, payload.body).catch(() => {});
   return rpcData;
 }
 

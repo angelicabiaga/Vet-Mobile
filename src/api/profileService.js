@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../config/supabaseClient';
 import { createAndSendOtp, verifyProfileOtp } from './authService';
+import { validateImageBlob } from '../utils/imageValidation';
 
 const SESSION_KEY = 'pawcruz_session';
 
@@ -115,7 +116,8 @@ export async function uploadProfileAvatar(profileId, uri) {
   if (!profileId || !uri) return null;
   const response = await fetch(uri);
   const blob = await response.blob();
-  if (blob.size > 5 * 1024 * 1024) throw new Error('Profile image must be 5 MB or smaller.');
+  const validationError = validateImageBlob(blob, uri);
+  if (validationError) throw new Error(validationError);
   const ext = extensionFromUri(uri);
   const path = `${profileId}/avatar-${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from('profile-avatars').upload(path, blob, {

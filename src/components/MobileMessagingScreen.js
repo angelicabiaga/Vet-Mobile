@@ -38,25 +38,57 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   const profileImageUri = profile?.profileImageUri || profile?.avatar || profile?.avatar_url || "";
   const displayName = profile?.full_name || profile?.fullName || profile?.name || profile?.username || "Pet Owner";
   const currentRole = normalizeRole(profile?.role);
-  const isVeterinarian = currentRole === "veterinarian";
 
-  const headerMenuItems = isVeterinarian
-    ? [
+  const ROLE_META = {
+    veterinarian: {
+      dashboardRoute: "vet-screen",
+      notificationRoute: "VetNotif",
+      profileRoute: "VetProfile",
+      showQuickAssist: false,
+      subtitle: "Veterinarian Messages",
+      sideDrawerRole: "veterinarian",
+      headerMenuItems: [
         { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "vet-screen" },
         { key: "appointments", label: "My Appointments", icon: require("../screens/assets/Appointment_Icon.png"), route: "VetAppointment" },
         { key: "patients", label: "Patients", icon: require("../screens/assets/Pets_Icon.png"), route: "VetPatients" },
         { key: "messages", label: "Messages", icon: require("../screens/assets/Message_Icon.png"), route: "VetMessages" },
         { key: "medical", label: "Medical Records", icon: require("../screens/assets/Medical_Icon.png"), route: "VetMedRec" },
-      ]
-    : [
+      ],
+    },
+    staff: {
+      dashboardRoute: "staff-screen",
+      notificationRoute: "StaffNotif",
+      profileRoute: "StaffProfile",
+      showQuickAssist: false,
+      subtitle: "Staff Messages",
+      sideDrawerRole: "staff",
+      headerMenuItems: [
+        { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "staff-screen" },
+        { key: "appointment", label: "Appointment", icon: require("../screens/assets/Appointment_Icon.png"), route: "StaffAppointment" },
+        { key: "mypets", label: "Pets Profile", icon: require("../screens/assets/Pets_Icon.png"), route: "StaffPetsProfile" },
+        { key: "messages", label: "Messages", icon: require("../screens/assets/Message_Icon.png"), route: "StaffMessages" },
+      ],
+    },
+    pet_owner: {
+      dashboardRoute: "petowner-screen",
+      notificationRoute: "PetOwnerNotif",
+      profileRoute: "PetOwnerProfile",
+      showQuickAssist: true,
+      subtitle: "Pet Owner Messages",
+      sideDrawerRole: "pet_owner",
+      headerMenuItems: [
         { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "petowner-screen" },
         { key: "appointment", label: "Appointment", icon: require("../screens/assets/Appointment_Icon.png"), route: "PetOwnerAppointment" },
         { key: "queue", label: "My Queue", icon: require("../screens/assets/List.png"), route: "PetOwnerQueue" },
         { key: "mypets", label: "My Pets", icon: require("../screens/assets/Pets_Icon.png"), route: "PetOwnerMyPets" },
         { key: "messages", label: "Messages", icon: require("../screens/assets/Message_Icon.png"), route: "PetOwnerMessages" },
         { key: "medical", label: "Medical Records", icon: require("../screens/assets/Medical_Icon.png"), route: "PetOwnerMedRec" },
+      ],
+    },
+  };
 
-      ];
+  const roleMeta = ROLE_META[currentRole] || ROLE_META.pet_owner;
+  const { headerMenuItems } = roleMeta;
 
   const toggleHeaderMenu = () => {
     const nextVisible = !isHeaderMenuVisible;
@@ -76,9 +108,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
     navigation.navigate(routeName, { user: profile });
   };
 
-  const notificationRoute = isVeterinarian ? "VetNotif" : "PetOwnerNotif";
-  const profileRoute = isVeterinarian ? "VetProfile" : "PetOwnerProfile";
-  const dashboardRoute = isVeterinarian ? "vet-screen" : "petowner-screen";
+  const { notificationRoute, profileRoute, dashboardRoute } = roleMeta;
 
   const allowedKey = allowedRoles.map(normalizeRole).join("|");
   const allowed = useMemo(() => allowedKey ? allowedKey.split("|") : [], [allowedKey]);
@@ -246,7 +276,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
                 </View>
                 <View style={styles.brandBlock}>
                   <Text style={styles.brandTitle}>PawCruz</Text>
-                  <Text style={styles.brandSubtitle}>{isVeterinarian ? "Veterinarian Messages" : "Pet Owner Messages"}</Text>
+                  <Text style={styles.brandSubtitle}>{roleMeta.subtitle}</Text>
                 </View>
               </TouchableOpacity>
               <View style={styles.headerActions}>
@@ -276,7 +306,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
             navigation={navigation}
             user={profile}
             activeKey="messages"
-            role={isVeterinarian ? 'veterinarian' : 'pet_owner'}
+            role={roleMeta.sideDrawerRole}
           />
           {false ? (
             <Animated.View style={[styles.headerMenuPanel, { opacity: headerMenuAnimation, transform: [{ translateY: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) }, { scale: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }] }]}>
@@ -399,7 +429,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
           </KeyboardAvoidingView>
         )}
 
-        {!isVeterinarian ? (
+        {roleMeta.showQuickAssist ? (
           <View style={styles.quickAssistFloat}>
             <TouchableOpacity
               style={styles.quickAssistTouch}

@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { supabase } from "../config/supabaseClient";
+import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from "../utils/contactValidation";
 
 const SESSION_KEY = "pawcruz_session";
 const OTP_KEY = "pawcruz_pending_otp";
@@ -218,15 +219,18 @@ export async function registerUser(values) {
   const username = normalizeIdentifier(values.username);
   const email = normalizeIdentifier(values.email);
   const password = String(values.password || "");
-  const fullName = [values.firstName, values.middleInitial, values.lastName].filter(Boolean).join(" ").trim();
+  const phone = String(values.contact ?? values.phone ?? "").trim();
+  const fullName = [values.firstName, values.middleName, values.lastName].filter(Boolean).join(" ").trim();
+  if (!String(values.firstName || "").trim() || !String(values.lastName || "").trim()) throw new Error("First name and last name are required.");
   if (fullName.length < 2) throw new Error("Please enter your complete name.");
   if (!/^[a-z0-9_.-]{3,30}$/.test(username)) throw new Error("Username must be 3–30 characters and may use letters, numbers, dots, dashes, or underscores.");
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Please enter a valid email address.");
   if (!password) throw new Error("Password is required.");
+  if (!isValidPhMobile(phone)) throw new Error(PH_MOBILE_FORMAT_ERROR);
   const { data: existing, error } = await supabase.from("profiles").select("id").or(`username.eq.${username},email.eq.${email}`).limit(1);
   if (error) throw new Error("Unable to check the account details.");
   if (existing?.length) throw new Error("That username or email is already registered.");
-  await createAndSendOtp(email, "register", { fullName, username, email, password, role: values.role || "pet_owner" });
+  await createAndSendOtp(email, "register", { fullName, username, email, password, phone, role: values.role || "pet_owner" });
   return { requiresOtp: true, email, purpose: "register" };
 }
 
@@ -238,6 +242,7 @@ export async function completeRegistrationOtp(code) {
     username: values.username,
     email: values.email,
     password: values.password,
+    phone: values.phone || null,
     role: values.role || "pet_owner",
     account_status: "active",
   }).select("*").single();

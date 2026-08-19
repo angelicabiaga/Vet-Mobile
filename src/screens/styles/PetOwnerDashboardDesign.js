@@ -264,8 +264,8 @@ export const styles = StyleSheet.create({
 
   welcomeCard: {
     borderRadius: 28,
-    paddingHorizontal: 20,
-    paddingVertical: 22,
+    paddingHorizontal: 22,
+    paddingVertical: 26,
     marginBottom: 18,
     ...Platform.select({
       ios: {
@@ -339,6 +339,7 @@ export const styles = StyleSheet.create({
 
   heroSlideCard: {
     marginTop: 4,
+    marginBottom: 18,
     minHeight: 210,
     backgroundColor: '#447C99',
     borderRadius: 22,
@@ -422,6 +423,97 @@ export const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#ffffff',
     marginBottom: 8,
+  },
+
+  heroQueueEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  heroQueueEyebrow: {
+    color: '#dbeaf5',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+  },
+
+  heroQueueStatusPill: {
+    maxWidth: '58%',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.32)',
+  },
+
+  heroQueueStatusPillText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+
+  heroQueueNumberWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 22,
+  },
+
+  heroQueueNumberCaption: {
+    color: '#dbeaf5',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+    marginBottom: 4,
+  },
+
+  heroQueueNumberValue: {
+    color: '#ffffff',
+    fontSize: 76,
+    lineHeight: 86,
+    fontWeight: '900',
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(4, 32, 50, 0.22)',
+        textShadowOffset: { width: 0, height: 3 },
+        textShadowRadius: 8,
+      },
+    }),
+  },
+
+  heroQueuePetName: {
+    color: '#edf7fc',
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
+  heroViewQueueButton: {
+    marginTop: 4,
+    minHeight: 50,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+
+  heroViewQueueIcon: {
+    width: 18,
+    height: 18,
+    tintColor: '#1f4e66',
+  },
+
+  heroViewQueueText: {
+    color: '#1f4e66',
+    fontSize: 15,
+    fontWeight: '900',
   },
 
   sectionHeaderWrap: {

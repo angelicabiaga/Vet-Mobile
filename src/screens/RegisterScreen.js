@@ -2,6 +2,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { registerUser } from "../api/authService";
+import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from "../utils/contactValidation";
 
 import {
   Image,
@@ -23,8 +24,9 @@ const { width, height } = Dimensions.get("window");
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     firstName: "",
-    middleInitial: "",
+    middleName: "",
     lastName: "",
+    contact: "",
     username: "",
     email: "",
     password: "",
@@ -43,9 +45,9 @@ const RegisterScreen = ({ navigation }) => {
   });
 
   const handleChange = (name, value) => {
-    const nextValue = name === "middleInitial"
-      ? value.replace(/[^a-zA-Z]/g, "").slice(0, 1).toUpperCase()
-      : value;
+    let nextValue = value;
+    if (name === "middleName") nextValue = value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g, "");
+    else if (name === "contact") nextValue = value.replace(/[^0-9+]/g, "").replace(/(?!^)\+/g, "");
     const nextForm = { ...formData, [name]: nextValue };
     setFormData(nextForm);
 
@@ -68,10 +70,11 @@ const RegisterScreen = ({ navigation }) => {
     if (!data.firstName.trim()) nextErrors.firstName = "First name is required.";
     else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$/.test(data.firstName.trim())) nextErrors.firstName = "Enter a valid first name.";
 
-    if (data.middleInitial && !/^[A-Za-z]$/.test(data.middleInitial)) nextErrors.middleInitial = "Middle initial must be one letter only.";
-
     if (!data.lastName.trim()) nextErrors.lastName = "Last name is required.";
     else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$/.test(data.lastName.trim())) nextErrors.lastName = "Enter a valid last name.";
+
+    if (!data.contact.trim()) nextErrors.contact = "Contact number is required.";
+    else if (!isValidPhMobile(data.contact)) nextErrors.contact = PH_MOBILE_FORMAT_ERROR;
 
     if (!data.username.trim()) nextErrors.username = "Username is required.";
     else if (!/^[A-Za-z0-9_.-]{3,30}$/.test(data.username.trim())) nextErrors.username = "Use 3–30 letters, numbers, dots, dashes, or underscores.";
@@ -184,18 +187,16 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
 
-              <Text style={styles.label}>Middle Initial <Text style={styles.optionalText}>(Optional)</Text></Text>
+              <Text style={styles.label}>Middle Name <Text style={styles.optionalText}>(Optional)</Text></Text>
               <TextInput
-                style={[styles.input, errors.middleInitial && styles.inputError]}
-                placeholder="M.I."
+                style={[styles.input, errors.middleName && styles.inputError]}
+                placeholder="Middle name"
                 placeholderTextColor="#8d98a5"
-                value={formData.middleInitial}
-                onChangeText={(v) => handleChange("middleInitial", v)}
-                onBlur={() => handleBlur("middleInitial")}
-                autoCapitalize="characters"
-                maxLength={1}
+                value={formData.middleName}
+                onChangeText={(v) => handleChange("middleName", v)}
+                onBlur={() => handleBlur("middleName")}
               />
-              {errors.middleInitial ? <Text style={styles.errorText}>{errors.middleInitial}</Text> : null}
+              {errors.middleName ? <Text style={styles.errorText}>{errors.middleName}</Text> : null}
 
               <Text style={styles.label}>Last Name</Text>
               <TextInput
@@ -207,6 +208,19 @@ const RegisterScreen = ({ navigation }) => {
                 onBlur={() => handleBlur("lastName")}
               />
               {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
+
+              <Text style={styles.label}>Contact Number</Text>
+              <TextInput
+                style={[styles.input, errors.contact && styles.inputError]}
+                placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                placeholderTextColor="#8d98a5"
+                value={formData.contact}
+                onChangeText={(v) => handleChange("contact", v)}
+                onBlur={() => handleBlur("contact")}
+                keyboardType="phone-pad"
+                maxLength={13}
+              />
+              {errors.contact ? <Text style={styles.errorText}>{errors.contact}</Text> : null}
 
               <Text style={styles.label}>Username</Text>
               <TextInput

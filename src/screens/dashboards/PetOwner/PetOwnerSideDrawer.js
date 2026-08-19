@@ -25,6 +25,13 @@ const VETERINARIAN_MENU_ITEMS = [
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
 ];
 
+const STAFF_MENU_ITEMS = [
+  { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'staff-screen' },
+  { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'StaffAppointment' },
+  { key: 'mypets', label: 'Pets Profile', icon: require('../../assets/Pets_Icon.png'), route: 'StaffPetsProfile' },
+  { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'StaffMessages' },
+];
+
 export default function PetOwnerSideDrawer({ visible, onClose, navigation, user, activeKey, role = 'pet_owner' }) {
   const [mounted, setMounted] = useState(visible);
   const animation = useRef(new Animated.Value(visible ? 1 : 0)).current;
@@ -58,8 +65,11 @@ export default function PetOwnerSideDrawer({ visible, onClose, navigation, user,
     navigation.navigate(item.route, { user });
   };
 
-  const isVeterinarian = String(role).trim().toLowerCase() === 'veterinarian';
-  const menuItems = isVeterinarian ? VETERINARIAN_MENU_ITEMS : PET_OWNER_MENU_ITEMS;
+  const normalizedRole = String(role).trim().toLowerCase();
+  const menuItems =
+    normalizedRole === 'veterinarian' ? VETERINARIAN_MENU_ITEMS :
+    normalizedRole === 'staff' ? STAFF_MENU_ITEMS :
+    PET_OWNER_MENU_ITEMS;
 
   if (!mounted) return null;
 
@@ -92,7 +102,9 @@ export default function PetOwnerSideDrawer({ visible, onClose, navigation, user,
           <View style={styles.drawerHeader}>
             <View>
               <Text style={styles.drawerTitle}>Menu</Text>
-              <Text style={styles.drawerSubtitle}>{isVeterinarian ? 'PawCruz Veterinarian' : 'PawCruz Pet Owner'}</Text>
+              <Text style={styles.drawerSubtitle}>
+                {normalizedRole === 'veterinarian' ? 'PawCruz Veterinarian' : normalizedRole === 'staff' ? 'PawCruz Staff' : 'PawCruz Pet Owner'}
+              </Text>
             </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.8}>
               <Text style={styles.closeText}>×</Text>

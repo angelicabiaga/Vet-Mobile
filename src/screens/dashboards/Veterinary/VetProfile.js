@@ -1,150 +1,900 @@
-import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActionSheetIOS, Alert, Image, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import CustomModal from '../../../components/CustomModal';
 import ProfileOtpModal from '../../../components/ProfileOtpModal';
-import VetShell, { getVetName, getVetUser } from './VetShell';
+import VetShell, { getVetUser } from './VetShell';
 import { useLowerHeaderMotion } from './useLowerHeaderMotion';
 import { confirmEmailChangeOtp, confirmPasswordChangeOtp, getProfile, requestEmailChangeOtp, requestPasswordChangeOtp, subscribeProfile, updateProfile, uploadProfileAvatar } from '../../../api/profileService';
+import { validatePickedImageAsset } from '../../../utils/imageValidation';
+import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../../../utils/contactValidation';
+import { getVerification, subscribeToVerification, submitVerification } from '../../../api/vetVerificationService';
+import { styles } from '../../styles/PetOwnerProfileDesign';
 
-const blank = { full_name: '', username: '', email: '', phone: '', address: '', avatar_url: '', currentPassword: '', newPassword: '', confirmPassword: '' };
+const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
+const EYE_SHOW = require('../../assets/eye-show.png');
+const EYE_HIDE = require('../../assets/eye-hide.png');
+
+const PasswordInput = ({ value, onChangeText, placeholder }) => {
+  const [visible, setVisible] = useState(false);
+  return <View style={{ position: 'relative', justifyContent: 'center' }}>
+    <TextInput value={value} onChangeText={onChangeText} style={[styles.inputField, { paddingRight: 48 }]} placeholder={placeholder} placeholderTextColor="#87a0b1" secureTextEntry={!visible} autoCapitalize="none" autoCorrect={false} />
+    <TouchableOpacity onPress={() => setVisible((current) => !current)} style={{ position: 'absolute', right: 12, width: 30, height: 40, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel={visible ? 'Hide password' : 'Show password'}>
+      <Image source={visible ? EYE_HIDE : EYE_SHOW} style={{ width: 22, height: 22, tintColor: '#526d82' }} resizeMode="contain" />
+    </TouchableOpacity>
+  </View>;
+};
+
+const splitFullName = (value) => {
+  const trimmedValue = (value || '').trim();
+
+  if (!trimmedValue) {
+    return { firstName: '', middleName: '', lastName: '' };
+  }
+
+  const parts = trimmedValue.split(/\s+/);
+
+  if (parts.length < 3) {
+    return { firstName: parts[0] || '', middleName: '', lastName: parts.slice(1).join(' ') };
+  }
+
+  const middleName = parts.slice(1, -1).join(' ').replace(/^([A-Za-z])\.$/, '$1');
+
+  return {
+    firstName: parts[0] || '',
+    middleName,
+    lastName: parts[parts.length - 1],
+  };
+};
+
+const buildDraftFromRow = (row) => {
+  const resolvedName = row?.full_name || '';
+  const { firstName, middleName, lastName } = splitFullName(resolvedName);
+
+  return {
+    full_name: resolvedName,
+    firstName,
+    middleName,
+    lastName,
+    username: row?.username || '',
+    email: row?.email || '',
+    phone: row?.phone || '',
+    address: row?.address || '',
+    licenseNumber: row?.license_number || '',
+    avatar_url: row?.avatar_url || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  };
+};
 
 const VetProfile = ({ navigation, route }) => {
   const routeUser = getVetUser(route);
   const profileId = routeUser?.id || routeUser?.user_id || routeUser?.profile_id || null;
-  const [profile, setProfile] = React.useState({ ...blank, ...(routeUser || {}) });
-  const [draft, setDraft] = React.useState(profile);
-  const [editing, setEditing] = React.useState(false);
-  const [message, setMessage] = React.useState('');
-  const [busy, setBusy] = React.useState(false);
-  const [otpPurpose, setOtpPurpose] = React.useState('');
-  const [showOtp, setShowOtp] = React.useState(false);
-  const [otpError, setOtpError] = React.useState('');
-  const [pendingPassword, setPendingPassword] = React.useState('');
-  const [showLogoutModal, setShowLogoutModal] = React.useState(false);
   const { scrollViewRef, lowerHeaderAnimation, handleScroll } = useLowerHeaderMotion();
+
+  const [profileData, setProfileData] = useState(buildDraftFromRow(routeUser));
+  const [draftProfile, setDraftProfile] = useState(profileData);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [showRequiredFieldsModal, setShowRequiredFieldsModal] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpPurpose, setOtpPurpose] = useState('');
+  const [pendingNewPassword, setPendingNewPassword] = useState('');
+  const [sensitiveError, setSensitiveError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [verification, setVerification] = useState(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [verifyDraft, setVerifyDraft] = useState({ idFrontUri: '', idBackUri: '', faceScanUri: '' });
+  const [verifyConsent, setVerifyConsent] = useState(false);
+  const [verifySubmitting, setVerifySubmitting] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
 
   const apply = React.useCallback((row) => {
     if (!row) return;
-    const next = { ...blank, ...row };
-    setProfile(next); setDraft(next);
+    const next = buildDraftFromRow(row);
+    setProfileData(next);
+    setDraftProfile(next);
     navigation.setParams({ user: { ...(routeUser || {}), ...row } });
   }, [navigation, routeUser]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!profileId) return undefined;
     let active = true;
-    getProfile(profileId).then((row) => active && apply(row)).catch((error) => setMessage(error.message));
+    getProfile(profileId).then((row) => active && apply(row)).catch((error) => setSensitiveError(error.message));
     const unsubscribe = subscribeProfile(profileId, (row) => active && apply(row));
     return () => { active = false; unsubscribe?.(); };
   }, [profileId]);
 
-  const field = (name, value) => setDraft((current) => ({ ...current, [name]: value }));
-  const strongPassword = (value) => value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+  useEffect(() => {
+    if (!profileId) return undefined;
+    let active = true;
+    getVerification(profileId).then((row) => active && setVerification(row)).catch((error) => console.warn('Unable to load verification status:', error?.message || error));
+    const unsubscribe = subscribeToVerification(profileId, (row) => active && setVerification(row));
+    return () => { active = false; unsubscribe?.(); };
+  }, [profileId]);
 
-  async function pickAvatar() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return setMessage('Photo-library permission is required.');
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.85 });
-    if (!result.canceled && result.assets?.[0]?.uri) field('avatar_url', result.assets[0].uri);
-  }
+  const openEditMode = () => {
+    setDraftProfile(profileData);
+    setFieldErrors({});
+    setIsEditing(true);
+  };
 
-  async function save() {
-    setMessage('');
-    const emailChanged = draft.email.trim().toLowerCase() !== profile.email.trim().toLowerCase();
-    const passwordChanged = Boolean(draft.newPassword);
-    if (!draft.full_name.trim() || !draft.username.trim() || !draft.email.trim()) return setMessage('Full name, username, and email are required.');
-    if (emailChanged && passwordChanged) return setMessage('Change your email and password separately, as each requires its own code.');
-    if (emailChanged && !/^\S+@\S+\.\S+$/.test(draft.email.trim())) return setMessage('Enter a valid email address.');
-    if (passwordChanged && (!strongPassword(draft.newPassword) || draft.newPassword !== draft.confirmPassword)) return setMessage('New password must meet all requirements and both passwords must match.');
-    if ((emailChanged || passwordChanged) && !draft.currentPassword) return setMessage('Enter your current password to verify this change.');
-    setBusy(true);
+  const cancelEditMode = () => {
+    setDraftProfile(profileData);
+    setFieldErrors({});
+    setIsEditing(false);
+    setShowPhotoOptions(false);
+  };
+
+  const updateDraftField = (field, value) => {
+    setDraftProfile((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => (current[field] ? { ...current, [field]: undefined } : current));
+  };
+
+  const hasEmptyRequiredField = (profile) =>
+    !profile?.firstName?.trim() ||
+    !profile?.lastName?.trim() ||
+    !profile?.username?.trim() ||
+    !profile?.email?.trim();
+
+  const validateProfileFields = (profile) => {
+    const nextErrors = {};
+    if (!profile?.firstName?.trim()) nextErrors.firstName = 'First name is required.';
+    if (!profile?.lastName?.trim()) nextErrors.lastName = 'Last name is required.';
+    if (!profile?.phone?.trim()) nextErrors.phone = 'Contact number is required.';
+    else if (!isValidPhMobile(profile.phone)) nextErrors.phone = PH_MOBILE_FORMAT_ERROR;
+    if (!profile?.address?.trim()) nextErrors.address = 'Address is required.';
+    return nextErrors;
+  };
+
+  const handleDonePress = () => {
+    const nextFieldErrors = validateProfileFields(draftProfile);
+    if (Object.keys(nextFieldErrors).length) {
+      setFieldErrors(nextFieldErrors);
+      return;
+    }
+
+    if (hasEmptyRequiredField(draftProfile)) {
+      setShowRequiredFieldsModal(true);
+      return;
+    }
+
+    const emailChanged = draftProfile.email.trim().toLowerCase() !== profileData.email.trim().toLowerCase();
+    const passwordChanged = Boolean(draftProfile.newPassword);
+
+    if (emailChanged && passwordChanged) {
+      setSensitiveError('Change your email and password separately, as each requires its own verification code.');
+      return;
+    }
+
+    if (emailChanged && !/^\S+@\S+\.\S+$/.test(draftProfile.email.trim())) {
+      setSensitiveError('Enter a valid email address.');
+      return;
+    }
+
+    if (passwordChanged) {
+      const strongPassword = draftProfile.newPassword.length >= 8 && /[A-Z]/.test(draftProfile.newPassword) && /[a-z]/.test(draftProfile.newPassword) && /\d/.test(draftProfile.newPassword) && /[^A-Za-z0-9]/.test(draftProfile.newPassword);
+      if (!strongPassword || draftProfile.newPassword !== draftProfile.confirmPassword) {
+        setSensitiveError(!strongPassword ? 'Password must meet all security requirements.' : 'Passwords do not match.');
+        return;
+      }
+    }
+
+    setSensitiveError('');
+
+    if ((emailChanged || passwordChanged) && !draftProfile.currentPassword) {
+      setSensitiveError('Enter your current password to verify this change.');
+      return;
+    }
+
+    setShowSaveConfirm(true);
+  };
+
+  const saveProfile = async () => {
+    const middleName = String(draftProfile.middleName || '').trim();
+    const fullName = [draftProfile.firstName.trim(), middleName, draftProfile.lastName.trim()].filter(Boolean).join(' ');
+
     try {
-      let avatar = profile.avatar_url || null;
-      if (draft.avatar_url && draft.avatar_url !== profile.avatar_url) avatar = await uploadProfileAvatar(profileId, draft.avatar_url);
-      const updated = await updateProfile(profileId, { ...draft, avatar_url: avatar });
+      let avatarUrl = profileData.avatar_url || null;
+      if (draftProfile.avatar_url && draftProfile.avatar_url !== profileData.avatar_url) {
+        avatarUrl = await uploadProfileAvatar(profileId, draftProfile.avatar_url);
+      }
+
+      const updated = await updateProfile(profileId, {
+        full_name: fullName,
+        username: draftProfile.username,
+        phone: draftProfile.phone,
+        address: draftProfile.address,
+        avatar_url: avatarUrl,
+      });
+
+      setShowSaveConfirm(false);
+      const emailChanged = draftProfile.email.trim().toLowerCase() !== profileData.email.trim().toLowerCase();
       if (emailChanged) {
-        await requestEmailChangeOtp(profileId, draft.currentPassword, draft.email);
-        setOtpPurpose('change_email'); setOtpError(''); setShowOtp(true); return;
+        await requestEmailChangeOtp(profileId, draftProfile.currentPassword, draftProfile.email);
+        setOtpPurpose('change_email');
+        setOtpError('');
+        setShowOtpModal(true);
+        return;
       }
-      if (passwordChanged) {
-        await requestPasswordChangeOtp(profileId, draft.currentPassword);
-        setPendingPassword(draft.newPassword); setOtpPurpose('change_password'); setOtpError(''); setShowOtp(true); return;
+      if (draftProfile.newPassword) {
+        await requestPasswordChangeOtp(profileId, draftProfile.currentPassword);
+        setPendingNewPassword(draftProfile.newPassword);
+        setOtpPurpose('change_password');
+        setOtpError('');
+        setShowOtpModal(true);
+        return;
       }
-      apply(updated); setEditing(false); setMessage('Profile updated successfully.');
-    } catch (error) { setMessage(error.message || 'Unable to update profile.'); }
-    finally { setBusy(false); }
-  }
+      apply(updated);
+      setIsEditing(false);
+      setStatusMessage('Your profile changes were saved successfully.');
+    } catch (error) {
+      setShowSaveConfirm(false);
+      setSensitiveError(error?.message || 'Unable to save profile.');
+    }
+  };
 
-  async function verifyOtp(code) {
-    setBusy(true); setMessage('');
+  const verifyProfileOtp = async (code) => {
     try {
-      const result = otpPurpose === 'change_email'
-        ? await confirmEmailChangeOtp(profileId, code)
-        : await confirmPasswordChangeOtp(profileId, code, pendingPassword);
-      const updated = result?.profile || await getProfile(profileId);
-      apply(updated); setShowOtp(false); setEditing(false); setMessage(otpPurpose === 'change_email' ? 'Email changed and verified successfully.' : 'Password changed successfully.');
-    } catch (error) { setOtpError(error.message || 'Invalid or expired verification code.'); }
-    finally { setBusy(false); }
-  }
+      setOtpLoading(true);
+      setOtpError('');
+      let result;
+      if (otpPurpose === 'change_email') result = await confirmEmailChangeOtp(profileId, code);
+      else result = await confirmPasswordChangeOtp(profileId, code, pendingNewPassword);
+      setShowOtpModal(false);
+      const refreshed = result?.profile || await getProfile(profileId);
+      apply(refreshed);
+      setIsEditing(false);
+      setStatusMessage(otpPurpose === 'change_email' ? 'Your new email address was verified and saved successfully.' : 'Your password was changed successfully.');
+    } catch (error) {
+      setOtpError(error.message || 'Invalid or expired OTP.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
-  async function resendOtp() {
-    setBusy(true); setOtpError('');
+  const sendProfileOtp = async () => {
     try {
-      if (otpPurpose === 'change_email') await requestEmailChangeOtp(profileId, draft.currentPassword, draft.email);
-      else await requestPasswordChangeOtp(profileId, draft.currentPassword);
+      setOtpLoading(true);
+      setOtpError('');
+      if (otpPurpose === 'change_email') await requestEmailChangeOtp(profileId, draftProfile.currentPassword, draftProfile.email);
+      else await requestPasswordChangeOtp(profileId, draftProfile.currentPassword);
       return true;
     } catch (error) {
-      setOtpError(error.message || 'Unable to resend verification code.');
+      setOtpError(error.message || 'Unable to resend OTP.');
       return false;
-    } finally { setBusy(false); }
-  }
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
-  const avatar = editing ? draft.avatar_url : profile.avatar_url;
-  return <VetShell navigation={navigation} route={route} subtitle="Veterinary Profile" caption="Account Settings" lowerHeaderAnimation={lowerHeaderAnimation}>
-    <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} onScroll={handleScroll} scrollEventThrottle={16}>
-      <View style={styles.profileCard}>
-        <TouchableOpacity style={styles.avatarWrap} onPress={editing ? pickAvatar : undefined} disabled={!editing}>
-          {avatar ? <Image source={{ uri: avatar }} style={styles.avatarImage} /> : <Image source={require('../../assets/Profile.png')} style={styles.avatarIcon} resizeMode="contain" />}
-        </TouchableOpacity>
-        <Text style={styles.name}>{profile.full_name || getVetName(profile)}</Text><Text style={styles.role}>Veterinarian</Text>
-        {editing ? <Text style={styles.photoHint}>Tap the photo to change it (maximum 5 MB)</Text> : null}
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.title}>{editing ? 'Edit Profile' : 'Personal Information'}</Text>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
-        {editing ? <>
-          <Field label="Full name *" value={draft.full_name} onChangeText={(v) => field('full_name', v)} />
-          <Field label="Username *" value={draft.username} onChangeText={(v) => field('username', v.toLowerCase())} autoCapitalize="none" />
-          <Field label="Email *" value={draft.email} onChangeText={(v) => field('email', v)} keyboardType="email-address" autoCapitalize="none" />
-          <Field label="Phone number (Optional)" value={draft.phone || ''} onChangeText={(v) => field('phone', v)} keyboardType="phone-pad" />
-          <Field label="Address (Optional)" value={draft.address || ''} onChangeText={(v) => field('address', v)} />
-          <Text style={styles.title}>Change Password (Optional)</Text>
-          <Field label="New password" value={draft.newPassword} onChangeText={(v) => field('newPassword', v)} secureTextEntry />
-          <Field label="Confirm new password" value={draft.confirmPassword} onChangeText={(v) => field('confirmPassword', v)} secureTextEntry />
-          <Text style={styles.hint}>Use at least 8 characters with uppercase, lowercase, number, and special character.</Text>
-          {(draft.email.trim().toLowerCase() !== profile.email.trim().toLowerCase() || draft.newPassword) ? <Field label="Current password *" value={draft.currentPassword} onChangeText={(v) => field('currentPassword', v)} secureTextEntry /> : null}
-          <View style={styles.row}><Button label={busy ? 'Saving...' : 'Save Profile'} onPress={save} disabled={busy} /><Button secondary label="Cancel" onPress={() => { setDraft(profile); setEditing(false); setMessage(''); }} /></View>
-        </> : <>
-          <Detail label="Username" value={profile.username} /><Detail label="Email" value={profile.email} /><Detail label="Phone" value={profile.phone || 'Not provided'} /><Detail label="Address" value={profile.address || 'Not provided'} />
-          <Button label="Edit Profile" onPress={() => { setDraft(profile); setEditing(true); setMessage(''); }} />
-          <Button secondary label="Logout" onPress={() => setShowLogoutModal(true)} />
-        </>}
-      </View>
-    </ScrollView>
-    <ProfileOtpModal visible={showOtp} purpose={otpPurpose} destinationEmail={otpPurpose === 'change_email' ? draft.email : profile.email} busy={busy} error={otpError} onClearError={() => setOtpError('')} onVerify={verifyOtp} onResend={resendOtp} onCancel={() => { if (!busy) { setShowOtp(false); setOtpError(''); } }} />
-    <CustomModal show={showLogoutModal} onClose={() => setShowLogoutModal(false)} extraAction={<View style={styles.row}><Button label="Logout" onPress={() => { setShowLogoutModal(false); navigation.replace('login'); }} /><Button secondary label="Cancel" onPress={() => setShowLogoutModal(false)} /></View>}>Are you sure you want to logout?</CustomModal>
-  </VetShell>;
+  const pickPhotoFromAlbum = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.85 });
+      if (result.canceled || !result.assets?.length) return;
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
+        return;
+      }
+      updateDraftField('avatar_url', result.assets[0].uri);
+    } catch (error) {
+      console.warn('Failed to open album picker for profile photo:', error);
+    }
+  };
+
+  const pickPhotoFromFiles = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ['image/*'], copyToCacheDirectory: true, multiple: false });
+      if (result.canceled || !result.assets?.length) return;
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
+        return;
+      }
+      updateDraftField('avatar_url', result.assets[0].uri);
+    } catch (error) {
+      console.warn('Failed to open file picker for profile photo:', error);
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) return;
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.85 });
+      if (result.canceled || !result.assets?.length) return;
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
+        return;
+      }
+      updateDraftField('avatar_url', result.assets[0].uri);
+    } catch (error) {
+      console.warn('Failed to open camera for profile photo:', error);
+    }
+  };
+
+  const handlePhotoOptionPress = (action) => {
+    setShowPhotoOptions(false);
+    setTimeout(() => {
+      action();
+    }, Platform.OS === 'ios' ? 280 : 120);
+  };
+
+  const openPhotoOptions = () => {
+    if (!isEditing) return;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Choose from Album', 'Choose from Files', 'Use Camera'],
+          cancelButtonIndex: 0,
+          userInterfaceStyle: 'light',
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) pickPhotoFromAlbum();
+          else if (buttonIndex === 2) pickPhotoFromFiles();
+          else if (buttonIndex === 3) takePhotoWithCamera();
+        }
+      );
+      return;
+    }
+
+    setShowPhotoOptions(true);
+  };
+
+  const verificationStatus = verification?.status || 'Unverified';
+
+  const openVerifyModal = () => {
+    setVerifyDraft({ idFrontUri: '', idBackUri: '', faceScanUri: '' });
+    setVerifyConsent(false);
+    setVerifyError('');
+    setShowVerifyModal(true);
+  };
+
+  const closeVerifyModal = () => {
+    if (verifySubmitting) return;
+    setShowVerifyModal(false);
+  };
+
+  const updateVerifyDraft = (field, value) => {
+    setVerifyDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const captureIdImage = async (field, source) => {
+    try {
+      let result;
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) return;
+        result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.85 });
+      } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) return;
+        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.85 });
+      }
+      if (result.canceled || !result.assets?.length) return;
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
+        return;
+      }
+      updateVerifyDraft(field, result.assets[0].uri);
+    } catch (error) {
+      console.warn('Failed to capture ID image:', error);
+    }
+  };
+
+  const chooseIdFront = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Take Photo', 'Choose from Album'], cancelButtonIndex: 0, userInterfaceStyle: 'light' },
+        (buttonIndex) => {
+          if (buttonIndex === 1) captureIdImage('idFrontUri', 'camera');
+          else if (buttonIndex === 2) captureIdImage('idFrontUri', 'album');
+        }
+      );
+      return;
+    }
+    Alert.alert('PRC ID (Front)', 'Add a photo of the front of your PRC ID.', [
+      { text: 'Take Photo', onPress: () => captureIdImage('idFrontUri', 'camera') },
+      { text: 'Choose from Album', onPress: () => captureIdImage('idFrontUri', 'album') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const chooseIdBack = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Take Photo', 'Choose from Album'], cancelButtonIndex: 0, userInterfaceStyle: 'light' },
+        (buttonIndex) => {
+          if (buttonIndex === 1) captureIdImage('idBackUri', 'camera');
+          else if (buttonIndex === 2) captureIdImage('idBackUri', 'album');
+        }
+      );
+      return;
+    }
+    Alert.alert('PRC ID (Back)', 'Add a photo of the back of your PRC ID.', [
+      { text: 'Take Photo', onPress: () => captureIdImage('idBackUri', 'camera') },
+      { text: 'Choose from Album', onPress: () => captureIdImage('idBackUri', 'album') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const captureFaceScan = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) return;
+      const result = await ImagePicker.launchCameraAsync({
+        cameraType: ImagePicker.CameraType?.front,
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const validationError = validatePickedImageAsset(result.assets[0]);
+      if (validationError) {
+        Alert.alert('Invalid Photo', validationError);
+        return;
+      }
+      updateVerifyDraft('faceScanUri', result.assets[0].uri);
+    } catch (error) {
+      console.warn('Failed to capture live face photo:', error);
+    }
+  };
+
+  const handleSubmitVerification = async () => {
+    if (!verifyDraft.idFrontUri || !verifyDraft.idBackUri || !verifyDraft.faceScanUri) {
+      setVerifyError('Add all three photos: PRC ID front, PRC ID back, and a live face photo.');
+      return;
+    }
+    if (!verifyConsent) {
+      setVerifyError('Confirm the consent statement to submit your verification.');
+      return;
+    }
+    setVerifyError('');
+    setVerifySubmitting(true);
+    try {
+      const updated = await submitVerification(profileId, verifyDraft);
+      setVerification(updated);
+      setShowVerifyModal(false);
+      setStatusMessage('Your PRC ID and live photo were submitted. Staff will review them shortly.');
+    } catch (error) {
+      setVerifyError(error?.message || 'Unable to submit your verification.');
+    } finally {
+      setVerifySubmitting(false);
+    }
+  };
+
+  const avatarUri = isEditing ? draftProfile.avatar_url : profileData.avatar_url;
+
+  return (
+    <VetShell navigation={navigation} route={route} subtitle="Veterinary Profile" caption="Account Settings" lowerHeaderAnimation={lowerHeaderAnimation}>
+      <ScrollView ref={scrollViewRef} onScroll={handleScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.sectionHeaderWrap}>
+          <Text style={styles.sectionTitle}>{isEditing ? 'Edit Profile' : 'Profile Overview'}</Text>
+          <Text style={styles.sectionSubtitle}>
+            {isEditing ? 'Update your profile details just like the pet owner edit flow' : 'Main veterinarian information and quick account summary'}
+          </Text>
+        </View>
+
+        <View style={styles.profileCard}>
+          <View style={styles.profileTopRow}>
+            <View style={styles.avatarSection}>
+              <TouchableOpacity style={styles.avatarWrap} onPress={openPhotoOptions} activeOpacity={isEditing ? 0.9 : 1} disabled={!isEditing}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarCustom} resizeMode="cover" />
+                ) : (
+                  <Image source={DEFAULT_PROFILE_IMAGE} style={styles.avatar} resizeMode="contain" />
+                )}
+              </TouchableOpacity>
+
+              {isEditing ? (
+                <TouchableOpacity style={styles.avatarPlusButton} onPress={openPhotoOptions} activeOpacity={0.9}>
+                  <Text style={styles.avatarPlusText}>+</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <View style={styles.profileTopContent}>
+              <View style={styles.profileTag}>
+                <Text style={styles.profileTagText}>Veterinarian</Text>
+              </View>
+              <Text style={styles.profileName}>
+                {isEditing ? draftProfile.username : profileData.username}
+              </Text>
+            </View>
+          </View>
+
+          {statusMessage ? <Text style={{ color: '#245f8e', fontSize: 12, fontWeight: '700', marginBottom: 12 }}>{statusMessage}</Text> : null}
+
+          {isEditing ? (
+            <View style={styles.formCard}>
+              <Text style={styles.formLabel}>
+                First Name<Text style={styles.requiredMark}> *</Text>
+              </Text>
+              <TextInput
+                value={draftProfile.firstName}
+                onChangeText={(value) => updateDraftField('firstName', value)}
+                style={[styles.inputField, fieldErrors.firstName && styles.inputFieldError]}
+                placeholder="Enter first name"
+                placeholderTextColor="#87a0b1"
+              />
+              {fieldErrors.firstName ? <Text style={styles.fieldErrorText}>{fieldErrors.firstName}</Text> : null}
+
+              <Text style={styles.formLabel}>Middle Name (Optional)</Text>
+              <TextInput
+                value={draftProfile.middleName}
+                onChangeText={(value) => updateDraftField('middleName', value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g, ''))}
+                style={styles.inputField}
+                placeholder="Enter middle name"
+                placeholderTextColor="#87a0b1"
+                maxLength={50}
+              />
+
+              <Text style={styles.formLabel}>
+                Last Name<Text style={styles.requiredMark}> *</Text>
+              </Text>
+              <TextInput
+                value={draftProfile.lastName}
+                onChangeText={(value) => updateDraftField('lastName', value)}
+                style={[styles.inputField, fieldErrors.lastName && styles.inputFieldError]}
+                placeholder="Enter last name"
+                placeholderTextColor="#87a0b1"
+              />
+              {fieldErrors.lastName ? <Text style={styles.fieldErrorText}>{fieldErrors.lastName}</Text> : null}
+
+              <Text style={styles.formLabel}>
+                Username<Text style={styles.requiredMark}> *</Text>
+              </Text>
+              <TextInput
+                value={draftProfile.username}
+                onChangeText={(value) => updateDraftField('username', value.toLowerCase())}
+                style={styles.inputField}
+                placeholder="Enter username"
+                placeholderTextColor="#87a0b1"
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.formLabel}>
+                Email<Text style={styles.requiredMark}> *</Text>
+              </Text>
+              <TextInput
+                value={draftProfile.email}
+                onChangeText={(value) => {
+                  updateDraftField('email', value);
+                  setSensitiveError('');
+                }}
+                style={styles.inputField}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#9aaebd"
+              />
+
+              <Text style={styles.formLabel}>New Password (Optional)</Text>
+              <PasswordInput
+                value={draftProfile.newPassword}
+                onChangeText={(value) => {
+                  updateDraftField('newPassword', value);
+                  setSensitiveError('');
+                }}
+                placeholder="Enter new password"
+              />
+
+              <Text style={styles.formLabel}>Confirm New Password</Text>
+              <PasswordInput
+                value={draftProfile.confirmPassword}
+                onChangeText={(value) => {
+                  updateDraftField('confirmPassword', value);
+                  setSensitiveError('');
+                }}
+                placeholder="Confirm new password"
+              />
+              <Text style={{ color: '#526d82', fontSize: 12, lineHeight: 18, marginBottom: 12 }}>
+                Use at least 8 characters with uppercase, lowercase, number, and special character.
+              </Text>
+              {(draftProfile.email.trim().toLowerCase() !== profileData.email.trim().toLowerCase() || draftProfile.newPassword) ? <>
+                <Text style={styles.formLabel}>Current Password<Text style={styles.requiredMark}> *</Text></Text>
+                <PasswordInput value={draftProfile.currentPassword} onChangeText={(value) => updateDraftField('currentPassword', value)} placeholder="Enter current password" />
+              </> : null}
+              {sensitiveError ? <Text style={{ color: '#dc2626', fontSize: 12, fontWeight: '700', marginBottom: 12 }}>{sensitiveError}</Text> : null}
+
+              <Text style={styles.formLabel}>
+                Contact Number<Text style={styles.requiredMark}> *</Text>
+              </Text>
+              <TextInput
+                value={draftProfile.phone}
+                onChangeText={(value) =>
+                  updateDraftField('phone', value.replace(/[^0-9+]/g, '').replace(/(?!^)\+/g, ''))
+                }
+                style={[styles.inputField, fieldErrors.phone && styles.inputFieldError]}
+                placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                placeholderTextColor="#87a0b1"
+                keyboardType="phone-pad"
+                maxLength={13}
+              />
+              {fieldErrors.phone ? <Text style={styles.fieldErrorText}>{fieldErrors.phone}</Text> : null}
+
+              <Text style={styles.formLabel}>
+                Address<Text style={styles.requiredMark}> *</Text>
+              </Text>
+              <TextInput
+                value={draftProfile.address}
+                onChangeText={(value) => updateDraftField('address', value)}
+                style={[styles.inputField, fieldErrors.address && styles.inputFieldError]}
+                placeholder="Enter address"
+                placeholderTextColor="#87a0b1"
+              />
+              {fieldErrors.address ? <Text style={styles.fieldErrorText}>{fieldErrors.address}</Text> : null}
+            </View>
+          ) : (
+            <View style={styles.infoGrid}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Full Name</Text>
+                <Text style={styles.infoValue}>{profileData.full_name}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={styles.infoValue}>{profileData.email || 'No email found'}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Contact Number</Text>
+                <Text style={styles.infoValue}>{profileData.phone || 'Not provided'}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Address</Text>
+                <Text style={styles.infoValue}>{profileData.address || 'Not provided'}</Text>
+              </View>
+              {verificationStatus === 'Verified' && profileData.licenseNumber ? (
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoLabel}>Veterinary License Number</Text>
+                  <Text style={styles.infoValue}>{profileData.licenseNumber}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.sectionHeaderWrap}>
+          <Text style={styles.sectionTitle}>License Verification</Text>
+          <Text style={styles.sectionSubtitle}>PRC ID and live photo review status</Text>
+        </View>
+
+        <View style={styles.profileCard}>
+          <View style={styles.verificationTopRow}>
+            <Text style={styles.profileName}>
+              {verificationStatus === 'Verified' ? 'Verified Veterinarian' : verificationStatus === 'Pending Review' ? 'Under Review' : 'Not Verified Yet'}
+            </Text>
+            <View style={[
+              styles.verificationBadge,
+              verificationStatus === 'Verified' && styles.verificationBadgeVerified,
+              verificationStatus === 'Pending Review' && styles.verificationBadgePending,
+              verificationStatus === 'Unverified' && styles.verificationBadgeUnverified,
+            ]}>
+              <Text style={[
+                styles.verificationBadgeText,
+                verificationStatus === 'Verified' && styles.verificationBadgeTextVerified,
+                verificationStatus === 'Pending Review' && styles.verificationBadgeTextPending,
+                verificationStatus === 'Unverified' && styles.verificationBadgeTextUnverified,
+              ]}>
+                {verificationStatus}
+              </Text>
+            </View>
+          </View>
+
+          {verificationStatus === 'Unverified' && verification?.rejection_reason ? (
+            <View style={styles.verificationRejectionBox}>
+              <Text style={styles.verificationRejectionTitle}>Verification Not Approved</Text>
+              <Text style={styles.verificationRejectionText}>{verification.rejection_reason}</Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.verificationHint}>
+            {verificationStatus === 'Verified'
+              ? 'Your PRC ID and live photo were reviewed and approved by our staff.'
+              : verificationStatus === 'Pending Review'
+                ? 'Your PRC ID and live photo were submitted and are waiting for staff review.'
+                : 'Upload the front and back of your PRC ID plus a live face photo to verify your veterinary license.'}
+          </Text>
+
+          {verificationStatus === 'Unverified' ? (
+            <TouchableOpacity style={styles.editButton} onPress={openVerifyModal} activeOpacity={0.9}>
+              <Text style={styles.editButtonText}>
+                {verification?.rejection_reason ? 'Resubmit PRC ID' : 'Verify Your License'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={styles.sectionHeaderWrap}>
+          <Text style={styles.sectionTitle}>Account Actions</Text>
+          <Text style={styles.sectionSubtitle}>
+            Update your account or safely sign out
+          </Text>
+        </View>
+
+        <View style={styles.actionCard}>
+          {isEditing ? (
+            <>
+              <TouchableOpacity style={styles.editButton} onPress={handleDonePress} activeOpacity={0.9}>
+                <Text style={styles.editButtonText}>Done</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.cancelEditButton} onPress={cancelEditMode} activeOpacity={0.9}>
+                <Text style={styles.cancelEditButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.editButton} onPress={openEditMode} activeOpacity={0.9}>
+                <Text style={styles.editButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.logoutButton} onPress={() => setShowLogoutModal(true)} activeOpacity={0.9}>
+                <Text style={styles.logoutButtonText}>Logout</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </ScrollView>
+
+      <ProfileOtpModal visible={showOtpModal} purpose={otpPurpose} destinationEmail={otpPurpose === 'change_email' ? draftProfile.email : profileData.email} busy={otpLoading} error={otpError} onClearError={() => setOtpError('')} onVerify={verifyProfileOtp} onResend={sendProfileOtp} onCancel={() => { if (!otpLoading) { setShowOtpModal(false); setOtpError(''); } }} />
+
+      <Modal transparent animationType="fade" visible={showRequiredFieldsModal} onRequestClose={() => setShowRequiredFieldsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Required Fields</Text>
+            <Text style={styles.modalMessage}>
+              Please complete all required fields before saving your profile.
+            </Text>
+            <TouchableOpacity style={styles.modalPrimaryButtonFull} onPress={() => setShowRequiredFieldsModal(false)} activeOpacity={0.9}>
+              <Text style={styles.modalPrimaryText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent animationType="fade" visible={showPhotoOptions} onRequestClose={() => setShowPhotoOptions(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.photoModalCard}>
+            <Text style={styles.modalTitle}>Update Profile Photo</Text>
+            <Text style={styles.modalMessage}>
+              Choose how you want to add your profile picture.
+            </Text>
+
+            <TouchableOpacity style={styles.photoOptionButton} onPress={() => handlePhotoOptionPress(pickPhotoFromAlbum)} activeOpacity={0.9}>
+              <Text style={styles.photoOptionText}>Choose from Album</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.photoOptionButton} onPress={() => handlePhotoOptionPress(pickPhotoFromFiles)} activeOpacity={0.9}>
+              <Text style={styles.photoOptionText}>Choose from Files</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.photoOptionButton} onPress={() => handlePhotoOptionPress(takePhotoWithCamera)} activeOpacity={0.9}>
+              <Text style={styles.photoOptionText}>Use Camera</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.photoOptionCancelButton} onPress={() => setShowPhotoOptions(false)} activeOpacity={0.9}>
+              <Text style={styles.photoOptionCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent animationType="fade" visible={showSaveConfirm} onRequestClose={() => setShowSaveConfirm(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Save Profile</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to save these profile changes?
+            </Text>
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity style={styles.modalSecondaryButton} onPress={() => setShowSaveConfirm(false)} activeOpacity={0.9}>
+                <Text style={styles.modalSecondaryText}>No</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalPrimaryButton} onPress={saveProfile} activeOpacity={0.9}>
+                <Text style={styles.modalPrimaryText}>Yes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent animationType="fade" visible={showVerifyModal} onRequestClose={closeVerifyModal}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Verify Your License</Text>
+            <Text style={styles.modalMessage}>
+              Add the front and back of your PRC ID, then a live photo of your face. Our staff reviews these before your license number is verified.
+            </Text>
+
+            <View style={styles.uploadSlotRow}>
+              <TouchableOpacity style={[styles.uploadSlot, verifyDraft.idFrontUri && styles.uploadSlotFilled]} onPress={chooseIdFront} activeOpacity={0.85}>
+                {verifyDraft.idFrontUri ? (
+                  <Image source={{ uri: verifyDraft.idFrontUri }} style={styles.uploadSlotImage} resizeMode="cover" />
+                ) : (
+                  <>
+                    <Text style={styles.uploadSlotPlus}>+</Text>
+                    <Text style={styles.uploadSlotLabel}>PRC ID{'\n'}Front</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.uploadSlot, verifyDraft.idBackUri && styles.uploadSlotFilled]} onPress={chooseIdBack} activeOpacity={0.85}>
+                {verifyDraft.idBackUri ? (
+                  <Image source={{ uri: verifyDraft.idBackUri }} style={styles.uploadSlotImage} resizeMode="cover" />
+                ) : (
+                  <>
+                    <Text style={styles.uploadSlotPlus}>+</Text>
+                    <Text style={styles.uploadSlotLabel}>PRC ID{'\n'}Back</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.uploadSlot, verifyDraft.faceScanUri && styles.uploadSlotFilled]} onPress={captureFaceScan} activeOpacity={0.85}>
+                {verifyDraft.faceScanUri ? (
+                  <Image source={{ uri: verifyDraft.faceScanUri }} style={styles.uploadSlotImage} resizeMode="cover" />
+                ) : (
+                  <>
+                    <Text style={styles.uploadSlotPlus}>+</Text>
+                    <Text style={styles.uploadSlotLabel}>Live Face{'\n'}Photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.consentRow} onPress={() => setVerifyConsent((current) => !current)} activeOpacity={0.85}>
+              <View style={[styles.consentCheckbox, verifyConsent && styles.consentCheckboxChecked]}>
+                {verifyConsent ? <Text style={styles.consentCheckmark}>✓</Text> : null}
+              </View>
+              <Text style={styles.consentText}>
+                I confirm this is my own valid PRC ID and a live photo of myself, submitted for identity verification.
+              </Text>
+            </TouchableOpacity>
+
+            {verifyError ? <Text style={styles.fieldErrorText}>{verifyError}</Text> : null}
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity style={styles.modalSecondaryButton} onPress={closeVerifyModal} activeOpacity={0.9} disabled={verifySubmitting}>
+                <Text style={styles.modalSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalPrimaryButton} onPress={handleSubmitVerification} activeOpacity={0.9} disabled={verifySubmitting}>
+                <Text style={styles.modalPrimaryText}>{verifySubmitting ? 'Submitting...' : 'Submit'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <CustomModal
+        show={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        extraAction={
+          <>
+            <TouchableOpacity style={styles.confirmBtn} onPress={() => { setShowLogoutModal(false); navigation.replace('login'); }} activeOpacity={0.9}>
+              <Text style={styles.confirmBtnText}>Logout</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowLogoutModal(false)} activeOpacity={0.9}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        }
+      >
+        Are you sure you want to logout?
+      </CustomModal>
+    </VetShell>
+  );
 };
 
-const Field = ({ label, secureTextEntry, ...props }) => {
-  const [visible, setVisible] = React.useState(false);
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><View style={secureTextEntry ? styles.passwordBox : null}><TextInput {...props} secureTextEntry={secureTextEntry && !visible} style={[styles.input, secureTextEntry && styles.passwordInput]} placeholderTextColor="#87a0b1" autoCorrect={secureTextEntry ? false : props.autoCorrect} />{secureTextEntry ? <TouchableOpacity onPress={() => setVisible((current) => !current)} style={styles.eyeButton} accessibilityRole="button" accessibilityLabel={visible ? 'Hide password' : 'Show password'}><Image source={visible ? require('../../assets/eye-hide.png') : require('../../assets/eye-show.png')} style={styles.eyeIcon} resizeMode="contain" /></TouchableOpacity> : null}</View></View>;
-};
-const Detail = ({ label, value }) => <View style={styles.detail}><Text style={styles.detailLabel}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>;
-const Button = ({ label, secondary, ...props }) => <TouchableOpacity {...props} style={[styles.button, secondary && styles.secondary, props.disabled && styles.disabled]}><Text style={[styles.buttonText, secondary && styles.secondaryText]}>{label}</Text></TouchableOpacity>;
-
-const styles = StyleSheet.create({
-  scrollContent:{paddingHorizontal:18,paddingTop:8,paddingBottom:120},profileCard:{backgroundColor:'#fcfeff',borderRadius:26,borderWidth:1,borderColor:'#dceef8',padding:18,alignItems:'center',marginBottom:14},avatarWrap:{width:100,height:100,borderRadius:50,backgroundColor:'#e7f6f8',alignItems:'center',justifyContent:'center',overflow:'hidden'},avatarImage:{width:'100%',height:'100%'},avatarIcon:{width:44,height:44,tintColor:'#24566d'},name:{fontSize:22,fontWeight:'900',color:'#24566d',marginTop:12,textAlign:'center'},role:{fontSize:12,fontWeight:'900',color:'#447C99',textTransform:'uppercase',marginTop:4},photoHint:{fontSize:12,color:'#6a8aa0',marginTop:8},card:{backgroundColor:'#fcfeff',borderRadius:26,borderWidth:1,borderColor:'#dceef8',padding:18},title:{fontSize:17,fontWeight:'900',color:'#24566d',marginBottom:12,marginTop:4},message:{padding:10,borderRadius:10,backgroundColor:'#eef7f8',color:'#24566d',marginBottom:12},field:{marginBottom:12},label:{fontSize:12,fontWeight:'800',color:'#526d82',marginBottom:6},input:{minHeight:46,borderWidth:1,borderColor:'#d5e6ee',borderRadius:12,paddingHorizontal:12,color:'#24566d',backgroundColor:'#fff'},passwordBox:{position:'relative',justifyContent:'center'},passwordInput:{paddingRight:48},eyeButton:{position:'absolute',right:10,width:34,height:42,alignItems:'center',justifyContent:'center'},eyeIcon:{width:22,height:22,tintColor:'#526d82'},hint:{fontSize:12,lineHeight:18,color:'#6a8aa0',marginBottom:12},detail:{paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#edf4f8'},detailLabel:{fontSize:11,fontWeight:'900',color:'#6a8aa0',textTransform:'uppercase'},detailValue:{fontSize:14,fontWeight:'800',color:'#24566d',marginTop:4},row:{flexDirection:'row',gap:10,marginTop:4},button:{minHeight:46,borderRadius:14,backgroundColor:'#447C99',alignItems:'center',justifyContent:'center',paddingHorizontal:18,marginTop:12,flex:1},secondary:{backgroundColor:'#edf4f8'},buttonText:{fontSize:13,fontWeight:'900',color:'#fff'},secondaryText:{color:'#24566d'},disabled:{opacity:.55}
-});
 export default VetProfile;

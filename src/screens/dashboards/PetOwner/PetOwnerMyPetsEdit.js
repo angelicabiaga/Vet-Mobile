@@ -32,6 +32,7 @@ import {
   getPetPhotoSource,
  } from './PetOwnerMyPetsInfo';
 import { getOwnerPet, saveOwnerPet } from '../../../api/petService';
+import { validatePickedImageAsset } from '../../../utils/imageValidation';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 const CALENDAR_ICON = require('../../assets/calendar.png');
@@ -361,6 +362,12 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
       return;
     }
 
+    const validationError = validatePickedImageAsset(result.assets[0]);
+    if (validationError) {
+      Alert.alert('Invalid Photo', validationError);
+      return;
+    }
+
     updateDraftPetField('profileImageUri', result.assets[0].uri);
   };
 
@@ -382,6 +389,12 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
       return;
     }
 
+    const validationError = validatePickedImageAsset(result.assets[0]);
+    if (validationError) {
+      Alert.alert('Invalid Photo', validationError);
+      return;
+    }
+
     updateDraftPetField('profileImageUri', result.assets[0].uri);
   };
 
@@ -394,6 +407,12 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     });
 
     if (result.canceled || !result.assets?.length) {
+      return;
+    }
+
+    const validationError = validatePickedImageAsset(result.assets[0]);
+    if (validationError) {
+      Alert.alert('Invalid Photo', validationError);
       return;
     }
 

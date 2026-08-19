@@ -10,6 +10,7 @@ const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 const HEADER_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'admin-screen' },
   { key: 'users', label: 'User Management', icon: require('../../assets/UserManagement_Icon.png'), route: 'AdminUserManagement' },
+  { key: 'verification', label: 'Veterinarian Verification', icon: require('../../assets/UserManagement_Icon.png'), route: 'AdminVetVerification' },
   { key: 'create', label: 'Create Account', icon: require('../../assets/UserManagement_Icon.png'), route: 'AdminCreateAccount' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'AdminMessages' },
   { key: 'notifications', label: 'Notifications', icon: require('../../assets/Bell_Icon.png'), route: 'AdminNotif' },
@@ -28,6 +29,7 @@ const HERO_SLIDES = [
 
 const SERVICE_CARDS = [
   { key: 'users', title: 'User Management', subtitle: 'View and filter accounts', icon: require('../../assets/UserManagement_Icon.png'), route: 'AdminUserManagement' },
+  { key: 'verification', title: 'Veterinarian Verification', subtitle: 'Review PRC IDs and approve licenses', icon: require('../../assets/UserManagement_Icon.png'), route: 'AdminVetVerification' },
   { key: 'create', title: 'Create Account', subtitle: 'Add new clinic users', icon: require('../../assets/UserManagement_Icon.png'), route: 'AdminCreateAccount' },
   { key: 'messages', title: 'Messages', subtitle: 'Review conversations', icon: require('../../assets/Message_Icon.png'), route: 'AdminMessages' },
   { key: 'notif', title: 'Notifications', subtitle: 'Check admin alerts', icon: require('../../assets/Bell_Icon.png'), route: 'AdminNotif' },

@@ -16,6 +16,7 @@ import { styles } from '../../styles/PetOwnerDashboardDesign';
 import { loadPetOwnerDashboard, subscribeToPetOwnerDashboard, unsubscribeChannels } from '../../../api/petService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
+const ACTIVE_QUEUE_STATUSES = ['Waiting', 'Serving', 'Now Serving'];
 
 const PetOwnerDashboard = ({ navigation, route }) => {
   const loggedInUser = route?.params?.user;
@@ -75,6 +76,13 @@ const PetOwnerDashboard = ({ navigation, route }) => {
   const appointmentDateLabel = bookedAppointment
     ? `${bookedPet?.pet_name || 'Pet'} - ${bookedAppointment.appointment_date || ''}`
     : 'No active request yet';
+
+  const activeQueueEntry = dashboardActivity.queues.find((entry) => ACTIVE_QUEUE_STATUSES.includes(entry.status)) || null;
+  const hasActiveQueue = Boolean(activeQueueEntry);
+  const queueNumber = activeQueueEntry?.queue_number || null;
+  const queueStatusLabel = hasActiveQueue ? activeQueueEntry.status : 'No Active Queue';
+  const queuePet = hasActiveQueue ? dashboardActivity.pets.find((pet) => pet.id === activeQueueEntry.pet_id) : null;
+  const queuePetName = hasActiveQueue ? (queuePet?.pet_name || 'Pet') : 'No pet checked in';
 
   const activityTracks = [
     {
@@ -438,35 +446,59 @@ const PetOwnerDashboard = ({ navigation, route }) => {
             end={{ x: 1, y: 1 }}
             style={styles.welcomeCard}
           >
-            <View style={styles.heroSlideCard}>
-              <Image
-                source={require('../../assets/dashboard.jpg')}
-                style={styles.heroSlideBackground}
-                resizeMode="cover"
-              />
-              <View style={styles.heroSlideOverlay} />
-              <View style={styles.heroSlideContent}>
-                <View style={styles.heroSlideTopRow}>
-                <Text style={styles.heroSlideLabel}>{heroSlides[activeHeroSlide].label}</Text>
-                <View style={styles.heroDotsRow}>
-                  {heroSlides.map((slide, index) => (
-                    <View
-                      key={slide.key}
-                      style={[
-                        styles.heroDot,
-                        index === activeHeroSlide && styles.heroDotActive,
-                      ]}
-                    />
-                  ))}
-                </View>
-                </View>
-
-                <Text style={styles.heroQuoteMark}>"</Text>
-                <Text style={styles.heroSlideTitle}>{heroSlides[activeHeroSlide].title}</Text>
-                <Text style={styles.welcomeDesc}>{heroSlides[activeHeroSlide].description}</Text>
+            <View style={styles.heroQueueEyebrowRow}>
+              <Text style={styles.heroQueueEyebrow}>MY QUEUE</Text>
+              <View style={styles.heroQueueStatusPill}>
+                <Text style={styles.heroQueueStatusPillText} numberOfLines={1}>{queueStatusLabel}</Text>
               </View>
             </View>
+
+            <View style={styles.heroQueueNumberWrap}>
+              <Text style={styles.heroQueueNumberCaption}>QUEUE NUMBER</Text>
+              <Text style={styles.heroQueueNumberValue}>{queueNumber || '—'}</Text>
+              <Text style={styles.heroQueuePetName}>{queuePetName}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.heroViewQueueButton}
+              onPress={() => navigation.navigate('PetOwnerQueue', { user: currentUser })}
+              activeOpacity={0.88}
+              accessibilityRole="button"
+              accessibilityLabel="View complete queue details"
+            >
+              <Image source={require('../../assets/List.png')} style={styles.heroViewQueueIcon} resizeMode="contain" />
+              <Text style={styles.heroViewQueueText}>View Queue</Text>
+            </TouchableOpacity>
           </LinearGradient>
+
+          <View style={styles.heroSlideCard}>
+            <Image
+              source={require('../../assets/dashboard.jpg')}
+              style={styles.heroSlideBackground}
+              resizeMode="cover"
+            />
+            <View style={styles.heroSlideOverlay} />
+            <View style={styles.heroSlideContent}>
+              <View style={styles.heroSlideTopRow}>
+              <Text style={styles.heroSlideLabel}>{heroSlides[activeHeroSlide].label}</Text>
+              <View style={styles.heroDotsRow}>
+                {heroSlides.map((slide, index) => (
+                  <View
+                    key={slide.key}
+                    style={[
+                      styles.heroDot,
+                      index === activeHeroSlide && styles.heroDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+              </View>
+
+              <Text style={styles.heroQuoteMark}>"</Text>
+              <Text style={styles.heroSlideTitle}>{heroSlides[activeHeroSlide].title}</Text>
+              <Text style={styles.welcomeDesc}>{heroSlides[activeHeroSlide].description}</Text>
+            </View>
+          </View>
 
           <View style={styles.sectionHeaderWrap}>
             <Text style={styles.sectionTitle}>Track Activities</Text>

@@ -34,6 +34,52 @@ export async function markAllNotificationsRead(profileId) {
   if (error) throw new Error(`Unable to mark notifications as read: ${error.message}`);
 }
 
+export async function createNotification({
+  recipientId,
+  type,
+  title,
+  message,
+  relatedModule = null,
+  relatedRecord = null,
+  createdBy = null,
+}) {
+  if (!recipientId || !title) return null;
+  const { data, error } = await supabase
+    .from('notifications')
+    .insert({
+      recipient_id: recipientId,
+      notification_type: type,
+      title,
+      message,
+      related_module: relatedModule,
+      related_record: relatedRecord,
+      created_by: createdBy,
+    })
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    console.warn('Unable to create notification:', error.message);
+    return null;
+  }
+  return data;
+}
+
+export async function notificationExists({ recipientId, type, relatedRecord }) {
+  if (!recipientId || !relatedRecord) return false;
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('recipient_id', recipientId)
+    .eq('notification_type', type)
+    .eq('related_record', relatedRecord)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return true;
+  return Boolean(data);
+}
+
 function uniqueChannelName(profileId) {
   return `mobile-notifications-${profileId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

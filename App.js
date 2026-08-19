@@ -1,6 +1,7 @@
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as Linking from "expo-linking";
+import { NotificationProvider, useNotificationContext } from "./src/providers/NotificationProvider";
 
 // Core Screens
 import LoginScreen from "./src/screens/LoginScreen";
@@ -26,6 +27,34 @@ import VetPatients from "./src/screens/dashboards/Veterinary/VetPatients";
 
 // Public Queue
 import PublicQueueScreen from "./src/screens/PublicQueueScreen";
+
+// Admin Screens
+import AdminCreateAccount from "./src/screens/dashboards/Admin/AdminCreateAccount";
+import AdminDashboard from "./src/screens/dashboards/Admin/AdminDashboard";
+import AdminMessages from "./src/screens/dashboards/Admin/AdminMessages";
+import AdminNotif from "./src/screens/dashboards/Admin/AdminNotif";
+import AdminProfile from "./src/screens/dashboards/Admin/AdminProfile";
+import AdminUserManagement from "./src/screens/dashboards/Admin/AdminUserManagement";
+import AdminVetVerification from "./src/screens/dashboards/Admin/AdminVetVerification";
+
+// Staff Screens
+import StaffDashboard from "./src/screens/dashboards/Staff/StaffDashboard";
+import StaffAppointment from "./src/screens/dashboards/Staff/StaffAppointment";
+import StaffAppointmentList from "./src/screens/dashboards/Staff/StaffAppointmentList";
+import StaffAppointmentDatabase from "./src/screens/dashboards/Staff/StaffAppointmentDatabase";
+import StaffMessages from "./src/screens/dashboards/Staff/StaffMessages";
+import StaffNotif from "./src/screens/dashboards/Staff/StaffNotif";
+import StaffProfile from "./src/screens/dashboards/Staff/StaffProfile";
+import StaffInventory from "./src/screens/dashboards/Staff/StaffInventory";
+import StaffUserManagement from "./src/screens/dashboards/Staff/StaffUserManagement";
+import StaffCreateAccount from "./src/screens/dashboards/Staff/StaffCreateAccount";
+import StaffManageAccount from "./src/screens/dashboards/Staff/StaffManageAccount";
+import StaffPayHis from "./src/screens/dashboards/Staff/StaffPayHis";
+import StaffActivityLogs from "./src/screens/dashboards/Staff/StaffActivityLogs";
+import StaffLogs from "./src/screens/dashboards/Staff/StaffLogs";
+import StaffMyPets from "./src/screens/dashboards/Staff/StaffMyPets";
+import StaffPetsProfile from "./src/screens/dashboards/Staff/StaffPetsProfile";
+import StaffPetsProfileEdit from "./src/screens/dashboards/Staff/StaffPetsProfileEdit";
 
 // Pet Owner Screens
 import PetOwnerAppointment from "./src/screens/dashboards/PetOwner/PetOwnerAppointment";
@@ -58,9 +87,21 @@ const linking = {
   },
 };
 
-export default function App() {
+function AppNavigator({ navigationRef }) {
+  const { setActiveUser } = useNotificationContext();
+
+  const syncActiveUser = () => {
+    const user = navigationRef.current?.getCurrentRoute()?.params?.user;
+    if (user) setActiveUser(user);
+  };
+
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      onReady={syncActiveUser}
+      onStateChange={syncActiveUser}
+    >
       <Stack.Navigator
         initialRouteName="login"
         screenOptions={{ headerShown: false }}
@@ -78,6 +119,55 @@ export default function App() {
           name="PublicQueue"
           component={PublicQueueScreen}
         />
+
+        {/* Admin Flow */}
+        <Stack.Screen
+          name="admin-screen"
+          component={AdminDashboard}
+        />
+        <Stack.Screen
+          name="AdminUserManagement"
+          component={AdminUserManagement}
+        />
+        <Stack.Screen
+          name="AdminVetVerification"
+          component={AdminVetVerification}
+        />
+        <Stack.Screen
+          name="AdminCreateAccount"
+          component={AdminCreateAccount}
+        />
+        <Stack.Screen
+          name="AdminMessages"
+          component={AdminMessages}
+        />
+        <Stack.Screen
+          name="AdminNotif"
+          component={AdminNotif}
+        />
+        <Stack.Screen
+          name="AdminProfile"
+          component={AdminProfile}
+        />
+
+        {/* Staff Flow */}
+        <Stack.Screen name="staff-screen" component={StaffDashboard} />
+        <Stack.Screen name="StaffAppointment" component={StaffAppointment} />
+        <Stack.Screen name="StaffAppointmentList" component={StaffAppointmentList} />
+        <Stack.Screen name="StaffAppointmentDatabase" component={StaffAppointmentDatabase} />
+        <Stack.Screen name="StaffMessages" component={StaffMessages} />
+        <Stack.Screen name="StaffNotif" component={StaffNotif} />
+        <Stack.Screen name="StaffProfile" component={StaffProfile} />
+        <Stack.Screen name="StaffInventory" component={StaffInventory} />
+        <Stack.Screen name="StaffUserManagement" component={StaffUserManagement} />
+        <Stack.Screen name="StaffCreateAccount" component={StaffCreateAccount} />
+        <Stack.Screen name="StaffManageAccount" component={StaffManageAccount} />
+        <Stack.Screen name="StaffPayHis" component={StaffPayHis} />
+        <Stack.Screen name="StaffActivityLogs" component={StaffActivityLogs} />
+        <Stack.Screen name="StaffLogs" component={StaffLogs} />
+        <Stack.Screen name="StaffMyPets" component={StaffMyPets} />
+        <Stack.Screen name="StaffPetsProfile" component={StaffPetsProfile} />
+        <Stack.Screen name="StaffPetsProfileEdit" component={StaffPetsProfileEdit} />
 
         {/* Veterinarian Flow */}
         <Stack.Screen
@@ -180,5 +270,14 @@ export default function App() {
         />
       </Stack.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  const navigationRef = useNavigationContainerRef();
+  return (
+    <NotificationProvider navigationRef={navigationRef}>
+      <AppNavigator navigationRef={navigationRef} />
+    </NotificationProvider>
   );
 }

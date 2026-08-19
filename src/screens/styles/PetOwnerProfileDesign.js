@@ -607,6 +607,20 @@ export const styles = StyleSheet.create({
     color: '#6c8293',
   },
 
+  inputFieldError: {
+    borderColor: '#dc2626',
+    borderWidth: 1.5,
+  },
+
+  fieldErrorText: {
+    color: '#dc2626',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: -4,
+    marginBottom: 10,
+    marginLeft: 2,
+  },
+
   actionCard: {
     backgroundColor: '#fcfeff',
     borderRadius: 28,
@@ -913,5 +927,175 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#ffffff',
+  },
+
+  verificationTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  verificationBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
+  verificationBadgeUnverified: {
+    backgroundColor: '#eef1f4',
+    borderColor: '#dde5ea',
+  },
+
+  verificationBadgePending: {
+    backgroundColor: '#fff4e0',
+    borderColor: '#f4dfb0',
+  },
+
+  verificationBadgeVerified: {
+    backgroundColor: '#e7f7ec',
+    borderColor: '#bfe8cc',
+  },
+
+  verificationBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  verificationBadgeTextUnverified: {
+    color: '#5f7f8a',
+  },
+
+  verificationBadgeTextPending: {
+    color: '#a9750c',
+  },
+
+  verificationBadgeTextVerified: {
+    color: '#1f9d55',
+  },
+
+  verificationHint: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#5d7b91',
+    fontWeight: '600',
+    marginBottom: 14,
+  },
+
+  verificationRejectionBox: {
+    backgroundColor: '#fff1f1',
+    borderWidth: 1,
+    borderColor: '#ffd7d7',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 14,
+  },
+
+  verificationRejectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#c24a4a',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+
+  verificationRejectionText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#7a3a3a',
+    fontWeight: '600',
+  },
+
+  licenseValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#24566d',
+    letterSpacing: 0.4,
+  },
+
+  uploadSlotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+
+  uploadSlot: {
+    width: '31%',
+    aspectRatio: 0.78,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#bcdcec',
+    backgroundColor: '#f7fbfc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    padding: 6,
+  },
+
+  uploadSlotFilled: {
+    borderStyle: 'solid',
+    borderColor: '#447C99',
+  },
+
+  uploadSlotImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 13,
+  },
+
+  uploadSlotPlus: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#447C99',
+    marginBottom: 4,
+  },
+
+  uploadSlotLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#5f7f8a',
+    textAlign: 'center',
+  },
+
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+
+  consentCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#bcdcec',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 1,
+  },
+
+  consentCheckboxChecked: {
+    backgroundColor: '#447C99',
+    borderColor: '#447C99',
+  },
+
+  consentCheckmark: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+
+  consentText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#526d82',
+    fontWeight: '600',
   },
 });
