@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import {
   subscribeNotifications,
   markNotificationRead,
@@ -9,6 +10,7 @@ import {
 import { getOwnerAppointments } from '../api/mobileAppointmentService';
 import { getStoredSession } from '../api/authService';
 import { playNotificationSound } from '../utils/notificationSound';
+import { registerForPushNotificationsAsync } from '../utils/pushNotifications';
 import NotificationToast from '../components/NotificationToast';
 
 const NotificationContext = createContext({ setActiveUser: () => {} });
@@ -99,8 +101,29 @@ export function NotificationProvider({ navigationRef, children }) {
         showToast(row);
       },
     });
+    registerForPushNotificationsAsync(profileId);
     return () => unsubscribeRef.current();
   }, [activeUser?.id, activeUser?.user_id, activeUser?.profile_id, showToast]);
+
+  useEffect(() => {
+    const navigateToNotification = (response) => {
+      const data = response?.notification?.request?.content?.data;
+      if (!data) return;
+      const target = resolveRouteForNotification(
+        { notification_type: data.type },
+        activeUserRef.current?.role,
+      );
+      if (target && navigationRef?.current?.isReady?.()) {
+        navigationRef.current.navigate(target.name, { user: activeUserRef.current });
+      }
+    };
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(navigateToNotification);
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) navigateToNotification(response);
+    });
+    return () => subscription.remove();
+  }, [navigationRef]);
 
   useEffect(() => {
     const role = String(activeUser?.role || '').toLowerCase();

@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { supabase } from "../config/supabaseClient";
 import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from "../utils/contactValidation";
+import { clearPushTokenForThisDevice } from "../utils/pushNotifications";
 
 const SESSION_KEY = "pawcruz_session";
 const OTP_KEY = "pawcruz_pending_otp";
@@ -104,6 +105,7 @@ export async function getStoredSession() {
 }
 
 export async function logoutUser() {
+  await clearPushTokenForThisDevice();
   await SecureStore.deleteItemAsync(SESSION_KEY);
 }
 

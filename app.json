@@ -31,7 +31,14 @@
     "plugins": [
       "expo-video",
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/screens/assets/paw2.png",
+          "color": "#063B55"
+        }
+      ]
     ],
     "extra": {
       "eas": {
