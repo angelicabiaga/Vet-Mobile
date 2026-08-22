@@ -11,18 +11,27 @@ const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
 const HEADER_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'vet-screen' },
-  { key: 'patients', label: 'Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatients' },
-  { key: 'appointments', label: 'My Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
-  { key: 'medical-records', label: 'Medical Records', icon: require('../../assets/Medical_Icon.png'), route: 'VetMedRec' },
+  { key: 'profile', label: 'Profile', icon: require('../../assets/UserManagement_Icon.png'), route: 'VetProfile' },
+  { key: 'notifications', label: 'Notifications', icon: require('../../assets/Bell_Icon.png'), route: 'VetNotif' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
+  { key: 'appointments', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
+  { key: 'schedule', label: 'Schedule', icon: require('../../assets/calendar.png'), route: 'VetSchedule' },
+  { key: 'patients', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
 ];
 
 const getActiveMenuKey = (routeName) => {
   if (routeName === 'vet-screen') return 'dashboard';
-  if (routeName === 'VetPatients') return 'patients';
-  if (routeName === 'VetAppointment') return 'appointments';
-  if (routeName === 'VetMedRec' || routeName === 'VetMedRecDetail') return 'medical-records';
+  if (routeName === 'VetProfile') return 'profile';
+  if (routeName === 'VetNotif') return 'notifications';
   if (routeName === 'VetMessages') return 'messages';
+  if (routeName === 'VetAppointment') return 'appointments';
+  if (routeName === 'VetSchedule') return 'schedule';
+  if (
+    routeName === 'VetPatientOwners' ||
+    routeName === 'VetPatients' ||
+    routeName === 'VetPatientProfile' ||
+    routeName === 'VetMedRec'
+  ) return 'patients';
   return undefined;
 };
 

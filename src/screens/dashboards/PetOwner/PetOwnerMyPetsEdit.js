@@ -18,8 +18,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from '../../styles/PetOwnerMyPetsDesign';
-import { REGISTERED_PET_OWNER_ACCOUNTS } from '../../../data/registeredPetOwners';
-import { linkCreatedPetToOwner } from '../Staff/StaffPetsProfile';
 import {
   MONTHS,
   OTHER_OPTION_VALUE,
@@ -77,12 +75,9 @@ const isSameCalendarDate = (leftDate, rightDate) => (
   leftDate?.getDate() === rightDate?.getDate()
 );
 
-const EMAIL_LIKE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   const loggedInUser = route?.params?.user;
   const petId = route?.params?.petId;
-  const isStaffCreate = Boolean(route?.params?.isStaffCreate);
   const returnToRoute = route?.params?.returnToRoute || '';
   const returnToParams = route?.params?.returnToParams || {};
   const isCreatingPet = !petId;
@@ -106,8 +101,6 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   const [showBirthdayCalendar, setShowBirthdayCalendar] = useState(false);
   const [calendarMonthDate, setCalendarMonthDate] = useState(() => getBirthdayDateFromPet(initialPet));
   const [pendingBirthdayDate, setPendingBirthdayDate] = useState(null);
-  const [staffSelectedOwnerId, setStaffSelectedOwnerId] = useState('');
-  const [staffOwnerEmail, setStaffOwnerEmail] = useState('');
 
   const activePhoto = getPetPhotoSource(draftPet);
   const breedOptions = useMemo(() => getBreedOptionsForSpecies(draftPet.species), [draftPet.species]);
@@ -126,7 +119,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   useEffect(() => {
     let active = true;
     async function loadExistingPet() {
-      if (!petId || !loggedInUser?.id || isStaffCreate) return;
+      if (!petId || !loggedInUser?.id) return;
       try {
         const existing = await getOwnerPet(petId, loggedInUser.id);
         if (active && existing) {
@@ -135,36 +128,19 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
           setIsCustomBreedMode(Boolean(nextDraft.breed) && !getBreedOptionsForSpecies(nextDraft.species).some((item) => item.value === nextDraft.breed));
         }
       } catch (error) {
-        Alert.alert("My Pets", error.message || "Unable to load this pet.");
+        Alert.alert("Animal Patients", error.message || "Unable to load this pet.");
       }
     }
     loadExistingPet();
     return () => { active = false; };
-  }, [petId, loggedInUser?.id, isStaffCreate]);
+  }, [petId, loggedInUser?.id]);
 
-
-  const staffOwnerDropdownData = useMemo(() => [
-    { label: '— None — use owner email below', value: '' },
-    ...REGISTERED_PET_OWNER_ACCOUNTS.map((o) => ({
-      label: `${o.name} · ${o.email}`,
-      value: o.id,
-    })),
-  ], []);
-
-  const headerMenuItems = isStaffCreate
-    ? [
-        { key: 'staff-pets', label: 'Pets Profile', icon: require('../../assets/Pets_Icon.png'), route: 'StaffPetsProfile' },
-        { key: 'staff-dash', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'staff-screen' },
-        { key: 'staff-messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'StaffMessages' },
-      ]
-    : [
-        { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
-        { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
-        { key: 'mypets', label: 'My Pets', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
-        { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
-        { key: 'medical', label: 'Medical Records', icon: require('../../assets/Medical_Icon.png'), route: 'PetOwnerMedRec' },
-
-      ];
+  const headerMenuItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
+    { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
+    { key: 'mypets', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
+    { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
+  ];
 
   const updateDraftPetField = (field, value) => {
     setDraftPet((current) => ({ ...current, [field]: value }));
@@ -184,20 +160,6 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     !pet?.birthMonth ||
     !pet?.birthDay ||
     !pet?.birthYear;
-
-  const hasStaffOwnerAssignment = () => {
-    if (!isStaffCreate || !isCreatingPet) {
-      return true;
-    }
-    if (staffSelectedOwnerId) {
-      return true;
-    }
-    const emailTrim = staffOwnerEmail.trim();
-    if (!emailTrim) {
-      return false;
-    }
-    return EMAIL_LIKE.test(emailTrim);
-  };
 
   const handleSpeciesChange = (item) => {
     setIsCustomBreedMode(false);
@@ -425,23 +387,10 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
       return;
     }
 
-    if (!hasStaffOwnerAssignment()) {
-      Alert.alert(
-        'Assign pet owner',
-        'Choose a registered pet owner from the list, or enter a valid owner email if they are not listed yet.',
-      );
-      return;
-    }
-
     setShowDoneConfirm(true);
   };
 
   const handleCancelPress = () => {
-    if (isStaffCreate) {
-      navigation.navigate('StaffPetsProfile', { user: loggedInUser });
-      return;
-    }
-
     if (returnToRoute) {
       navigation.navigate({
         name: returnToRoute,
@@ -464,33 +413,26 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
 
   const handleSavePet = async () => {
     try {
-      if (isStaffCreate) {
-        Alert.alert("My Pets", "Pet creation for Staff is managed from the web system.");
-        setShowDoneConfirm(false);
-        return;
-      }
-
       const savedPet = await saveOwnerPet(draftPet, loggedInUser?.id);
       setShowDoneConfirm(false);
 
+      if (returnToRoute) {
+        navigation.navigate({
+          name: returnToRoute,
+          params: {
+            ...returnToParams,
+            user: loggedInUser,
+            preselectedPetId: savedPet.id,
+          },
+          merge: true,
+        });
+        return;
+      }
 
-    if (returnToRoute) {
-      navigation.navigate({
-        name: returnToRoute,
-        params: {
-          ...returnToParams,
-          user: loggedInUser,
-          preselectedPetId: savedPet.id,
-        },
-        merge: true,
-      });
-      return;
-    }
-
-    navigation.replace('PetOwnerMyPetsView', { user: loggedInUser, petId: savedPet.id });
+      navigation.replace('PetOwnerMyPetsView', { user: loggedInUser, petId: savedPet.id });
     } catch (error) {
       setShowDoneConfirm(false);
-      Alert.alert("My Pets", error.message || "Unable to save your pet.");
+      Alert.alert("Animal Patients", error.message || "Unable to save your pet.");
     }
   };
 
@@ -512,13 +454,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
           <View style={styles.headerTopRow}>
             <TouchableOpacity
               style={styles.brandSection}
-              onPress={() => {
-                if (isStaffCreate) {
-                  navigation.navigate('StaffPetsProfile', { user: loggedInUser });
-                  return;
-                }
-                navigation.navigate('petowner-screen', { user: loggedInUser });
-              }}
+              onPress={() => navigation.navigate('petowner-screen', { user: loggedInUser })}
               activeOpacity={0.85}
             >
               <View style={styles.logoWrap}>
@@ -528,9 +464,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
               <View style={styles.brandBlock}>
                 <Text style={styles.headerTitle}>PawCruz</Text>
                 <Text style={styles.headerSubtitle}>
-                  {isStaffCreate && isCreatingPet
-                    ? 'Create Pet for Owner'
-                    : (isCreatingPet ? 'Add Pet Profile' : 'Edit Pet Profile')}
+                  {isCreatingPet ? 'Add Pet Profile' : 'Edit Pet Profile'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -538,10 +472,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
             <View style={styles.headerActions}>
               <TouchableOpacity
                 style={styles.notifButton}
-                onPress={() => navigation.navigate(
-                  isStaffCreate ? 'StaffNotif' : 'PetOwnerNotif',
-                  { user: loggedInUser },
-                )}
+                onPress={() => navigation.navigate('PetOwnerNotif', { user: loggedInUser })}
                 activeOpacity={0.85}
               >
                 <View style={styles.notifBadge} />
@@ -550,10 +481,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
 
               <TouchableOpacity
                 style={styles.profileButton}
-                onPress={() => navigation.navigate(
-                  isStaffCreate ? 'StaffProfile' : 'PetOwnerProfile',
-                  { user: loggedInUser },
-                )}
+                onPress={() => navigation.navigate('PetOwnerProfile', { user: loggedInUser })}
                 activeOpacity={0.85}
               >
                 {profileImageUri ? (
@@ -572,14 +500,12 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
             </TouchableOpacity>
 
             <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>
-                {isStaffCreate ? 'Staff · pet intake' : 'Manage your pets'}
-              </Text>
+              <Text style={styles.headerCaption}>Manage your pets</Text>
               <Text style={styles.ownerName}>{headerDisplayName}</Text>
             </View>
           </View>
 
-          {!isStaffCreate && <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={loggedInUser} activeKey="pets" />}
+          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={loggedInUser} activeKey="pets" />
           {false ? (
             <Animated.View
               style={[
@@ -617,74 +543,12 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <View style={styles.sectionHeaderWrap}>
             <Text style={styles.sectionTitle}>
-              {isStaffCreate && isCreatingPet ? 'Create pet for owner' : (isCreatingPet ? 'Add Pet Profile' : 'Edit Pet Profile')}
+              {isCreatingPet ? 'Add Pet Profile' : 'Edit Pet Profile'}
             </Text>
             <Text style={styles.sectionSubtitle}>
-              {isStaffCreate && isCreatingPet
-                ? 'Choose a registered owner or enter their email, then complete the pet details below.'
-                : 'Update pet photo, basic details, and profile information'}
+              Update pet photo, basic details, and profile information
             </Text>
           </View>
-
-          {isStaffCreate && isCreatingPet ? (
-            <View style={styles.detailCard}>
-              <Text style={styles.formLabel}>Registered pet owner</Text>
-              <View style={styles.enhancedFieldCard}>
-                <View style={styles.dropdownShell}>
-                  <Dropdown
-                    style={styles.searchableDropdown}
-                    containerStyle={styles.searchableDropdownContainer}
-                    placeholderStyle={styles.dropdownPlaceholder}
-                    selectedTextStyle={styles.dropdownSelectedText}
-                    itemTextStyle={styles.dropdownItemText}
-                    iconStyle={styles.dropdownIcon}
-                    activeColor="#edf7fd"
-                    data={staffOwnerDropdownData}
-                    search
-                    maxHeight={280}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Select from registered owners"
-                    searchPlaceholder="Search name or email..."
-                    value={staffSelectedOwnerId}
-                    onChange={(item) => {
-                      setStaffSelectedOwnerId(item.value);
-                      if (item.value) {
-                        setStaffOwnerEmail('');
-                      }
-                    }}
-                  />
-                </View>
-                <Text style={styles.inlineFieldHint}>
-                  Or leave this empty and use the email field if the owner is not listed yet.
-                </Text>
-              </View>
-
-              <Text style={styles.formLabel}>Owner email</Text>
-              <TextInput
-                value={staffOwnerEmail}
-                onChangeText={(value) => {
-                  setStaffOwnerEmail(value);
-                  if (value.trim()) {
-                    setStaffSelectedOwnerId('');
-                  }
-                }}
-                style={[
-                  styles.inputField,
-                  staffSelectedOwnerId ? { opacity: 0.5 } : null,
-                ]}
-                placeholder="owner@example.com"
-                placeholderTextColor="#87a0b1"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!staffSelectedOwnerId}
-              />
-              <Text style={styles.inlineFieldHint}>
-                If the email matches a registered owner, we attach their name automatically. Otherwise we store the email as the owner link until they sign up.
-              </Text>
-            </View>
-          ) : null}
 
           <View style={styles.detailCard}>
             <View style={styles.detailTopRow}>

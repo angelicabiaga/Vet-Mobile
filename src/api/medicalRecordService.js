@@ -105,3 +105,43 @@ export function formatMedicalDate(value) {
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' });
 }
+
+// consultation_date is a date-only column (no time-of-day field exists on
+// medical_records), so the displayed time comes from created_at -- the only
+// real timestamp on the record -- formatted the same 12-hour way already
+// used for appointment slots in mobileAppointmentService.js.
+export function formatMedicalTime12h(record) {
+  const value = record?.created_at;
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+const AI_CONTEXT_FIELDS =
+  'id,pet_id,consultation_date,chief_complaint,symptoms,vital_signs,weight,temperature,diagnosis,treatment,treatment_plan,medication,dosage,frequency,duration,laboratory_request,laboratory_result,vaccination,follow_up_date,veterinarian_notes,record_status,created_at';
+
+// Finalized history for one pet, for feeding to the AI predictive-health
+// functions. Manually scoped to the owner (no Supabase Auth/RLS in this
+// project -- see getMobileMedicalRecords above for the same convention).
+export async function getPreviousMedicalRecordsForAi(petId, ownerId, excludeId = '') {
+  if (!petId) return [];
+
+  let query = supabase
+    .from('medical_records')
+    .select(AI_CONTEXT_FIELDS)
+    .eq('pet_id', petId)
+    .eq('record_status', 'Finalized')
+    .order('consultation_date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (ownerId) query = query.eq('owner_id', ownerId);
+  if (excludeId) query = query.neq('id', excludeId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.warn('Unable to load previous medical records for AI analysis:', error);
+    return [];
+  }
+  return data || [];
+}

@@ -51,55 +51,6 @@ const LEGEND_ITEMS = [
   { key: SLOT_STATUS.COMPLETED, label: 'Completed', color: '#179c97' },
 ];
 
-const HEADER_MENU_ITEMS = [
-  {
-    key: 'dashboard',
-    label: 'Dashboard',
-    icon: require('../../assets/Dashboard_Icon.png'),
-    route: 'staff-screen',
-  },
-  {
-    key: 'appointment',
-    label: 'Appointment',
-    icon: require('../../assets/Appointment_Icon.png'),
-    route: 'StaffAppointment',
-  },
-  {
-    key: 'mypets',
-    label: 'Pets Profile',
-    icon: require('../../assets/Pets_Icon.png'),
-    route: 'StaffPetsProfile',
-  },
-  {
-    key: 'messages',
-    label: 'Messages',
-    icon: require('../../assets/Message_Icon.png'),
-    route: 'StaffMessages',
-  },
-  {
-    icon: require('../../assets/Inventory_Icon.png'),
-    route: 'StaffInventory',
-  },
-  {
-    key: 'user-management',
-    label: 'User Management',
-    icon: require('../../assets/UserManagement_Icon.png'),
-    route: 'StaffUserManagement',
-  },
-  {
-    key: 'payment-history',
-    label: 'Payment History',
-    icon: require('../../assets/payment_icon.png'),
-    route: 'StaffPayHis',
-  },
-  {
-    key: 'activity-logs',
-    label: 'Activity Logs',
-    icon: require('../../assets/Log_Icon.png'),
-    route: 'StaffActivityLogs',
-  },
-];
-
 const createDateKey = (year, monthIndex, day) =>
   `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
@@ -132,7 +83,7 @@ const getReadableStatus = (status) => {
 
 // Maps a real `appointments` row (as returned by getAllAppointments /
 // getOwnerAppointments, with owner/pet/veterinarian/creator joined) into the
-// flat field names the Staff appointment screens render.
+// flat field names the appointment scheduling screens render.
 const toAppointmentViewModel = (row) => ({
   id: row.id,
   ownerId: row.owner_id,
@@ -210,7 +161,6 @@ export {
   SLOT_STATUS,
   SLOT_STATUS_META,
   LEGEND_ITEMS,
-  HEADER_MENU_ITEMS,
   TODAY_DATE_KEY,
   INITIAL_MONTH,
   createDateKey,

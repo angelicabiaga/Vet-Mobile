@@ -8,7 +8,7 @@ const MONTH_NAMES = [
 
 const PET_FIELDS = "id,owner_id,pet_name,species,breed,sex,date_of_birth,weight,color,microchip_number,allergies,existing_conditions,notes,photo_url,is_archived,created_at,updated_at";
 
-function toUiPet(row) {
+export function toUiPet(row) {
   if (!row) return null;
   const birth = row.date_of_birth ? new Date(`${row.date_of_birth}T00:00:00`) : null;
   return {
@@ -47,6 +47,20 @@ function toDateOfBirth(pet) {
   const mm = String(month + 1).padStart(2, "0");
   const dd = String(pet.birthDay).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+// Same shape as the web app's getPetOwnersDirectory (final-vet/src/services/petService.js)
+// -- every active pet-owner account, independent of whether they have a pet
+// registered yet. Used by the Veterinarian's owner-first Animal Patients flow.
+export async function getPetOwnersDirectory() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id,full_name,username,email,phone,address,avatar_url')
+    .eq('role', 'pet_owner')
+    .eq('account_status', 'active')
+    .order('full_name');
+  if (error) throw new Error(error.message || 'Unable to load pet owners.');
+  return data || [];
 }
 
 export async function getOwnerPets(ownerId, { includeArchived = false } = {}) {

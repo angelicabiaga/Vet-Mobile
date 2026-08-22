@@ -9,27 +9,31 @@ import {
   View,
 } from 'react-native';
 
+// Mobile supports exactly two roles -- Veterinarian and Pet Owner.
+// Administrator and Staff remain web-only (PawCruz web system) and have no
+// mobile navigation, screens, or menu entries.
+// Profile and Notifications stay reachable via the header avatar/bell
+// buttons (unchanged); Payment History stays reachable from transaction/
+// invoice/appointment details where applicable. None of the three are
+// sidebar/navigation items for Pet Owner -- their screens, routes, and
+// services are untouched, just not linked from this menu.
 const PET_OWNER_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
-  { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
-  { key: 'pets', label: 'My Pets', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
+  { key: 'pets', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
+  { key: 'appointment', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
-  { key: 'medical', label: 'Medical Records', icon: require('../../assets/Medical_Icon.png'), route: 'PetOwnerMedRec' },
 ];
 
+// Profile and Notifications stay reachable via the header avatar/bell
+// buttons (unchanged). Schedule stays reachable through existing
+// schedule-related links (e.g. the Dashboard shortcut) where applicable.
+// None of the three are sidebar/navigation items for Veterinarian -- their
+// screens, routes, and services are untouched, just not linked from this menu.
 const VETERINARIAN_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'vet-screen' },
-  { key: 'patients', label: 'Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatients' },
-  { key: 'appointments', label: 'My Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
-  { key: 'medical-records', label: 'Medical Records', icon: require('../../assets/Medical_Icon.png'), route: 'VetMedRec' },
+  { key: 'patients', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
+  { key: 'appointments', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
-];
-
-const STAFF_MENU_ITEMS = [
-  { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'staff-screen' },
-  { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'StaffAppointment' },
-  { key: 'mypets', label: 'Pets Profile', icon: require('../../assets/Pets_Icon.png'), route: 'StaffPetsProfile' },
-  { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'StaffMessages' },
 ];
 
 export default function PetOwnerSideDrawer({ visible, onClose, navigation, user, activeKey, role = 'pet_owner' }) {
@@ -66,10 +70,7 @@ export default function PetOwnerSideDrawer({ visible, onClose, navigation, user,
   };
 
   const normalizedRole = String(role).trim().toLowerCase();
-  const menuItems =
-    normalizedRole === 'veterinarian' ? VETERINARIAN_MENU_ITEMS :
-    normalizedRole === 'staff' ? STAFF_MENU_ITEMS :
-    PET_OWNER_MENU_ITEMS;
+  const menuItems = normalizedRole === 'veterinarian' ? VETERINARIAN_MENU_ITEMS : PET_OWNER_MENU_ITEMS;
 
   if (!mounted) return null;
 
@@ -103,7 +104,7 @@ export default function PetOwnerSideDrawer({ visible, onClose, navigation, user,
             <View>
               <Text style={styles.drawerTitle}>Menu</Text>
               <Text style={styles.drawerSubtitle}>
-                {normalizedRole === 'veterinarian' ? 'PawCruz Veterinarian' : normalizedRole === 'staff' ? 'PawCruz Staff' : 'PawCruz Pet Owner'}
+                {normalizedRole === 'veterinarian' ? 'PawCruz Veterinarian' : 'PawCruz Pet Owner'}
               </Text>
             </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.8}>

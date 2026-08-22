@@ -99,7 +99,11 @@ const handleOtpSuccess = (user) => {
       user,
     });
   } else {
-    navigation.replace("login");
+    setAlertModal({
+      show: true,
+      message: "This app is available for Veterinarian and Pet Owner accounts only. Please sign in at the PawCruz web system.",
+      extraAction: null,
+    });
   }
 };
 

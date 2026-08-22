@@ -19,29 +19,29 @@ const HERO_SLIDES = [
     key: 'patients',
     label: 'Review patients',
     title: 'Keep every patient profile ready for faster clinical care.',
-    description: 'Open Patients to review pet and owner details before checking appointments or medical records.',
-    route: 'VetPatients',
+    description: 'Open Animal Patients to review pet, owner, and medical history details in one place.',
+    route: 'VetPatientOwners',
   },
   {
     key: 'appointments',
     label: 'Check appointments',
     title: 'Stay ready for today’s scheduled consultations.',
-    description: 'Open My Appointments to review assigned pets, visit reasons, schedules, and appointment status.',
+    description: 'Open Appointments to review assigned pets, visit reasons, schedules, and appointment status.',
     route: 'VetAppointment',
   },
   {
-    key: 'records',
-    label: 'Review records',
-    title: 'Clinical notes stay organized when records are kept in one place.',
-    description: 'Open Medical Records to review finalized consultations and patient treatment history.',
-    route: 'VetMedRec',
+    key: 'schedule',
+    label: 'Check your schedule',
+    title: 'Know your availability before the clinic books your day.',
+    description: 'Open Schedule to review your weekly hours and any upcoming date-specific changes.',
+    route: 'VetSchedule',
   },
 ];
 
 const SERVICE_CARDS = [
-  { key: 'patients', title: 'Patients', subtitle: 'View pet records', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatients' },
+  { key: 'patients', title: 'Animal Patients', subtitle: 'Pets and medical history', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
   { key: 'appointments', title: 'Appointments', subtitle: 'Check daily schedule', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
-  { key: 'records', title: 'Medical Records', subtitle: 'Review treatment notes', icon: require('../../assets/Medical_Icon.png'), route: 'VetMedRec' },
+  { key: 'schedule', title: 'Schedule', subtitle: 'Your weekly availability', icon: require('../../assets/calendar.png'), route: 'VetSchedule' },
   { key: 'messages', title: 'Messages', subtitle: 'Talk to pet owners', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
 ];
 
@@ -200,19 +200,11 @@ const VetDashboard = ({ navigation, route }) => {
     },
     {
       key: 'patients',
-      label: 'Assigned Patients',
+      label: 'Animal Patients',
       value: String(patientIds.size),
-      detail: patientIds.size === 1 ? '1 patient in your records' : `${patientIds.size} patients in your records`,
-      route: 'VetPatients',
+      detail: `${finalizedRecords.length === 1 ? '1 finalized record' : `${finalizedRecords.length} finalized records`} across your patients`,
+      route: 'VetPatientOwners',
       accent: dashboardStyles.activityTrackAccentBlue,
-    },
-    {
-      key: 'records',
-      label: 'Medical Records',
-      value: String(finalizedRecords.length),
-      detail: finalizedRecords.length === 1 ? '1 finalized record' : `${finalizedRecords.length} finalized records`,
-      route: 'VetMedRec',
-      accent: dashboardStyles.activityTrackAccentGold,
     },
   ];
 

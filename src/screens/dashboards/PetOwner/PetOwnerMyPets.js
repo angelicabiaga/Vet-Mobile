@@ -1,7 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerSideDrawer from './PetOwnerSideDrawer';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   Image,
@@ -14,8 +15,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from '../../styles/PetOwnerMyPetsDesign';
-import { getPetPhotoSource } from './PetOwnerMyPetsInfo';
+import { computePatientStatus, formatAge, getPetPhotoSource } from './PetOwnerMyPetsInfo';
 import { getOwnerPets, subscribeToOwnerPets } from '../../../api/petService';
+import { getMobileMedicalRecords, subscribeToMedicalRecords, formatMedicalDate } from '../../../api/medicalRecordService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
@@ -28,126 +30,79 @@ const PetOwnerMyPets = ({ navigation, route }) => {
     loggedInUser?.name ||
     loggedInUser?.fullName ||
     'Pet Owner';
-  const headerMenuAnimation = useRef(new Animated.Value(0)).current;
   const lowerHeaderAnimation = useRef(new Animated.Value(1)).current;
-  const isHeaderMenuAnimating = useRef(false);
   const isLowerHeaderVisible = useRef(true);
   const lastScrollY = useRef(0);
   const [isHeaderMenuVisible, setIsHeaderMenuVisible] = useState(false);
   const [pets, setPets] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPetId, setSelectedPetId] = useState(route?.params?.selectedPetId || null);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const filteredPets = pets.filter((pet) => {
-    if (!normalizedSearchQuery) {
-      return true;
-    }
 
-    return [
-      pet.name,
-      pet.breed,
-      pet.species,
-      pet.referenceCode,
-    ].some((value) => value?.toLowerCase().includes(normalizedSearchQuery));
-  });
-
-  const loadPets = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!loggedInUser?.id) return;
     try {
-      const refreshedPets = await getOwnerPets(loggedInUser.id);
-      setPets(refreshedPets);
-      setSelectedPetId((current) => route?.params?.selectedPetId || current || refreshedPets[0]?.id || null);
-    } catch (error) {
-      console.warn("Unable to sync pets:", error);
+      const [ownerPets, ownerRecords] = await Promise.all([
+        getOwnerPets(loggedInUser.id),
+        getMobileMedicalRecords({ ...loggedInUser, role: loggedInUser?.role || 'pet_owner' }),
+      ]);
+      setPets(ownerPets);
+      setRecords(ownerRecords);
+      setError('');
+    } catch (e) {
+      setError(e?.message || 'Unable to load your animal patients.');
+    } finally {
+      setLoading(false);
     }
-  }, [loggedInUser?.id, route?.params?.selectedPetId]);
+  }, [loggedInUser?.id]);
 
   useFocusEffect(
     useCallback(() => {
-      loadPets();
-      const channel = subscribeToOwnerPets(loggedInUser?.id, loadPets);
-      return () => { if (channel?.unsubscribe) channel.unsubscribe(); };
-    }, [loggedInUser?.id, loadPets]),
+      loadData();
+      const petsChannel = subscribeToOwnerPets(loggedInUser?.id, loadData);
+      const recordsUnsubscribe = subscribeToMedicalRecords(
+        { ...loggedInUser, role: loggedInUser?.role || 'pet_owner' },
+        loadData
+      );
+      return () => {
+        if (petsChannel?.unsubscribe) petsChannel.unsubscribe();
+        recordsUnsubscribe?.();
+      };
+    }, [loggedInUser?.id, loadData]),
   );
 
-  useEffect(() => {
-    if (!pets.length) {
-      setSelectedPetId(null);
-    }
-  }, [pets]);
+  const recordsByPet = records.reduce((acc, record) => {
+    const id = String(record.pet_id || '');
+    if (!id) return acc;
+    (acc[id] = acc[id] || []).push(record);
+    return acc;
+  }, {});
 
-  const headerMenuItems = [
-    { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
-    { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
-    { key: 'mypets', label: 'My Pets', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
-    { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
-    { key: 'medical', label: 'Medical Records', icon: require('../../assets/Medical_Icon.png'), route: 'PetOwnerMedRec' },
-  ];
+  const patients = pets.map((pet) => {
+    const petRecords = recordsByPet[String(pet.id)] || [];
+    const sorted = [...petRecords].sort(
+      (a, b) => new Date(b.consultation_date || 0) - new Date(a.consultation_date || 0)
+    );
+    return {
+      pet,
+      visitCount: petRecords.length,
+      latestDate: sorted[0]?.consultation_date || null,
+      status: computePatientStatus(petRecords),
+    };
+  });
 
-  const openHeaderMenu = () => {
-    if (isHeaderMenuVisible || isHeaderMenuAnimating.current) {
-      return;
-    }
-
-    isHeaderMenuAnimating.current = true;
-    setIsHeaderMenuVisible(true);
-    headerMenuAnimation.stopAnimation();
-    Animated.timing(headerMenuAnimation, {
-      toValue: 1,
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      isHeaderMenuAnimating.current = false;
-    });
-  };
-
-  const closeHeaderMenu = (onClosed) => {
-    if (isHeaderMenuAnimating.current) {
-      return;
-    }
-
-    if (!isHeaderMenuVisible) {
-      onClosed?.();
-      return;
-    }
-
-    isHeaderMenuAnimating.current = true;
-    headerMenuAnimation.stopAnimation();
-    Animated.timing(headerMenuAnimation, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.inOut(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      isHeaderMenuAnimating.current = false;
-      setIsHeaderMenuVisible(false);
-      onClosed?.();
-    });
-  };
-
-  const toggleHeaderMenu = () => {
-    if (isHeaderMenuVisible) {
-      closeHeaderMenu();
-      return;
-    }
-
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    openHeaderMenu();
-  };
-
-  const handleHeaderMenuPress = (routeName) => {
-    closeHeaderMenu();
-    navigation.navigate(routeName, { user: loggedInUser });
-  };
+  const filteredPatients = patients.filter(({ pet }) => {
+    if (!normalizedSearchQuery) return true;
+    return [pet.name, pet.breed, pet.species, pet.referenceCode].some((value) =>
+      value?.toLowerCase().includes(normalizedSearchQuery)
+    );
+  });
 
   const animateLowerHeader = (toValue) => {
     const shouldBeVisible = toValue === 1;
-
-    if (isLowerHeaderVisible.current === shouldBeVisible) {
-      return;
-    }
-
+    if (isLowerHeaderVisible.current === shouldBeVisible) return;
     isLowerHeaderVisible.current = shouldBeVisible;
     lowerHeaderAnimation.stopAnimation();
     Animated.timing(lowerHeaderAnimation, {
@@ -160,19 +115,16 @@ const PetOwnerMyPets = ({ navigation, route }) => {
 
   const handleScroll = (event) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
-
     if (currentScrollY > lastScrollY.current + 4 && currentScrollY > 8) {
-      if (isHeaderMenuVisible) {
-        closeHeaderMenu(() => animateLowerHeader(0));
-        lastScrollY.current = currentScrollY;
-        return;
-      }
       animateLowerHeader(0);
     } else if (currentScrollY < lastScrollY.current - 4 || currentScrollY <= 0) {
       animateLowerHeader(1);
     }
-
     lastScrollY.current = currentScrollY;
+  };
+
+  const openPatient = (petId) => {
+    navigation.navigate('PetOwnerMyPetsView', { user: loggedInUser, petId });
   };
 
   return (
@@ -202,7 +154,7 @@ const PetOwnerMyPets = ({ navigation, route }) => {
 
               <View style={styles.brandBlock}>
                 <Text style={styles.headerTitle}>PawCruz</Text>
-                <Text style={styles.headerSubtitle}>Pet Profile Management</Text>
+                <Text style={styles.headerSubtitle}>Animal Patients</Text>
               </View>
             </TouchableOpacity>
 
@@ -235,67 +187,39 @@ const PetOwnerMyPets = ({ navigation, route }) => {
             style={[
               styles.headerBottomRowWrap,
               {
-                maxHeight: lowerHeaderAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 96],
-                }),
+                maxHeight: lowerHeaderAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 96] }),
                 opacity: lowerHeaderAnimation,
                 transform: [
                   {
-                    translateY: lowerHeaderAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-18, 0],
-                    }),
+                    translateY: lowerHeaderAnimation.interpolate({ inputRange: [0, 1], outputRange: [-18, 0] }),
                   },
                 ],
               },
             ]}
           >
             <View style={styles.headerBottomRow}>
-              <TouchableOpacity style={styles.menuTriggerButton} onPress={toggleHeaderMenu} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={styles.menuTriggerButton}
+                onPress={() => setIsHeaderMenuVisible(true)}
+                activeOpacity={0.85}
+              >
                 <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
               </TouchableOpacity>
 
               <View style={styles.ownerSummary}>
-                <Text style={styles.headerCaption}>Manage your pets</Text>
+                <Text style={styles.headerCaption}>Manage your animal patients</Text>
                 <Text style={styles.ownerName}>{headerDisplayName}</Text>
               </View>
             </View>
           </Animated.View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={loggedInUser} activeKey="pets" />
-          {false ? (
-            <Animated.View
-              style={[
-                styles.headerMenuPanel,
-                {
-                  opacity: headerMenuAnimation,
-                  transform: [
-                    {
-                      translateY: headerMenuAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-18, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {headerMenuItems.map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={styles.headerMenuItem}
-                  onPress={() => handleHeaderMenuPress(item.route)}
-                  activeOpacity={0.88}
-                >
-                  <View style={styles.headerMenuItemIconWrap}>
-                    <Image source={item.icon} style={styles.headerMenuItemIcon} resizeMode="contain" />
-                  </View>
-                  <Text style={styles.headerMenuItemLabel}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </Animated.View>
-          ) : null}
+          <PetOwnerSideDrawer
+            visible={isHeaderMenuVisible}
+            onClose={() => setIsHeaderMenuVisible(false)}
+            navigation={navigation}
+            user={loggedInUser}
+            activeKey="pets"
+          />
         </LinearGradient>
 
         <ScrollView
@@ -306,8 +230,8 @@ const PetOwnerMyPets = ({ navigation, route }) => {
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.sectionHeaderWrap}>
-            <Text style={styles.sectionTitle}>My Pets</Text>
-            <Text style={styles.sectionSubtitle}>Select a pet profile to open a separate view page</Text>
+            <Text style={styles.sectionTitle}>Animal Patients</Text>
+            <Text style={styles.sectionSubtitle}>Select a patient to view its profile</Text>
           </View>
 
           <View style={styles.petListCard}>
@@ -317,52 +241,109 @@ const PetOwnerMyPets = ({ navigation, route }) => {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 style={styles.searchBarInput}
-                placeholder="Search your pet..."
+                placeholder="Search your animal patient..."
                 placeholderTextColor="#87a0b1"
               />
             </View>
 
-            {filteredPets.length ? filteredPets.map((pet) => {
-              const isActive = pet.id === selectedPetId;
-              const petPhoto = getPetPhotoSource(pet);
-
-              return (
-                <View key={pet.id} style={[styles.petRow, isActive && styles.petRowActive]}>
-                  <View style={[styles.petAvatar, { backgroundColor: pet.profileColor }]}>
-                    {petPhoto.source ? (
-                      <Image
-                        source={petPhoto.source}
-                        style={[styles.petAvatarImage, petPhoto.isCustom && styles.petAvatarImageCustom]}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Text style={styles.petAvatarText}>{pet.name.charAt(0)}</Text>
-                    )}
-                  </View>
-
-                  <View style={styles.petRowContent}>
-                    <Text style={[styles.petRowName, isActive && styles.petRowNameActive]}>{pet.name || 'Unnamed Pet'}</Text>
-                    <Text style={[styles.petRowBreed, isActive && styles.petRowBreedActive]}>{pet.breed || 'No breed yet'}</Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.petStatusPill, isActive && styles.petStatusPillActive]}
-                    onPress={() => {
-                      setSelectedPetId(pet.id);
-                      navigation.navigate('PetOwnerMyPetsView', { user: loggedInUser, petId: pet.id });
-                    }}
-                    activeOpacity={0.9}
-                  >
-                    <Text style={[styles.petStatusText, isActive && styles.petStatusTextActive]}>View</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            }) : (
-              <View style={styles.searchEmptyState}>
-                <Text style={styles.searchEmptyTitle}>No pets found</Text>
-                <Text style={styles.searchEmptyText}>Try another name, breed, species, or reference code.</Text>
+            {loading ? (
+              <View style={[styles.searchEmptyState, { alignItems: 'center' }]}>
+                <ActivityIndicator color="#447C99" />
+                <Text style={[styles.searchEmptyText, { marginTop: 10 }]}>Loading your animal patients...</Text>
               </View>
-            )}
+            ) : null}
+
+            {!loading && error ? (
+              <View style={styles.searchEmptyState}>
+                <Text style={styles.searchEmptyTitle}>Something went wrong</Text>
+                <Text style={styles.searchEmptyText}>{error}</Text>
+                <TouchableOpacity
+                  style={[styles.primaryActionButton, { alignSelf: 'flex-start', marginTop: 12 }]}
+                  onPress={loadData}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.primaryActionText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {!loading && !error && filteredPatients.length
+              ? filteredPatients.map(({ pet, visitCount, latestDate, status }) => {
+                  const petPhoto = getPetPhotoSource(pet);
+                  const statusStyleKey = status.key === 'good' ? 'statusBadgeGood' : status.key === 'warn' ? 'statusBadgeWarn' : 'statusBadgeNeutral';
+                  const statusTextStyleKey = status.key === 'good' ? 'statusBadgeGoodText' : status.key === 'warn' ? 'statusBadgeWarnText' : 'statusBadgeNeutralText';
+
+                  return (
+                    <TouchableOpacity
+                      key={pet.id}
+                      style={styles.patientCard}
+                      onPress={() => openPatient(pet.id)}
+                      activeOpacity={0.9}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open ${pet.name || 'pet'}'s profile`}
+                    >
+                      <View style={styles.patientCardTopRow}>
+                        {petPhoto.source ? (
+                          <Image source={petPhoto.source} style={styles.patientPhoto} resizeMode="cover" />
+                        ) : (
+                          <View style={styles.patientPhotoFallback}>
+                            <Text style={styles.patientPhotoFallbackText}>{(pet.name || 'P').charAt(0)}</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.patientInfo}>
+                          <View style={styles.patientTopLine}>
+                            <Text style={styles.patientName}>{pet.name || 'Unnamed Pet'}</Text>
+                            <View style={[styles.statusBadge, styles[statusStyleKey]]}>
+                              <Text style={[styles.statusBadgeText, styles[statusTextStyleKey]]}>{status.label}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.patientSpeciesBreed}>
+                            {[pet.species, pet.breed].filter(Boolean).join(' • ') || 'Species not recorded'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.patientMetaGrid}>
+                        <View style={styles.patientMetaItem}>
+                          <Text style={styles.patientMetaLabel}>Age</Text>
+                          <Text style={styles.patientMetaValue}>{formatAge(pet)}</Text>
+                        </View>
+                        <View style={styles.patientMetaItem}>
+                          <Text style={styles.patientMetaLabel}>Weight</Text>
+                          <Text style={styles.patientMetaValue}>{pet.weight ? `${pet.weight} kg` : 'Not recorded'}</Text>
+                        </View>
+                        <View style={styles.patientMetaItem}>
+                          <Text style={styles.patientMetaLabel}>Consultations</Text>
+                          <Text style={styles.patientMetaValue}>{visitCount}</Text>
+                        </View>
+                        <View style={styles.patientMetaItem}>
+                          <Text style={styles.patientMetaLabel}>Latest Visit</Text>
+                          <Text style={styles.patientMetaValue}>{latestDate ? formatMedicalDate(latestDate) : 'None yet'}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.patientCardFooterRow}>
+                        <Text style={styles.referenceCodeText}>{pet.referenceCode}</Text>
+                        <View style={styles.viewProfileChip}>
+                          <Text style={styles.viewProfileChipText}>View Profile</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              : null}
+
+            {!loading && !error && !filteredPatients.length ? (
+              <View style={styles.searchEmptyState}>
+                <Text style={styles.searchEmptyTitle}>{pets.length ? 'No patients found' : 'No animal patients yet'}</Text>
+                <Text style={styles.searchEmptyText}>
+                  {pets.length
+                    ? 'Try another name, breed, species, or reference code.'
+                    : 'Add your first pet profile to start tracking their visits and medical history.'}
+                </Text>
+              </View>
+            ) : null}
 
             <TouchableOpacity
               style={styles.addPetButton}
@@ -372,13 +353,6 @@ const PetOwnerMyPets = ({ navigation, route }) => {
               <Text style={styles.addPetPlus}>+</Text>
               <Text style={styles.addPetText}>Add Pet Profile</Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.emptyModeCard}>
-            <Text style={styles.emptyModeTitle}>Choose an action</Text>
-            <Text style={styles.emptyModeText}>
-              Tap `View` to open a pet profile on a new page, or tap `Add Pet Profile` to open the pet form on a separate page.
-            </Text>
           </View>
         </ScrollView>
 

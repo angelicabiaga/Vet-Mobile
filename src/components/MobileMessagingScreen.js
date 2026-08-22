@@ -49,24 +49,9 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
       sideDrawerRole: "veterinarian",
       headerMenuItems: [
         { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "vet-screen" },
-        { key: "appointments", label: "My Appointments", icon: require("../screens/assets/Appointment_Icon.png"), route: "VetAppointment" },
-        { key: "patients", label: "Patients", icon: require("../screens/assets/Pets_Icon.png"), route: "VetPatients" },
+        { key: "patients", label: "Animal Patients", icon: require("../screens/assets/Pets_Icon.png"), route: "VetPatientOwners" },
+        { key: "appointments", label: "Appointments", icon: require("../screens/assets/Appointment_Icon.png"), route: "VetAppointment" },
         { key: "messages", label: "Messages", icon: require("../screens/assets/Message_Icon.png"), route: "VetMessages" },
-        { key: "medical", label: "Medical Records", icon: require("../screens/assets/Medical_Icon.png"), route: "VetMedRec" },
-      ],
-    },
-    staff: {
-      dashboardRoute: "staff-screen",
-      notificationRoute: "StaffNotif",
-      profileRoute: "StaffProfile",
-      showQuickAssist: false,
-      subtitle: "Staff Messages",
-      sideDrawerRole: "staff",
-      headerMenuItems: [
-        { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "staff-screen" },
-        { key: "appointment", label: "Appointment", icon: require("../screens/assets/Appointment_Icon.png"), route: "StaffAppointment" },
-        { key: "mypets", label: "Pets Profile", icon: require("../screens/assets/Pets_Icon.png"), route: "StaffPetsProfile" },
-        { key: "messages", label: "Messages", icon: require("../screens/assets/Message_Icon.png"), route: "StaffMessages" },
       ],
     },
     pet_owner: {
@@ -80,9 +65,8 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
         { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "petowner-screen" },
         { key: "appointment", label: "Appointment", icon: require("../screens/assets/Appointment_Icon.png"), route: "PetOwnerAppointment" },
         { key: "queue", label: "My Queue", icon: require("../screens/assets/List.png"), route: "PetOwnerQueue" },
-        { key: "mypets", label: "My Pets", icon: require("../screens/assets/Pets_Icon.png"), route: "PetOwnerMyPets" },
+        { key: "mypets", label: "Animal Patients", icon: require("../screens/assets/Pets_Icon.png"), route: "PetOwnerMyPets" },
         { key: "messages", label: "Messages", icon: require("../screens/assets/Message_Icon.png"), route: "PetOwnerMessages" },
-        { key: "medical", label: "Medical Records", icon: require("../screens/assets/Medical_Icon.png"), route: "PetOwnerMedRec" },
       ],
     },
   };

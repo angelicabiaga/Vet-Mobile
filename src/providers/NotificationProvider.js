@@ -22,16 +22,12 @@ const REMINDER_WINDOW_MIN = 30;
 
 const APPOINTMENT_ROUTE_BY_ROLE = {
   pet_owner: 'PetOwnerAppointment',
-  staff: 'StaffAppointment',
   veterinarian: 'VetAppointment',
 };
 
 const MESSAGE_ROUTE_BY_ROLE = {
   pet_owner: 'PetOwnerMessages',
-  staff: 'StaffMessages',
   veterinarian: 'VetMessages',
-  admin: 'AdminMessages',
-  administrator: 'AdminMessages',
 };
 
 function resolveRouteForNotification(notification, role) {

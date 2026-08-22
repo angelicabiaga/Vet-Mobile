@@ -44,15 +44,15 @@ const PetOwnerDashboard = ({ navigation, route }) => {
     },
     {
       key: 'slide-2',
-      label: 'Track pets',
-      title: 'Keep your pet profiles ready for faster clinic service.',
-      description: 'Open My Pets to review your pet details before booking or checking records.',
+      label: 'Track patients',
+      title: 'Keep your animal patients ready for faster clinic service.',
+      description: 'Open Animal Patients to review pet details before booking a visit.',
     },
     {
       key: 'slide-3',
       label: 'Review records',
       title: 'Medical history is easier when everything is in one place.',
-      description: 'Check Medical Records after each visit so you can follow treatments and updates.',
+      description: 'Every finalized consultation now lives inside each pet\'s Animal Patient profile.',
     },
   ];
 
@@ -87,7 +87,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
   const activityTracks = [
     {
       key: 'pets',
-      label: 'Pet Profiles',
+      label: 'Animal Patients',
       value: String(petProfilesCount),
       detail: petProfilesCount === 1 ? '1 registered pet' : `${petProfilesCount} registered pets`,
       accent: styles.activityTrackAccentBlue,
@@ -107,7 +107,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
       value: String(healthRecordCount),
       detail: 'Medical history and vaccines',
       accent: styles.activityTrackAccentGold,
-      route: 'PetOwnerMedRec',
+      route: 'PetOwnerMyPets',
     },
     {
       key: 'visits',
@@ -115,15 +115,14 @@ const PetOwnerDashboard = ({ navigation, route }) => {
       value: String(visitNotesCount),
       detail: visitNotesCount === 1 ? '1 completed clinic visit' : `${visitNotesCount} completed clinic visits`,
       accent: styles.activityTrackAccentTeal,
-      route: 'PetOwnerMedRec',
+      route: 'PetOwnerMyPets',
     },
   ];
   const headerMenuItems = [
     { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
     { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
-    { key: 'mypets', label: 'My Pets', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
+    { key: 'mypets', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
     { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
-    { key: 'medical', label: 'Medical Records', icon: require('../../assets/Medical_Icon.png'), route: 'PetOwnerMedRec' },
   ];
 
   const refreshDashboard = useCallback(async () => {
@@ -563,24 +562,10 @@ const PetOwnerDashboard = ({ navigation, route }) => {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.menuLabel}>My Pets</Text>
+              <Text style={styles.menuLabel}>Animal</Text>
+              <Text style={styles.menuLabel}>Patients</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuCard}
-              onPress={() => navigation.navigate('PetOwnerMedRec', { user: currentUser })}
-              activeOpacity={0.9}
-            >
-              <View style={styles.iconCircle}>
-                <Image
-                  source={require('../../assets/Medical_Icon.png')}
-                  style={styles.iconImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.menuLabel}>Medical</Text>
-              <Text style={styles.menuLabel}>Records</Text>
-            </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuCard}
               onPress={() => navigation.navigate('PetOwnerMessages', { user: currentUser })}
@@ -594,6 +579,22 @@ const PetOwnerDashboard = ({ navigation, route }) => {
                 />
               </View>
               <Text style={styles.menuLabel}>Messages</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => navigation.navigate('PetOwnerPayHis', { user: currentUser })}
+              activeOpacity={0.9}
+            >
+              <View style={styles.iconCircle}>
+                <Image
+                  source={require('../../assets/payment_icon.png')}
+                  style={styles.iconImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.menuLabel}>Payment</Text>
+              <Text style={styles.menuLabel}>History</Text>
             </TouchableOpacity>
 
           </View>

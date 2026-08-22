@@ -1,3 +1,5 @@
+import { daysUntil } from '../../../utils/predictiveHealthParsing';
+
 const PET_PHOTO_OPTIONS = {
   pawBlue: require('../../assets/paw.png'),
   pawWhite: require('../../assets/paw1.png'),
@@ -255,6 +257,38 @@ const getPetPhotoSource = (pet) => {
   return { source: null, isCustom: false };
 };
 
+// Derived only from real, owner-visible data (Finalized consultations) --
+// no fabricated health signal. Used by both the Animal Patients list card
+// and the Animal Patient Profile header so the badge always agrees.
+const computePatientStatus = (records = []) => {
+  if (!records || !records.length) {
+    return { key: 'neutral', label: 'No Visits Yet' };
+  }
+
+  const sorted = [...records].sort(
+    (a, b) => new Date(b.consultation_date || 0) - new Date(a.consultation_date || 0)
+  );
+  const latest = sorted[0];
+
+  const followUpDays = latest.follow_up_date ? daysUntil(latest.follow_up_date) : null;
+  if (followUpDays !== null && followUpDays <= 0) {
+    return { key: 'warn', label: 'Follow-up Due' };
+  }
+
+  const visitDays = latest.consultation_date
+    ? Math.round(
+        (Date.now() - new Date(`${String(latest.consultation_date).slice(0, 10)}T00:00:00`).getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : null;
+
+  if (visitDays !== null && visitDays <= 30) {
+    return { key: 'good', label: 'Recent Visit' };
+  }
+
+  return { key: 'neutral', label: 'Stable' };
+};
+
 const getSpeciesConfig = (species) => PET_SPECIES_LIBRARY[species] || PET_SPECIES_LIBRARY[PET_SPECIES_OPTIONS[0]];
 
 const findBreedEntry = (species, breedValue) => {
@@ -368,6 +402,7 @@ export {
   OTHER_OPTION_VALUE,
   PET_SPECIES_OPTIONS,
   YEARS,
+  computePatientStatus,
   createEmptyPetDraft,
   createPetDraftFromPet,
   formatAge,

@@ -112,6 +112,46 @@ export async function getAvailableSlots(veterinarianId, appointmentDate, exclude
   return slots;
 }
 
+const isMissingTableError = (error, tableName) =>
+  ['42P01', 'PGRST205'].includes(error?.code) ||
+  String(error?.message || '').toLowerCase().includes(tableName);
+
+// Read-only view of a veterinarian's own weekly availability, for the
+// Schedule nav item. Reuses the exact table getAvailableSlots already reads
+// when building the pet-owner booking calendar -- no new schema.
+export async function getVeterinarianWeeklySchedule(veterinarianId) {
+  if (!veterinarianId) return [];
+  const { data, error } = await supabase
+    .from('veterinarian_schedules')
+    .select('day_of_week, start_time, end_time, is_available')
+    .eq('veterinarian_id', veterinarianId)
+    .order('day_of_week', { ascending: true });
+
+  if (error) {
+    if (isMissingTableError(error, 'veterinarian_schedules')) return [];
+    throw new Error('Unable to load your weekly schedule.');
+  }
+  return data || [];
+}
+
+// Date-specific availability overrides (day off, extended hours, etc.),
+// upcoming only.
+export async function getVeterinarianScheduleOverrides(veterinarianId) {
+  if (!veterinarianId) return [];
+  const { data, error } = await supabase
+    .from('veterinarian_schedule_overrides')
+    .select('schedule_date, start_time, end_time, is_available')
+    .eq('veterinarian_id', veterinarianId)
+    .gte('schedule_date', todayLocal())
+    .order('schedule_date', { ascending: true });
+
+  if (error) {
+    if (isMissingTableError(error, 'veterinarian_schedule_overrides')) return [];
+    throw new Error('Unable to load your schedule overrides.');
+  }
+  return data || [];
+}
+
 function validatePayload(payload) {
   if (!payload.petId) throw new Error('Select a pet.');
   if (!payload.ownerId) throw new Error('Pet owner is missing.');

@@ -88,14 +88,8 @@ const LoginOtpScreen = () => {
       const { user } = await verifyLoginOtp(email, otpValue, { rememberDevice });
 
       const role = user.role;
-      if (role === "admin") navigation.replace("admin-screen");
-      else if (role === "veterinarian") {
+      if (role === "veterinarian") {
         navigation.replace("vet-screen", {
-          user: { ...user, email: user?.email || email },
-        });
-      }
-      else if (role === "staff") {
-        navigation.replace("staff-screen", {
           user: { ...user, email: user?.email || email },
         });
       }
@@ -104,7 +98,9 @@ const LoginOtpScreen = () => {
           user: { ...user, email: user?.email || email },
         });
       }
-      else navigation.replace("login");
+      else {
+        setError("This app is available for Veterinarian and Pet Owner accounts only. Please sign in at the PawCruz web system.");
+      }
     } catch (err) {
       setError(err.message || "Invalid OTP code.");
     } finally {
