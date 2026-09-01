@@ -301,6 +301,7 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
 
             {activeTab === 'medical' ? (
               <PetOwnerMyPetsMedicalHistory
+                pet={pet}
                 records={records}
                 loading={recordsLoading}
                 error={recordsError}

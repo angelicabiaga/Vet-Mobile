@@ -4,6 +4,13 @@ import { styles } from '../../styles/PetOwnerMyPetsDesign';
 import { formatMedicalDate, formatMedicalTime12h } from '../../../api/medicalRecordService';
 import { generateConsultationHealthInsight } from '../../../api/aiService';
 import { parseConsultationInsight, splitRiskName, toListItems, toSentences } from '../../../utils/predictiveHealthParsing';
+import { formatMoney, formatPurchaseDateTime, getPrescriptionPurchaseHistory, getPrescriptionsForConsultation, getTransactionsForQueueEntry, invoiceBalance } from '../../../api/consultationBillingService';
+import { printInvoice, printMedicalRecord, printPrescriptionPad } from '../../../utils/medicalDocuments';
+
+// Vet full_name is sometimes saved with the title already included (e.g.
+// "Dr. Redmond Lopez"), which used to render as "Dr. Dr. Redmond Lopez"
+// wherever we blindly prepended "Dr. " ourselves.
+const withDrTitle = (name) => (name ? `Dr. ${String(name).replace(/^dr\.?\s*/i, '')}` : 'Not assigned');
 
 const RISK_STYLE = {
   Low: { badge: 'statusBadgeGood', text: 'statusBadgeGoodText' },
@@ -171,16 +178,151 @@ function ConsultationAiInsight({ record, previousRecords, onRiskLevel }) {
   );
 }
 
-function ConsultationCard({ record, index, previousRecords }) {
+function BillingSection({ record }) {
+  const [billing, setBilling] = useState(null);
+
+  const load = async (force = false) => {
+    if (!record.queue_entry_id) return;
+    if (billing && !force) return;
+    setBilling({ loading: true });
+    try {
+      const [invoices, prescriptions] = await Promise.all([
+        getTransactionsForQueueEntry(record.queue_entry_id),
+        getPrescriptionsForConsultation(record.queue_entry_id),
+      ]);
+      const purchaseHistory = await getPrescriptionPurchaseHistory(prescriptions.map((rx) => rx.id));
+      const purchaseHistoryByRxId = purchaseHistory.reduce((map, row) => {
+        (map[row.prescription_id] ||= []).push(row);
+        return map;
+      }, {});
+      setBilling({ loading: false, invoices, prescriptions, purchaseHistoryByRxId });
+    } catch (e) {
+      setBilling({ loading: false, error: e?.message || 'Unable to load billing details for this visit.' });
+    }
+  };
+
+  React.useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record.queue_entry_id]);
+
+  if (!record.queue_entry_id) return null;
+
+  const RefreshButton = () => (
+    <TouchableOpacity style={styles.billingRefreshButton} onPress={() => load(true)} disabled={billing?.loading} activeOpacity={0.85}>
+      <Text style={styles.billingRefreshText}>{billing?.loading ? 'Loading…' : 'Refresh'}</Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <>
+      <View style={styles.billingCard}>
+        <View style={styles.billingHeadRow}>
+          <Text style={styles.billingTitle}>Billing</Text>
+          <RefreshButton />
+        </View>
+        {billing?.error ? <Text style={styles.billingErrorText}>{billing.error}</Text> : null}
+        {billing && !billing.loading && !billing.error ? (
+          billing.invoices.length === 0 ? (
+            <Text style={styles.billingMutedText}>Staff hasn't processed billing for this visit yet.</Text>
+          ) : (
+            billing.invoices.map((invoice, i) => (
+              <View key={invoice.id} style={[styles.billingRow, i === 0 && styles.billingRowFirst]}>
+                <View style={styles.billingRowMain}>
+                  <Text style={styles.billingRowTitle}>{invoice.or_number}</Text>
+                  <Text style={styles.billingRowMeta}>
+                    Total {formatMoney(invoice.total_amount)} · Paid {formatMoney(invoice.amount_paid)}
+                    {invoiceBalance(invoice) > 0 ? ` · ${formatMoney(invoiceBalance(invoice))} due` : ''}
+                  </Text>
+                  <View style={styles.billingStatusPill}>
+                    <Text style={styles.billingStatusPillText}>{invoice.payment_status}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.billingActionButton} onPress={() => printInvoice(invoice)} activeOpacity={0.9}>
+                  <Text style={styles.billingActionButtonText}>Download</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )
+        ) : null}
+      </View>
+
+      <View style={styles.billingCard}>
+        <View style={styles.billingHeadRow}>
+          <Text style={styles.billingTitle}>Veterinarian Prescriptions</Text>
+          <View style={styles.billingHeadActions}>
+            {billing?.prescriptions?.length > 0 ? (
+              <TouchableOpacity
+                style={styles.billingActionButton}
+                onPress={() => printPrescriptionPad(billing.prescriptions, {
+                  veterinarianName: record.veterinarian?.full_name || record.veterinarian?.username || '',
+                  ownerName: record.owner?.full_name || '',
+                  petName: record.pet?.pet_name || '',
+                  petSpecies: record.pet?.species || '',
+                  date: `${formatMedicalDate(record.consultation_date)}${formatMedicalTime12h(record) ? ` · ${formatMedicalTime12h(record)}` : ''}`,
+                })}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.billingActionButtonText}>Download</Text>
+              </TouchableOpacity>
+            ) : null}
+            <RefreshButton />
+          </View>
+        </View>
+        {billing?.error ? <Text style={styles.billingErrorText}>{billing.error}</Text> : null}
+        {billing && !billing.loading && !billing.error ? (
+          billing.prescriptions.length === 0 ? (
+            <Text style={styles.billingMutedText}>
+              {billing.invoices.length === 0 ? "Staff hasn't processed billing for this visit yet." : 'No Prescription Given'}
+            </Text>
+          ) : (
+            billing.prescriptions.map((rx, i) => {
+              const remaining = Math.max(0, Number(rx.prescribed_quantity) - Number(rx.total_quantity_purchased));
+              const history = billing.purchaseHistoryByRxId?.[rx.id] || [];
+              return (
+                <View key={rx.id} style={[styles.billingRow, i === 0 && styles.billingRowFirst]}>
+                  <View style={styles.billingRowMain}>
+                    <Text style={styles.billingRowTitle}>{rx.item_name}</Text>
+                    <Text style={styles.billingRowMeta}>
+                      Prescribed {rx.prescribed_quantity} · Purchased {rx.total_quantity_purchased} · Remaining {remaining}
+                    </Text>
+                    <Text style={styles.billingRowSig}>Sig: {rx.sig || 'No directions for use recorded.'}</Text>
+                    <View style={styles.billingStatusPill}>
+                      <Text style={styles.billingStatusPillText}>{rx.fulfillment_status}</Text>
+                    </View>
+                    {history.length > 0 ? (
+                      <View style={styles.rxHistoryList}>
+                        {history.map((entry) => (
+                          <View key={entry.id} style={styles.rxHistoryRow}>
+                            <Text style={styles.rxHistoryText}>{entry.quantity} purchased</Text>
+                            <Text style={styles.rxHistoryText}>{formatPurchaseDateTime(entry.created_at)}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })
+          )
+        ) : null}
+      </View>
+    </>
+  );
+}
+
+function ConsultationCard({ record, pet, index, previousRecords }) {
   const [expanded, setExpanded] = useState(false);
   const [riskLevel, setRiskLevel] = useState(null);
-  const vetName = record.veterinarian?.full_name || record.veterinarian?.username || 'Not assigned';
+  const vetName = withDrTitle(record.veterinarian?.full_name || record.veterinarian?.username);
   const title = record.diagnosis || record.chief_complaint || 'Consultation';
   const riskStyle = riskLevel ? RISK_STYLE[riskLevel] : null;
   const time12h = formatMedicalTime12h(record);
+  const visitDateTime = `${formatMedicalDate(record.consultation_date)}${time12h ? ` · ${time12h}` : ''}`;
   const appointment = record.appointment
     ? [formatMedicalDate(record.appointment.appointment_date), record.appointment.status].filter(Boolean).join(' · ')
     : '';
+  const isFinalized = record.record_status === 'Finalized';
 
   return (
     <View style={styles.consultationCard}>
@@ -198,13 +340,10 @@ function ConsultationCard({ record, index, previousRecords }) {
                 <Text style={styles.latestBadgeText}>Latest</Text>
               </View>
             ) : null}
-            <Text style={styles.consultationDateText}>
-              {formatMedicalDate(record.consultation_date)}
-              {time12h ? ` · ${time12h}` : ''}
-            </Text>
+            <Text style={styles.consultationDateText}>{visitDateTime}</Text>
           </View>
           <Text style={styles.consultationTitleText}>{title}</Text>
-          <Text style={styles.consultationSubLine}>Dr. {vetName}</Text>
+          <Text style={styles.consultationSubLine}>{vetName}</Text>
           <View style={styles.consultationBadgeRow}>
             <View style={styles.recordStatusBadge}>
               <Text style={styles.recordStatusBadgeText}>{record.record_status || 'Finalized'}</Text>
@@ -264,6 +403,17 @@ function ConsultationCard({ record, index, previousRecords }) {
           <Field label="Follow-up Date" value={record.follow_up_date ? formatMedicalDate(record.follow_up_date) : ''} />
           <Field label="Related Appointment" value={appointment} />
 
+          <BillingSection record={record} />
+
+          <TouchableOpacity
+            style={[styles.printButton, !isFinalized && styles.printButtonDisabled]}
+            disabled={!isFinalized}
+            onPress={() => printMedicalRecord(record, pet, { veterinarianName: record.veterinarian?.full_name || record.veterinarian?.username || '', visitDateTime })}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.printButtonText}>{isFinalized ? 'Print Medical Record' : 'Complete this consultation before printing'}</Text>
+          </TouchableOpacity>
+
           <ConsultationAiInsight record={record} previousRecords={previousRecords} onRiskLevel={setRiskLevel} />
         </View>
       ) : null}
@@ -271,7 +421,7 @@ function ConsultationCard({ record, index, previousRecords }) {
   );
 }
 
-export default function PetOwnerMyPetsMedicalHistory({ records = [], loading, error, onRetry }) {
+export default function PetOwnerMyPetsMedicalHistory({ pet, records = [], loading, error, onRetry }) {
   if (loading) {
     return (
       <View style={styles.aiEmptyCard}>
@@ -308,6 +458,7 @@ export default function PetOwnerMyPetsMedicalHistory({ records = [], loading, er
         <ConsultationCard
           key={record.id}
           record={record}
+          pet={pet}
           index={index}
           previousRecords={records.filter((r) => r.id !== record.id).slice(0, 8)}
         />

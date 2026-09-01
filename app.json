@@ -9,16 +9,16 @@
     "newArchEnabled": true,
 
     "splash": {
-      "image": "./src/screens/assets/formal.png",
+      "image": "./src/screens/assets/paw2-adaptive.png",
       "resizeMode": "contain",
-      "backgroundColor": "#063B55"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/screens/assets/paw2.png",
+        "foregroundImage": "./src/screens/assets/paw2-adaptive.png",
         "backgroundColor": "#063B55"
       },
       "edgeToEdgeEnabled": true,

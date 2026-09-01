@@ -20,7 +20,9 @@ import {
 const PET_OWNER_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
   { key: 'pets', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
-  { key: 'appointment', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
+  { key: 'appointment', label: 'Book Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
+  { key: 'myAppointments', label: 'My Appointments', icon: require('../../assets/List.png'), route: 'PetOwnerMyAppointments' },
+  { key: 'queue', label: 'My Queue', icon: require('../../assets/List.png'), route: 'PetOwnerQueue' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
 ];
 
@@ -32,7 +34,7 @@ const PET_OWNER_MENU_ITEMS = [
 const VETERINARIAN_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'vet-screen' },
   { key: 'patients', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
-  { key: 'appointments', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
+  { key: 'appointments', label: 'My Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
 ];
 

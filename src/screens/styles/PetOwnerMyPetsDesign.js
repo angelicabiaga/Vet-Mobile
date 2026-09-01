@@ -1770,6 +1770,150 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
 
+  // --- Per-consultation Billing / Prescriptions ---
+  billingCard: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: '#fbfdfe',
+    borderWidth: 1,
+    borderColor: '#e1edf2',
+  },
+  billingHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  billingHeadActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  billingTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#17445a',
+  },
+  billingRefreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#eef6fb',
+  },
+  billingRefreshText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#447C99',
+  },
+  billingMutedText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#7892a0',
+  },
+  billingErrorText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#c0392b',
+  },
+  billingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#edf4f8',
+    gap: 10,
+  },
+  billingRowFirst: {
+    borderTopWidth: 0,
+    paddingTop: 0,
+  },
+  billingRowMain: {
+    flex: 1,
+  },
+  billingRowTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#24566d',
+  },
+  billingRowMeta: {
+    marginTop: 3,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#68869c',
+  },
+  billingRowSig: {
+    marginTop: 3,
+    fontSize: 11.5,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    color: '#7892a0',
+  },
+  billingStatusPill: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#e8f4fb',
+  },
+  billingStatusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#447C99',
+  },
+  billingActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: '#447C99',
+  },
+  billingActionButtonText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  rxHistoryList: {
+    marginTop: 6,
+  },
+  rxHistoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  rxHistoryText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#8aa2b4',
+  },
+  printButton: {
+    marginTop: 14,
+    minHeight: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#cee2e9',
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  printButtonDisabled: {
+    opacity: 0.5,
+  },
+  printButtonText: {
+    fontSize: 12.5,
+    fontWeight: '900',
+    color: '#447C99',
+  },
+
   // --- Per-consultation AI Health Insight subsection ---
   aiInsightToggle: {
     minHeight: 44,

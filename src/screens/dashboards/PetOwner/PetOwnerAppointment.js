@@ -3,7 +3,6 @@ import PetOwnerSideDrawer from './PetOwnerSideDrawer';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   ScrollView,
@@ -18,17 +17,14 @@ import { Dropdown } from 'react-native-element-dropdown';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   addTenMinutes,
-  cancelAppointment,
   createAppointment,
   formatTime,
   getAvailableSlots,
-  getOwnerAppointments,
   getPetsByOwner,
   getVeterinarians,
   rescheduleAppointment,
   todayLocal,
 } from '../../../api/mobileAppointmentService';
-import { supabase } from '../../../config/supabaseClient';
 
 const DATE_WINDOW_DAYS = 60;
 
@@ -40,17 +36,6 @@ const formatDate = (value) => {
   const date = new Date(`${value}T12:00:00`);
   return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 };
-const formatTimestamp = (value) => {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-};
-const getAppointmentStart = (dateValue, timeValue) => {
-  if (!dateValue || !timeValue) return null;
-  const start = new Date(`${dateValue}T${String(timeValue).slice(0, 5)}:00`);
-  return Number.isNaN(start.getTime()) ? null : start;
-};
 
 export default function PetOwnerAppointment({ navigation, route }) {
   const user = route?.params?.user || {};
@@ -60,13 +45,10 @@ export default function PetOwnerAppointment({ navigation, route }) {
   const [pets, setPets] = useState([]);
   const [vets, setVets] = useState([]);
   const [slots, setSlots] = useState([]);
-  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [slotLoading, setSlotLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [expandedAppointmentId, setExpandedAppointmentId] = useState(null);
-  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [message, setMessage] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [isSidebarMounted, setIsSidebarMounted] = useState(false);
@@ -85,11 +67,6 @@ export default function PetOwnerAppointment({ navigation, route }) {
     const timer = setTimeout(() => setMessage(''), 4500);
     return () => clearTimeout(timer);
   }, [message]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (isSidebarVisible) {
@@ -118,7 +95,8 @@ export default function PetOwnerAppointment({ navigation, route }) {
 
   const sidebarItems = [
     { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
-    { key: 'appointment', label: 'Appointment', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
+    { key: 'appointment', label: 'Book Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
+    { key: 'myAppointments', label: 'My Appointments', icon: require('../../assets/List.png'), route: 'PetOwnerMyAppointments' },
     { key: 'pets', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
     { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
   ];
@@ -151,14 +129,12 @@ export default function PetOwnerAppointment({ navigation, route }) {
     }
     try {
       setLoading(true);
-      const [petRows, vetRows, appointmentRows] = await Promise.all([
+      const [petRows, vetRows] = await Promise.all([
         getPetsByOwner(ownerId),
         getVeterinarians(),
-        getOwnerAppointments(ownerId),
       ]);
       setPets(petRows);
       setVets(vetRows);
-      setAppointments(appointmentRows);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -168,37 +144,16 @@ export default function PetOwnerAppointment({ navigation, route }) {
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
+  // Arriving from My Appointments' "Reschedule" button -- prefill the form
+  // in editing mode instead of a blank booking. Consumed once so navigating
+  // here again fresh (e.g. via the drawer) doesn't re-trigger it.
   useEffect(() => {
-    if (!ownerId) return undefined;
-
-    let active = true;
-    const channel = supabase
-      .channel(`mobile-owner-appointments-${ownerId}-${Date.now()}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'appointments',
-          filter: `owner_id=eq.${ownerId}`,
-        },
-        async () => {
-          if (!active) return;
-          try {
-            const rows = await getOwnerAppointments(ownerId);
-            if (active) setAppointments(rows);
-          } catch (error) {
-            console.log('Appointment realtime refresh failed:', error);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-    };
-  }, [ownerId]);
+    const appointment = route?.params?.rescheduleAppointment;
+    if (!appointment) return;
+    startReschedule(appointment);
+    navigation.setParams({ rescheduleAppointment: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route?.params?.rescheduleAppointment]);
 
   useEffect(() => {
     let active = true;
@@ -241,7 +196,6 @@ export default function PetOwnerAppointment({ navigation, route }) {
         setMessage('Appointment booked successfully.');
       }
       resetForm();
-      setAppointments(await getOwnerAppointments(ownerId));
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -259,26 +213,6 @@ export default function PetOwnerAppointment({ navigation, route }) {
       visitReason: appointment.visit_reason || '',
       notes: appointment.notes || '',
     });
-  };
-
-  const confirmCancel = (appointment) => {
-    Alert.alert('Cancel Appointment', `Cancel ${appointment.pet?.pet_name || 'this appointment'} on ${formatDate(appointment.appointment_date)}?`, [
-      { text: 'Keep Appointment', style: 'cancel' },
-      {
-        text: 'Cancel Appointment',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await cancelAppointment(appointment.id, ownerId);
-            if (editing?.id === appointment.id) resetForm();
-            setAppointments(await getOwnerAppointments(ownerId));
-            setMessage('Appointment cancelled successfully.');
-          } catch (error) {
-            setMessage(error.message);
-          }
-        },
-      },
-    ]);
   };
 
   if (loading) {
@@ -324,7 +258,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
                 </View>
                 <View style={styles.brandBlock}>
                   <Text style={styles.headerTitle}>PawCruz</Text>
-                  <Text style={styles.headerSubtitle}>Pet Owner Appointment</Text>
+                  <Text style={styles.headerSubtitle}>Book Appointments</Text>
                 </View>
               </TouchableOpacity>
 
@@ -502,82 +436,9 @@ export default function PetOwnerAppointment({ navigation, route }) {
             </View>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>My Appointments</Text>
-            <Text style={styles.sectionCaption}>View, reschedule, or cancel eligible appointments.</Text>
-            {!appointments.length ? <Text style={styles.empty}>No appointments found.</Text> : appointments.map((item) => {
-              const isExpanded = expandedAppointmentId === item.id;
-              const appointmentStart = getAppointmentStart(item.appointment_date, item.start_time);
-              const queueOpensAt = appointmentStart ? new Date(appointmentStart.getTime() - (30 * 60 * 1000)) : null;
-              const normalizedStatus = String(item.status || '').trim().toLowerCase();
-              const canViewQueue = Boolean(
-                queueOpensAt
-                && item.appointment_date === toDateKey(currentTime)
-                && currentTime >= queueOpensAt
-                && normalizedStatus !== 'completed'
-                && normalizedStatus !== 'cancelled'
-              );
-              return (
-                <View key={item.id} style={styles.appointmentCard}>
-                  <View style={styles.compactAppointmentRow}>
-                    <TouchableOpacity
-                      style={styles.appointmentRowMain}
-                      onPress={() => setExpandedAppointmentId(isExpanded ? null : item.id)}
-                      activeOpacity={0.78}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${isExpanded ? 'Hide' : 'Show'} details for ${item.pet?.pet_name || 'pet'} appointment`}
-                      accessibilityState={{ expanded: isExpanded }}
-                    >
-                      <Text style={styles.petName} numberOfLines={1}>{item.pet?.pet_name || 'Pet'}</Text>
-                      <Text style={styles.appointmentMeta} numberOfLines={1}>
-                        {formatDate(item.appointment_date)} · {formatTime(item.start_time)}
-                      </Text>
-                      <Text style={styles.appointmentHint}>{isExpanded ? 'Hide details ▲' : 'Tap to view details ▼'}</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.appointmentRowActions}>
-                      <Text style={[styles.status, item.status === 'Cancelled' && styles.statusCancelled, item.status === 'Completed' && styles.statusCompleted]}>{item.status}</Text>
-                      {canViewQueue && (
-                        <TouchableOpacity
-                          style={styles.viewQueueButton}
-                          onPress={() => navigation.navigate('PetOwnerQueue', { user })}
-                          activeOpacity={0.88}
-                          accessibilityRole="button"
-                          accessibilityLabel={`View queue for ${item.pet?.pet_name || 'pet'} appointment`}
-                        >
-                          <Image source={require('../../assets/List.png')} style={styles.viewQueueIcon} resizeMode="contain" />
-                          <Text style={styles.viewQueueText}>View Queue</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-
-                  {isExpanded && (
-                    <View style={styles.appointmentDetails}>
-                      <SummaryRow label="Pet Owner" value={item.owner?.full_name || ownerName} compact />
-                      <SummaryRow label="Veterinarian" value={item.veterinarian?.full_name || '—'} compact />
-                      <SummaryRow label="Date" value={formatDate(item.appointment_date)} compact />
-                      <SummaryRow label="Start Time" value={formatTime(item.start_time)} compact />
-                      <SummaryRow label="End Time" value={formatTime(item.end_time)} compact />
-                      <SummaryRow label="Appointment Source" value={item.appointment_source || 'Online'} compact />
-                      <SummaryRow label="Consultation Type" value={item.consultation_type || 'General Consultation'} compact />
-                      <SummaryRow label="Visit Reason" value={item.visit_reason || '—'} compact />
-                      <SummaryRow label="Notes" value={item.notes || '—'} compact />
-                      <SummaryRow label="Created By" value={item.creator?.full_name || item.creator?.username || (String(item.created_by) === String(ownerId) ? ownerName : item.created_by || '—')} compact />
-                      <SummaryRow label="Created Date" value={formatTimestamp(item.created_at)} compact />
-                      <SummaryRow label="Updated Date" value={formatTimestamp(item.updated_at)} compact />
-                      {item.status === 'Confirmed' && (
-                        <View style={styles.actionRow}>
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => startReschedule(item)}><Text style={styles.secondaryText}>Reschedule</Text></TouchableOpacity>
-                          <TouchableOpacity style={styles.cancelButton} onPress={() => confirmCancel(item)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
+          <TouchableOpacity style={styles.viewAppointmentsButton} onPress={() => navigation.navigate('PetOwnerMyAppointments', { user })} activeOpacity={0.9}>
+            <Text style={styles.viewAppointmentsButtonText}>View My Appointments</Text>
+          </TouchableOpacity>
         </ScrollView>
 
         <View style={styles.quickAssistFloat}>
@@ -606,8 +467,8 @@ function FieldLabel({ text, optional = false }) {
   return <Text style={styles.label}>{text}{optional ? <Text style={styles.optional}> (optional)</Text> : null}</Text>;
 }
 
-function SummaryRow({ label, value, compact = false }) {
-  return <View style={[styles.summaryRow, compact && styles.summaryCompact]}><Text style={styles.summaryLabel}>{label}</Text><Text style={styles.summaryValue}>{value}</Text></View>;
+function SummaryRow({ label, value }) {
+  return <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{label}</Text><Text style={styles.summaryValue}>{value}</Text></View>;
 }
 
 const styles = StyleSheet.create({
@@ -770,14 +631,9 @@ const styles = StyleSheet.create({
   input: { minHeight: 52, borderWidth: 1, borderColor: '#cee2e9', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11, color: '#294b5d', backgroundColor: '#fbfdfe', fontWeight: '600', fontSize: 14 },
   notes: { minHeight: 96, textAlignVertical: 'top' },
   sectionTitle: { color: '#24566d', fontSize: 20, fontWeight: '900', marginBottom: 5 },
-  viewQueueButton: { minHeight: 40, paddingHorizontal: 11, borderRadius: 13, backgroundColor: '#447C99', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  viewQueueIcon: { width: 17, height: 17, tintColor: '#ffffff' },
-  viewQueueText: { color: '#ffffff', fontSize: 12, fontWeight: '900' },
-  sectionCaption: { color: '#5d7b91', fontSize: 12, fontWeight: '600', marginBottom: 12 },
   queueAvailabilityNote: { backgroundColor: '#edf6f8', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9, marginVertical: 8, borderWidth: 1, borderColor: '#d5e9ee' },
   queueAvailabilityNoteText: { color: '#527586', fontSize: 11, lineHeight: 16, fontWeight: '700' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2ecef' },
-  summaryCompact: { paddingVertical: 5 },
   summaryLabel: { color: '#78909b', fontSize: 12, fontWeight: '600', flex: 0.42 },
   summaryValue: { color: '#365f72', fontSize: 12, fontWeight: '800', textAlign: 'right', flex: 0.58 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
@@ -785,20 +641,8 @@ const styles = StyleSheet.create({
   primaryText: { color: '#fff', fontWeight: '900' },
   secondaryButton: { flex: 1, borderWidth: 1, borderColor: '#c6e5ed', paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: '#edf6f8' },
   secondaryText: { color: '#447C99', fontWeight: '900' },
-  cancelButton: { flex: 1, borderWidth: 1, borderColor: '#e4a6a6', paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: '#fff8f8' },
-  cancelText: { color: '#b54b4b', fontWeight: '800' },
-  empty: { color: '#758b94', textAlign: 'center', paddingVertical: 24 },
-  appointmentCard: { marginTop: 10, borderWidth: 1, borderColor: '#dceef8', borderRadius: 20, padding: 12, backgroundColor: '#fcfeff' },
-  compactAppointmentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  appointmentRowMain: { flex: 1, minWidth: 0, paddingVertical: 3 },
-  appointmentRowActions: { alignItems: 'flex-end', gap: 8 },
-  appointmentMeta: { color: '#5d7b91', fontSize: 12, fontWeight: '700', marginTop: 4 },
-  appointmentHint: { color: '#447C99', fontSize: 11, fontWeight: '800', marginTop: 5 },
-  appointmentDetails: { marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2eef2' },
-  petName: { color: '#24566d', fontSize: 16, fontWeight: '900' },
-  status: { backgroundColor: '#def4e6', color: '#26704a', fontWeight: '800', fontSize: 11, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
-  statusCancelled: { backgroundColor: '#fde8e8', color: '#a74646' },
-  statusCompleted: { backgroundColor: '#e8eefc', color: '#4567a6' },
+  viewAppointmentsButton: { borderWidth: 1, borderColor: '#c6e5ed', backgroundColor: '#edf6f8', borderRadius: 16, paddingVertical: 14, alignItems: 'center' },
+  viewAppointmentsButtonText: { color: '#447C99', fontWeight: '900', fontSize: 14 },
 
   quickAssistFloat: {
     position: 'absolute',

@@ -99,7 +99,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
       value: String(appointmentRequestCount),
       detail: activeAppointments.length ? appointmentDateLabel : `${appointmentRequestCount} total booking${appointmentRequestCount === 1 ? '' : 's'}`,
       accent: styles.activityTrackAccentGreen,
-      route: 'PetOwnerAppointment',
+      route: 'PetOwnerMyAppointments',
     },
     {
       key: 'records',
@@ -552,6 +552,22 @@ const PetOwnerDashboard = ({ navigation, route }) => {
 
             <TouchableOpacity
               style={styles.menuCard}
+              onPress={() => navigation.navigate('PetOwnerMyAppointments', { user: currentUser })}
+              activeOpacity={0.9}
+            >
+              <View style={styles.iconCircle}>
+                <Image
+                  source={require('../../assets/List.png')}
+                  style={styles.iconImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.menuLabel}>My</Text>
+              <Text style={styles.menuLabel}>Appointments</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuCard}
               onPress={() => navigation.navigate('PetOwnerMyPets', { user: currentUser })}
               activeOpacity={0.9}
             >
@@ -579,22 +595,6 @@ const PetOwnerDashboard = ({ navigation, route }) => {
                 />
               </View>
               <Text style={styles.menuLabel}>Messages</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuCard}
-              onPress={() => navigation.navigate('PetOwnerPayHis', { user: currentUser })}
-              activeOpacity={0.9}
-            >
-              <View style={styles.iconCircle}>
-                <Image
-                  source={require('../../assets/payment_icon.png')}
-                  style={styles.iconImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.menuLabel}>Payment</Text>
-              <Text style={styles.menuLabel}>History</Text>
             </TouchableOpacity>
 
           </View>

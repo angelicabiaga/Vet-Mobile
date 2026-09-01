@@ -14,7 +14,7 @@ const HEADER_MENU_ITEMS = [
   { key: 'profile', label: 'Profile', icon: require('../../assets/UserManagement_Icon.png'), route: 'VetProfile' },
   { key: 'notifications', label: 'Notifications', icon: require('../../assets/Bell_Icon.png'), route: 'VetNotif' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
-  { key: 'appointments', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
+  { key: 'appointments', label: 'My Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
   { key: 'schedule', label: 'Schedule', icon: require('../../assets/calendar.png'), route: 'VetSchedule' },
   { key: 'patients', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
 ];

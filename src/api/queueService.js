@@ -12,11 +12,12 @@ const uniq = (values) => [...new Set(values.filter(Boolean))];
 
 async function enrich(rows) {
   if (!rows.length) return [];
+  const entryIds = uniq(rows.map((row) => row.id));
   const petIds = uniq(rows.map((row) => row.pet_id));
   const profileIds = uniq(rows.flatMap((row) => [row.owner_id, row.veterinarian_id]));
   const appointmentIds = uniq(rows.map((row) => row.appointment_id));
 
-  const [petsResult, profilesResult, appointmentsResult] = await Promise.all([
+  const [petsResult, profilesResult, appointmentsResult, entryPetsResult] = await Promise.all([
     petIds.length
       ? supabase.from('pets').select('id,pet_name,species,breed').in('id', petIds)
       : Promise.resolve({ data: [], error: null }),
@@ -25,6 +26,13 @@ async function enrich(rows) {
       : Promise.resolve({ data: [], error: null }),
     appointmentIds.length
       ? supabase.from('appointments').select('id,appointment_date,start_time,visit_reason,status').in('id', appointmentIds)
+      : Promise.resolve({ data: [], error: null }),
+    // Multi-pet check-ins (one queue number covering several pets in the
+    // same visit) live in this join table on the web app. Missing/not-yet
+    // migrated on some environments, so a failure here just falls back to
+    // the single pet_id column below instead of breaking the whole queue.
+    entryIds.length
+      ? supabase.from('queue_entry_pets').select('queue_entry_id,appointment_id,pet:pets(id,pet_name,species,breed)').in('queue_entry_id', entryIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -36,13 +44,28 @@ async function enrich(rows) {
   const profileMap = new Map((profilesResult.data || []).map((item) => [item.id, item]));
   const appointmentMap = new Map((appointmentsResult.data || []).map((item) => [item.id, item]));
 
-  return rows.map((row) => ({
-    ...row,
-    pet: petMap.get(row.pet_id) || null,
-    owner: profileMap.get(row.owner_id) || null,
-    veterinarian: profileMap.get(row.veterinarian_id) || null,
-    appointment: appointmentMap.get(row.appointment_id) || null,
-  }));
+  const petsByEntry = new Map();
+  (entryPetsResult.data || []).forEach((row) => {
+    if (!row.pet) return;
+    const list = petsByEntry.get(row.queue_entry_id) || [];
+    list.push({ ...row.pet, appointmentId: row.appointment_id || null });
+    petsByEntry.set(row.queue_entry_id, list);
+  });
+
+  return rows.map((row) => {
+    const groupedPets = petsByEntry.get(row.id);
+    const singlePet = petMap.get(row.pet_id) || null;
+    const pets = groupedPets && groupedPets.length ? groupedPets : (singlePet ? [{ ...singlePet, appointmentId: row.appointment_id || null }] : []);
+    return {
+      ...row,
+      pet: singlePet || pets[0] || null,
+      pets,
+      visitDurationMinutes: Math.max(pets.length, 1) * 10,
+      owner: profileMap.get(row.owner_id) || null,
+      veterinarian: profileMap.get(row.veterinarian_id) || null,
+      appointment: appointmentMap.get(row.appointment_id) || null,
+    };
+  });
 }
 
 export async function getQueue({ ownerId, veterinarianId, date = todayLocal() } = {}) {
@@ -71,14 +94,16 @@ export async function getQueue({ ownerId, veterinarianId, date = todayLocal() } 
   });
 
   return rows.map((row, index) => {
-    const clientsAhead = rows
+    // Same-owner entries (e.g. a second walk-in pet) never count as
+    // "ahead" of that owner's own place in line.
+    const ahead = rows
       .slice(0, index)
-      .filter((item) => item.veterinarian_id === row.veterinarian_id && ACTIVE_STATUSES.includes(item.status))
-      .length;
+      .filter((item) => item.veterinarian_id === row.veterinarian_id && item.owner_id !== row.owner_id && ACTIVE_STATUSES.includes(item.status));
+    const estimatedWaitMinutes = ahead.reduce((sum, item) => sum + (item.visitDurationMinutes || 10), 0);
     return {
       ...row,
-      clientsAhead,
-      estimatedWaitMinutes: clientsAhead * 10,
+      clientsAhead: ahead.length,
+      estimatedWaitMinutes,
     };
   });
 }

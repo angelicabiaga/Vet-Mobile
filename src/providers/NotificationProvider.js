@@ -21,7 +21,7 @@ const REMINDER_CHECK_MS = 5 * 60 * 1000;
 const REMINDER_WINDOW_MIN = 30;
 
 const APPOINTMENT_ROUTE_BY_ROLE = {
-  pet_owner: 'PetOwnerAppointment',
+  pet_owner: 'PetOwnerMyAppointments',
   veterinarian: 'VetAppointment',
 };
 

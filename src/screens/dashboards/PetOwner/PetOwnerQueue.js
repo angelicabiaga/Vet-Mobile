@@ -91,11 +91,14 @@ export default function PetOwnerQueue({ navigation, route }) {
   const goTo = (screen) => closeHeaderMenu(() => navigation.navigate(screen, { user }));
   const queueNumber = entry?.queue_number || entry?.queueNumber || null;
   const queueStatus = entry?.status || 'Not checked in';
-  const petName = entry?.pet?.pet_name || 'Not assigned';
+  const pets = entry?.pets?.length ? entry.pets : (entry?.pet ? [entry.pet] : []);
+  const petName = pets.length ? pets.map((p) => p.pet_name).join(', ') : 'Not assigned';
   const veterinarianName = entry?.veterinarian?.full_name || 'Not assigned';
   const appointmentDate = entry?.appointment?.appointment_date || 'Not assigned';
   const appointmentTime = entry?.appointment?.start_time || 'Not assigned';
   const visitReason = entry?.appointment?.visit_reason || 'General Consultation';
+  const clientsAhead = entry?.clientsAhead ?? 0;
+  const estimatedWaitMinutes = entry?.estimatedWaitMinutes ?? 0;
 
   return (
     <LinearGradient colors={['#f7fbfc', '#eef7f8', '#ffffff']} style={styles.background}>
@@ -125,7 +128,7 @@ export default function PetOwnerQueue({ navigation, route }) {
             <View style={styles.ownerSummary}><Text style={styles.headerCaption}>Your assigned queue number</Text><Text style={styles.ownerName}>{headerDisplayName}</Text></View>
           </View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={user} activeKey="appointment" />
+          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={user} activeKey="queue" />
           {false ? (
             <Animated.View style={[styles.headerMenuPanel, { opacity: headerMenuAnimation, transform: [{ translateY: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-18, 0] }) }] }] }>
               {headerMenuItems.map((item) => (
@@ -155,16 +158,45 @@ export default function PetOwnerQueue({ navigation, route }) {
               <Text style={personalStyles.loadingText}>Checking your queue information...</Text>
             ) : error ? (
               <Text style={personalStyles.errorText}>{error}</Text>
+            ) : !entry ? (
+              <>
+                <Text style={personalStyles.emptyTitle}>No active queue</Text>
+                <Text style={personalStyles.helper}>Check in at the clinic reception when you arrive.</Text>
+              </>
             ) : (
               <>
+                {entry.late_arrival ? (
+                  <View style={personalStyles.warnBanner}>
+                    <Text style={personalStyles.warnText}>Late arrival recorded. Your place follows the active queue order.</Text>
+                  </View>
+                ) : null}
+
                 <QueueSummaryRow label="Pet Owner" value={headerDisplayName} />
                 <QueueSummaryRow label="Pet" value={petName} />
+                {pets.length > 1 ? (
+                  <QueueSummaryRow label="Visit Size" value={`${pets.length} pets · ${entry?.visitDurationMinutes || pets.length * 10} min visit`} />
+                ) : null}
                 <QueueSummaryRow label="Veterinarian" value={veterinarianName} />
                 <QueueSummaryRow label="Appointment Date" value={appointmentDate} />
                 <QueueSummaryRow label="Appointment Time" value={appointmentTime} />
-                <QueueSummaryRow label="Visit Reason" value={visitReason} />
-                <QueueSummaryRow label="Queue Status" value={queueStatus} last />
-                <Text style={personalStyles.helper}>{queueNumber ? 'Keep your queue number ready while waiting at the clinic.' : 'Your queue number will appear after clinic staff checks you in.'}</Text>
+                <QueueSummaryRow label="Visit Reason" value={visitReason} last />
+
+                <View style={personalStyles.statGrid}>
+                  <View style={personalStyles.statBox}>
+                    <Text style={personalStyles.statValue}>{queueStatus}</Text>
+                    <Text style={personalStyles.statLabel}>Status</Text>
+                  </View>
+                  <View style={personalStyles.statBox}>
+                    <Text style={personalStyles.statValue}>{clientsAhead}</Text>
+                    <Text style={personalStyles.statLabel}>Clients Ahead</Text>
+                  </View>
+                  <View style={personalStyles.statBox}>
+                    <Text style={personalStyles.statValue}>~{estimatedWaitMinutes} min</Text>
+                    <Text style={personalStyles.statLabel}>Estimated Wait</Text>
+                  </View>
+                </View>
+
+                <Text style={personalStyles.helper}>Keep your queue number ready while waiting at the clinic.</Text>
               </>
             )}
           </View>
@@ -224,6 +256,51 @@ const personalStyles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     paddingVertical: 24,
+  },
+  emptyTitle: {
+    color: '#24566d',
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+    paddingTop: 20,
+  },
+  warnBanner: {
+    backgroundColor: '#fff0f0',
+    borderRadius: 14,
+    padding: 13,
+    marginTop: 16,
+  },
+  warnText: {
+    color: '#b34b4b',
+    fontSize: 12.5,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  statGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#eff9fc',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  statValue: {
+    color: '#318fbe',
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  statLabel: {
+    color: '#5f7f94',
+    fontSize: 10.5,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   helper: {
     marginTop: 12,

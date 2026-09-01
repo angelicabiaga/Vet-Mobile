@@ -32,6 +32,7 @@ import PublicQueueScreen from "./src/screens/PublicQueueScreen";
 
 // Pet Owner Screens
 import PetOwnerAppointment from "./src/screens/dashboards/PetOwner/PetOwnerAppointment";
+import PetOwnerMyAppointments from "./src/screens/dashboards/PetOwner/PetOwnerMyAppointments";
 import PetOwnerAppointmentSchedule from "./src/screens/dashboards/PetOwner/PetOwnerAppointmentSchedule";
 import PetOwnerDashboard from "./src/screens/dashboards/PetOwner/PetOwnerDashboard";
 import PetOwnerMedRec from "./src/screens/dashboards/PetOwner/PetOwnerMedRec";
@@ -153,6 +154,10 @@ function AppNavigator({ navigationRef }) {
         <Stack.Screen
           name="PetOwnerAppointment"
           component={PetOwnerAppointment}
+        />
+        <Stack.Screen
+          name="PetOwnerMyAppointments"
+          component={PetOwnerMyAppointments}
         />
         <Stack.Screen
           name="PetOwnerAppointmentSchedule"
