@@ -6,13 +6,6 @@
     "orientation": "portrait",
     "icon": "./src/screens/assets/paw2.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-
-    "splash": {
-      "image": "./src/screens/assets/paw2-adaptive.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -21,7 +14,6 @@
         "foregroundImage": "./src/screens/assets/paw2-adaptive.png",
         "backgroundColor": "#063B55"
       },
-      "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "package": "PawCruz.App"
     },
@@ -38,7 +30,17 @@
           "icon": "./src/screens/assets/paw2.png",
           "color": "#063B55"
         }
-      ]
+      ],
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/screens/assets/paw2-adaptive.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      "expo-audio"
     ],
     "extra": {
       "eas": {

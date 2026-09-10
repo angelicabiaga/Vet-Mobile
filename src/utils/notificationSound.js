@@ -1,38 +1,33 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-let cachedSound = null;
-let loadingPromise = null;
+let cachedPlayer = null;
 let audioModeConfigured = false;
 
 async function ensureAudioMode() {
   if (audioModeConfigured) return;
   audioModeConfigured = true;
   try {
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    await setAudioModeAsync({ playsInSilentMode: true });
   } catch (error) {
     console.warn('Unable to configure audio mode:', error?.message || error);
   }
 }
 
-async function ensureSoundLoaded() {
-  if (cachedSound) return cachedSound;
-  if (!loadingPromise) {
-    loadingPromise = Audio.Sound.createAsync(
+function ensurePlayer() {
+  if (!cachedPlayer) {
+    cachedPlayer = createAudioPlayer(
       require('../screens/assets/notification/notification_sound.mp3')
-    ).then(({ sound }) => {
-      cachedSound = sound;
-      return sound;
-    });
+    );
   }
-  return loadingPromise;
+  return cachedPlayer;
 }
 
 export async function playNotificationSound() {
   try {
     await ensureAudioMode();
-    const sound = await ensureSoundLoaded();
-    await sound.setPositionAsync(0);
-    await sound.playAsync();
+    const player = ensurePlayer();
+    player.seekTo(0);
+    player.play();
   } catch (error) {
     console.warn('Unable to play notification sound:', error?.message || error);
   }
