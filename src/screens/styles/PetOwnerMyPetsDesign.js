@@ -1789,8 +1789,11 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   billingTitle: {
+    flex: 1,
+    marginRight: 8,
     fontSize: 13,
     fontWeight: '900',
     color: '#17445a',

@@ -958,6 +958,11 @@ export const styles = StyleSheet.create({
     borderColor: '#bfe8cc',
   },
 
+  verificationBadgeRejected: {
+    backgroundColor: '#fff1f1',
+    borderColor: '#ffd7d7',
+  },
+
   verificationBadgeText: {
     fontSize: 11,
     fontWeight: '900',
@@ -975,6 +980,10 @@ export const styles = StyleSheet.create({
 
   verificationBadgeTextVerified: {
     color: '#1f9d55',
+  },
+
+  verificationBadgeTextRejected: {
+    color: '#c24a4a',
   },
 
   verificationHint: {
@@ -1016,86 +1025,4 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
-  uploadSlotRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-
-  uploadSlot: {
-    width: '31%',
-    aspectRatio: 0.78,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#bcdcec',
-    backgroundColor: '#f7fbfc',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    padding: 6,
-  },
-
-  uploadSlotFilled: {
-    borderStyle: 'solid',
-    borderColor: '#447C99',
-  },
-
-  uploadSlotImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 13,
-  },
-
-  uploadSlotPlus: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#447C99',
-    marginBottom: 4,
-  },
-
-  uploadSlotLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#5f7f8a',
-    textAlign: 'center',
-  },
-
-  consentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-
-  consentCheckbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: '#bcdcec',
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    marginTop: 1,
-  },
-
-  consentCheckboxChecked: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
-  },
-
-  consentCheckmark: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-
-  consentText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#526d82',
-    fontWeight: '600',
-  },
 });

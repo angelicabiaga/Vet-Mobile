@@ -9,6 +9,7 @@ import { useLowerHeaderMotion } from './useLowerHeaderMotion';
 import { confirmEmailChangeOtp, confirmPasswordChangeOtp, getProfile, requestEmailChangeOtp, requestPasswordChangeOtp, subscribeProfile, updateProfile, uploadProfileAvatar } from '../../../api/profileService';
 import { validatePickedImageAsset } from '../../../utils/imageValidation';
 import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../../../utils/contactValidation';
+import { isValidPrcLicense, INVALID_PRC_LICENSE_MESSAGE } from '../../../utils/prcValidation';
 import { getVerification, subscribeToVerification, submitVerification } from '../../../api/vetVerificationService';
 import { styles } from '../../styles/PetOwnerProfileDesign';
 
@@ -92,8 +93,7 @@ const VetProfile = ({ navigation, route }) => {
 
   const [verification, setVerification] = useState(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [verifyDraft, setVerifyDraft] = useState({ idFrontUri: '', idBackUri: '', faceScanUri: '' });
-  const [verifyConsent, setVerifyConsent] = useState(false);
+  const [verifyLicenseNumber, setVerifyLicenseNumber] = useState('');
   const [verifySubmitting, setVerifySubmitting] = useState(false);
   const [verifyError, setVerifyError] = useState('');
 
@@ -355,10 +355,10 @@ const VetProfile = ({ navigation, route }) => {
   };
 
   const verificationStatus = verification?.status || 'Unverified';
+  const canSubmitVerification = ['Unverified', 'Rejected', 'Needs Resubmission'].includes(verificationStatus);
 
   const openVerifyModal = () => {
-    setVerifyDraft({ idFrontUri: '', idBackUri: '', faceScanUri: '' });
-    setVerifyConsent(false);
+    setVerifyLicenseNumber('');
     setVerifyError('');
     setShowVerifyModal(true);
   };
@@ -368,107 +368,22 @@ const VetProfile = ({ navigation, route }) => {
     setShowVerifyModal(false);
   };
 
-  const updateVerifyDraft = (field, value) => {
-    setVerifyDraft((current) => ({ ...current, [field]: value }));
-  };
-
-  const captureIdImage = async (field, source) => {
-    try {
-      let result;
-      if (source === 'camera') {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) return;
-        result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.85 });
-      } else {
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) return;
-        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.85 });
-      }
-      if (result.canceled || !result.assets?.length) return;
-      const validationError = validatePickedImageAsset(result.assets[0]);
-      if (validationError) {
-        Alert.alert('Invalid Photo', validationError);
-        return;
-      }
-      updateVerifyDraft(field, result.assets[0].uri);
-    } catch (error) {
-      console.warn('Failed to capture ID image:', error);
-    }
-  };
-
-  const chooseIdFront = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Take Photo', 'Choose from Album'], cancelButtonIndex: 0, userInterfaceStyle: 'light' },
-        (buttonIndex) => {
-          if (buttonIndex === 1) captureIdImage('idFrontUri', 'camera');
-          else if (buttonIndex === 2) captureIdImage('idFrontUri', 'album');
-        }
-      );
-      return;
-    }
-    Alert.alert('PRC ID (Front)', 'Add a photo of the front of your PRC ID.', [
-      { text: 'Take Photo', onPress: () => captureIdImage('idFrontUri', 'camera') },
-      { text: 'Choose from Album', onPress: () => captureIdImage('idFrontUri', 'album') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const chooseIdBack = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Take Photo', 'Choose from Album'], cancelButtonIndex: 0, userInterfaceStyle: 'light' },
-        (buttonIndex) => {
-          if (buttonIndex === 1) captureIdImage('idBackUri', 'camera');
-          else if (buttonIndex === 2) captureIdImage('idBackUri', 'album');
-        }
-      );
-      return;
-    }
-    Alert.alert('PRC ID (Back)', 'Add a photo of the back of your PRC ID.', [
-      { text: 'Take Photo', onPress: () => captureIdImage('idBackUri', 'camera') },
-      { text: 'Choose from Album', onPress: () => captureIdImage('idBackUri', 'album') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const captureFaceScan = async () => {
-    try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) return;
-      const result = await ImagePicker.launchCameraAsync({
-        cameraType: ImagePicker.CameraType?.front,
-        allowsEditing: true,
-        quality: 0.85,
-      });
-      if (result.canceled || !result.assets?.length) return;
-      const validationError = validatePickedImageAsset(result.assets[0]);
-      if (validationError) {
-        Alert.alert('Invalid Photo', validationError);
-        return;
-      }
-      updateVerifyDraft('faceScanUri', result.assets[0].uri);
-    } catch (error) {
-      console.warn('Failed to capture live face photo:', error);
-    }
-  };
-
   const handleSubmitVerification = async () => {
-    if (!verifyDraft.idFrontUri || !verifyDraft.idBackUri || !verifyDraft.faceScanUri) {
-      setVerifyError('Add all three photos: PRC ID front, PRC ID back, and a live face photo.');
+    if (!verifyLicenseNumber.trim()) {
+      setVerifyError('Enter your PRC license number.');
       return;
     }
-    if (!verifyConsent) {
-      setVerifyError('Confirm the consent statement to submit your verification.');
+    if (!isValidPrcLicense(verifyLicenseNumber)) {
+      setVerifyError(INVALID_PRC_LICENSE_MESSAGE);
       return;
     }
     setVerifyError('');
     setVerifySubmitting(true);
     try {
-      const updated = await submitVerification(profileId, verifyDraft);
+      const updated = await submitVerification(profileId, verifyLicenseNumber);
       setVerification(updated);
       setShowVerifyModal(false);
-      setStatusMessage('Your PRC ID and live photo were submitted. Staff will review them shortly.');
+      setStatusMessage('Your PRC license number was submitted. An administrator will confirm it shortly.');
     } catch (error) {
       setVerifyError(error?.message || 'Unable to submit your verification.');
     } finally {
@@ -667,24 +582,30 @@ const VetProfile = ({ navigation, route }) => {
 
         <View style={styles.sectionHeaderWrap}>
           <Text style={styles.sectionTitle}>License Verification</Text>
-          <Text style={styles.sectionSubtitle}>PRC ID and live photo review status</Text>
+          <Text style={styles.sectionSubtitle}>PRC license number review status</Text>
         </View>
 
         <View style={styles.profileCard}>
           <View style={styles.verificationTopRow}>
             <Text style={styles.profileName}>
-              {verificationStatus === 'Verified' ? 'Verified Veterinarian' : verificationStatus === 'Pending Review' ? 'Under Review' : 'Not Verified Yet'}
+              {verificationStatus === 'Verified' ? 'Verified Veterinarian'
+                : verificationStatus === 'Pending Review' ? 'Under Review'
+                  : verificationStatus === 'Rejected' ? 'Verification Rejected'
+                    : verificationStatus === 'Needs Resubmission' ? 'Resubmission Needed'
+                      : 'Not Verified Yet'}
             </Text>
             <View style={[
               styles.verificationBadge,
               verificationStatus === 'Verified' && styles.verificationBadgeVerified,
-              verificationStatus === 'Pending Review' && styles.verificationBadgePending,
+              (verificationStatus === 'Pending Review' || verificationStatus === 'Needs Resubmission') && styles.verificationBadgePending,
+              verificationStatus === 'Rejected' && styles.verificationBadgeRejected,
               verificationStatus === 'Unverified' && styles.verificationBadgeUnverified,
             ]}>
               <Text style={[
                 styles.verificationBadgeText,
                 verificationStatus === 'Verified' && styles.verificationBadgeTextVerified,
-                verificationStatus === 'Pending Review' && styles.verificationBadgeTextPending,
+                (verificationStatus === 'Pending Review' || verificationStatus === 'Needs Resubmission') && styles.verificationBadgeTextPending,
+                verificationStatus === 'Rejected' && styles.verificationBadgeTextRejected,
                 verificationStatus === 'Unverified' && styles.verificationBadgeTextUnverified,
               ]}>
                 {verificationStatus}
@@ -692,25 +613,29 @@ const VetProfile = ({ navigation, route }) => {
             </View>
           </View>
 
-          {verificationStatus === 'Unverified' && verification?.rejection_reason ? (
+          {(verificationStatus === 'Rejected' || verificationStatus === 'Needs Resubmission') && verification?.rejection_reason ? (
             <View style={styles.verificationRejectionBox}>
-              <Text style={styles.verificationRejectionTitle}>Verification Not Approved</Text>
+              <Text style={styles.verificationRejectionTitle}>Administrator Note</Text>
               <Text style={styles.verificationRejectionText}>{verification.rejection_reason}</Text>
             </View>
           ) : null}
 
           <Text style={styles.verificationHint}>
             {verificationStatus === 'Verified'
-              ? 'Your PRC ID and live photo were reviewed and approved by our staff.'
+              ? 'Your PRC license number was confirmed by an administrator.'
               : verificationStatus === 'Pending Review'
-                ? 'Your PRC ID and live photo were submitted and are waiting for staff review.'
-                : 'Upload the front and back of your PRC ID plus a live face photo to verify your veterinary license.'}
+                ? 'Your PRC license number was submitted and is waiting for administrator review.'
+                : verificationStatus === 'Rejected'
+                  ? 'Your submission was rejected. Review the note above and submit again.'
+                  : verificationStatus === 'Needs Resubmission'
+                    ? 'Double-check your PRC license number and submit again.'
+                    : 'Enter your PRC (Professional Regulation Commission) license number. An administrator will confirm it before your account shows as Verified.'}
           </Text>
 
-          {verificationStatus === 'Unverified' ? (
+          {canSubmitVerification ? (
             <TouchableOpacity style={styles.editButton} onPress={openVerifyModal} activeOpacity={0.9}>
               <Text style={styles.editButtonText}>
-                {verification?.rejection_reason ? 'Resubmit PRC ID' : 'Verify Your License'}
+                {verificationStatus === 'Unverified' ? 'Verify Your License' : 'Resubmit License Number'}
               </Text>
             </TouchableOpacity>
           ) : null}
@@ -815,52 +740,24 @@ const VetProfile = ({ navigation, route }) => {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Verify Your License</Text>
             <Text style={styles.modalMessage}>
-              Add the front and back of your PRC ID, then a live photo of your face. Our staff reviews these before your license number is verified.
+              Enter your PRC (Professional Regulation Commission) license number. An administrator will confirm it before your account shows as Verified.
             </Text>
 
-            <View style={styles.uploadSlotRow}>
-              <TouchableOpacity style={[styles.uploadSlot, verifyDraft.idFrontUri && styles.uploadSlotFilled]} onPress={chooseIdFront} activeOpacity={0.85}>
-                {verifyDraft.idFrontUri ? (
-                  <Image source={{ uri: verifyDraft.idFrontUri }} style={styles.uploadSlotImage} resizeMode="cover" />
-                ) : (
-                  <>
-                    <Text style={styles.uploadSlotPlus}>+</Text>
-                    <Text style={styles.uploadSlotLabel}>PRC ID{'\n'}Front</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.uploadSlot, verifyDraft.idBackUri && styles.uploadSlotFilled]} onPress={chooseIdBack} activeOpacity={0.85}>
-                {verifyDraft.idBackUri ? (
-                  <Image source={{ uri: verifyDraft.idBackUri }} style={styles.uploadSlotImage} resizeMode="cover" />
-                ) : (
-                  <>
-                    <Text style={styles.uploadSlotPlus}>+</Text>
-                    <Text style={styles.uploadSlotLabel}>PRC ID{'\n'}Back</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.uploadSlot, verifyDraft.faceScanUri && styles.uploadSlotFilled]} onPress={captureFaceScan} activeOpacity={0.85}>
-                {verifyDraft.faceScanUri ? (
-                  <Image source={{ uri: verifyDraft.faceScanUri }} style={styles.uploadSlotImage} resizeMode="cover" />
-                ) : (
-                  <>
-                    <Text style={styles.uploadSlotPlus}>+</Text>
-                    <Text style={styles.uploadSlotLabel}>Live Face{'\n'}Photo</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={styles.consentRow} onPress={() => setVerifyConsent((current) => !current)} activeOpacity={0.85}>
-              <View style={[styles.consentCheckbox, verifyConsent && styles.consentCheckboxChecked]}>
-                {verifyConsent ? <Text style={styles.consentCheckmark}>✓</Text> : null}
-              </View>
-              <Text style={styles.consentText}>
-                I confirm this is my own valid PRC ID and a live photo of myself, submitted for identity verification.
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.formLabel}>
+              PRC License Number<Text style={styles.requiredMark}> *</Text>
+            </Text>
+            <TextInput
+              value={verifyLicenseNumber}
+              onChangeText={(value) => {
+                setVerifyLicenseNumber(value);
+                if (verifyError) setVerifyError('');
+              }}
+              style={[styles.inputField, verifyError && styles.inputFieldError]}
+              placeholder="e.g. 0123456"
+              placeholderTextColor="#87a0b1"
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
 
             {verifyError ? <Text style={styles.fieldErrorText}>{verifyError}</Text> : null}
 
