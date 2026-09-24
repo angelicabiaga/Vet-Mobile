@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
@@ -78,7 +78,7 @@ export const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -113,7 +113,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -130,7 +130,7 @@ export const styles = StyleSheet.create({
     borderRadius: 4.5,
     backgroundColor: '#f47c6b',
     borderWidth: 2,
-    borderColor: '#447C99',
+    borderColor: '#2c6ba3',
   },
 
   notifIcon: {
@@ -148,7 +148,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -181,7 +181,7 @@ export const styles = StyleSheet.create({
     borderColor: '#cfe6eb',
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
@@ -208,7 +208,7 @@ export const styles = StyleSheet.create({
   notificationToastTitle: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 4,
   },
 
@@ -256,7 +256,7 @@ export const styles = StyleSheet.create({
   ownerBadge: {
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.20)',
@@ -273,7 +273,7 @@ export const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
-    backgroundColor: 'rgba(68, 124, 153, 0.36)',
+    backgroundColor: 'rgba(44, 107, 163, 0.36)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.3)',
     justifyContent: 'center',
@@ -291,7 +291,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(68, 124, 153, 0.98)',
+    backgroundColor: 'rgba(44, 107, 163, 0.98)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignSelf: 'stretch',
@@ -311,7 +311,7 @@ export const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -379,7 +379,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   sectionSubtitle: {
@@ -449,7 +449,7 @@ export const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   avatarCustom: {
@@ -465,14 +465,14 @@ export const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderWidth: 3,
     borderColor: '#fcfeff',
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
@@ -519,7 +519,7 @@ export const styles = StyleSheet.create({
   profileName: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   profileMeta: {
@@ -564,7 +564,7 @@ export const styles = StyleSheet.create({
   infoValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   formCard: {
@@ -598,7 +598,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   disabledInputField: {
@@ -644,7 +644,7 @@ export const styles = StyleSheet.create({
   editButton: {
     minHeight: 52,
     borderRadius: 18,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -693,7 +693,7 @@ export const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderWidth: 2,
     borderColor: '#d7eef3',
     alignItems: 'center',
@@ -742,11 +742,11 @@ export const styles = StyleSheet.create({
   navIcon: {
     width: 24,
     height: 24,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   activeNavIcon: {
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   navLabel: {
@@ -804,7 +804,7 @@ export const styles = StyleSheet.create({
     borderColor: '#dbeef8',
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
@@ -818,7 +818,7 @@ export const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -840,7 +840,7 @@ export const styles = StyleSheet.create({
     borderColor: '#dbeef8',
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
@@ -865,7 +865,7 @@ export const styles = StyleSheet.create({
   photoOptionText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   photoOptionCancelButton: {
@@ -908,7 +908,7 @@ export const styles = StyleSheet.create({
     width: '48%',
     minHeight: 48,
     borderRadius: 16,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -917,7 +917,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     minHeight: 48,
     borderRadius: 16,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 18,
@@ -1021,7 +1021,7 @@ export const styles = StyleSheet.create({
   licenseValue: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     letterSpacing: 0.4,
   },
 

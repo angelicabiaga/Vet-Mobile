@@ -137,10 +137,10 @@ export function formatNotificationTime(value) {
 export function notificationAccent(type) {
   const value = String(type || '').toLowerCase();
   if (value.includes('queue')) return '#39b36b';
-  if (value.includes('message')) return '#5f9eb4';
+  if (value.includes('message')) return '#3a7ab8';
   if (value.includes('appointment')) return '#2f9af0';
   if (value.includes('stock') || value.includes('inventory')) return '#f2a65a';
   if (value.includes('alert') || value.includes('security')) return '#f47c6b';
   if (value.includes('broadcast') || value.includes('announcement')) return '#7b8fc7';
-  return '#447C99';
+  return '#2c6ba3';
 }

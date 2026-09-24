@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   },
   // Dark Blue Brand Header
   topHeader: {
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 22,
@@ -17,7 +17,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#447C99',
+    shadowColor: '#2c6ba3',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 16,
@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
   // Teal Patients Sub-header
   calendarHeader: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -50,7 +50,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 10,
-    color: '#24566d',
+    color: '#123a5e',
     fontSize: 14,
   },
   // Patient Card Styling
@@ -77,7 +77,7 @@ export const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -89,7 +89,7 @@ export const styles = StyleSheet.create({
   patientName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
   },
   patientBreed: {
     fontSize: 14,

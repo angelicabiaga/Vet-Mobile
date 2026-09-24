@@ -21,7 +21,7 @@ const PET_OWNER_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'petowner-screen' },
   { key: 'pets', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
   { key: 'appointment', label: 'Book Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
-  { key: 'myAppointments', label: 'My Appointments', icon: require('../../assets/List.png'), route: 'PetOwnerMyAppointments' },
+  { key: 'myAppointments', label: 'Appointments', icon: require('../../assets/List.png'), route: 'PetOwnerMyAppointments' },
   { key: 'queue', label: 'My Queue', icon: require('../../assets/List.png'), route: 'PetOwnerQueue' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
 ];
@@ -34,7 +34,7 @@ const PET_OWNER_MENU_ITEMS = [
 const VETERINARIAN_MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'vet-screen' },
   { key: 'patients', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
-  { key: 'appointments', label: 'My Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
+  { key: 'appointments', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
 ];
 
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   backdropTouch: { flex: 1 },
   drawer: {
     width: '75%', height: '100%', paddingHorizontal: 16, paddingTop: 54, paddingBottom: 20,
-    backgroundColor: '#447C99', borderTopRightRadius: 30, borderBottomRightRadius: 30,
+    backgroundColor: '#2c6ba3', borderTopRightRadius: 30, borderBottomRightRadius: 30,
     borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.18)',
     shadowColor: '#14384a', shadowOffset: { width: 8, height: 0 }, shadowOpacity: 0.28,
     shadowRadius: 18, elevation: 32,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   closeText: { color: '#ffffff', fontSize: 28, fontWeight: '500', lineHeight: 30 },
   menuItem: { minHeight: 58, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, marginBottom: 12 },
   menuItemActive: { backgroundColor: 'rgba(255,255,255,0.34)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)' },
-  iconWrap: { width: 34, height: 34, borderRadius: 12, backgroundColor: 'rgba(68,124,153,0.42)', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  iconWrap: { width: 34, height: 34, borderRadius: 12, backgroundColor: 'rgba(44, 107, 163,0.42)', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   iconWrapActive: { backgroundColor: 'rgba(38,96,126,0.82)' },
   icon: { width: 20, height: 20, tintColor: '#ffffff' },
   menuLabel: { flex: 1, fontSize: 14, fontWeight: '800', color: '#ffffff' },

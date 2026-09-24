@@ -6,7 +6,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f7fbfc',
   },
   topHeader: {
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 22,
@@ -14,7 +14,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#447C99',
+    shadowColor: '#2c6ba3',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 16,
@@ -22,7 +22,7 @@ export const styles = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
   calendarHeader: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     padding: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -48,12 +48,12 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#447C99',
+    borderColor: '#2c6ba3',
   },
   userName: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
   },
   userRole: {
     fontSize: 14,
@@ -96,11 +96,11 @@ export const styles = StyleSheet.create({
   navIcon: {
     width: 24,
     height: 24,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
   navLabel: {
     fontSize: 12,
-    color: '#24566d',
+    color: '#123a5e',
     marginTop: 4,
   },
   container: { flex: 1, padding: 20 },

@@ -7,7 +7,7 @@ export const styles = StyleSheet.create({
   },
   // Brand Header
   topHeader: {
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 22,
@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#447C99',
+    shadowColor: '#2c6ba3',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 16,
@@ -24,7 +24,7 @@ export const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
   // Notifications Sub-header
   calendarHeader: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -40,7 +40,7 @@ export const styles = StyleSheet.create({
   timeDivider: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 10,
     marginLeft: 5,
   },
@@ -61,7 +61,7 @@ export const styles = StyleSheet.create({
   },
   unreadCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#447C99',
+    borderLeftColor: '#2c6ba3',
   },
   notifIconContainer: {
     marginRight: 15,
@@ -85,7 +85,7 @@ export const styles = StyleSheet.create({
   notifTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
   },
   notifTime: {
     fontSize: 11,
@@ -100,7 +100,7 @@ export const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     position: 'absolute',
     top: 15,
     right: 10,

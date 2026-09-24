@@ -6,7 +6,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#fcfeff',
   },
   topHeader: {
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 22,
@@ -14,7 +14,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#447C99',
+    shadowColor: '#2c6ba3',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 16,
@@ -22,7 +22,7 @@ export const styles = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
   calendarHeader: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -53,7 +53,7 @@ export const styles = StyleSheet.create({
     width: 55,
     height: 55,
     borderRadius: 27.5,
-    backgroundColor: '#24566d',
+    backgroundColor: '#123a5e',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -82,7 +82,7 @@ export const styles = StyleSheet.create({
   },
   petNameTag: {
     fontSize: 12,
-    color: '#447C99',
+    color: '#2c6ba3',
     fontWeight: '600',
     marginTop: 2,
   },
@@ -99,7 +99,7 @@ export const styles = StyleSheet.create({
     marginRight: 10,
   },
   unreadBadge: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     width: 20,
     height: 20,
     borderRadius: 10,

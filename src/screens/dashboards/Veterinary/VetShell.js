@@ -14,7 +14,7 @@ const HEADER_MENU_ITEMS = [
   { key: 'profile', label: 'Profile', icon: require('../../assets/UserManagement_Icon.png'), route: 'VetProfile' },
   { key: 'notifications', label: 'Notifications', icon: require('../../assets/Bell_Icon.png'), route: 'VetNotif' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
-  { key: 'appointments', label: 'My Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
+  { key: 'appointments', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
   { key: 'schedule', label: 'Schedule', icon: require('../../assets/calendar.png'), route: 'VetSchedule' },
   { key: 'patients', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
 ];
@@ -144,13 +144,13 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
     <LinearGradient colors={['#f7fbfc', '#eef7f8', '#ffffff']} style={dashboardStyles.background}>
       <SafeAreaView style={dashboardStyles.container}>
         <LinearGradient
-          colors={['#63B6C5', '#63B6C5', '#63B6C5']}
+          colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={dashboardStyles.headerBar}
         >
           <LinearGradient
-            colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']}
+            colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={dashboardStyles.headerTopBand}

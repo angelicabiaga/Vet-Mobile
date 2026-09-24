@@ -22,7 +22,7 @@ export default function VetMedRec({ navigation, route }) {
   return (
     <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Patient Care">
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
-        <ActivityIndicator size="large" color="#447C99" />
+        <ActivityIndicator size="large" color="#2c6ba3" />
       </View>
     </VetShell>
   );

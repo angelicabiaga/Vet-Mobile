@@ -100,7 +100,7 @@ const VetNotif = ({ navigation, route }) => {
         {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
 
         {loading ? (
-          <View style={styles.loadingWrap}><ActivityIndicator size="large" color="#447C99" /><Text style={styles.loadingText}>Loading notifications...</Text></View>
+          <View style={styles.loadingWrap}><ActivityIndicator size="large" color="#2c6ba3" /><Text style={styles.loadingText}>Loading notifications...</Text></View>
         ) : items.length ? items.map((notif) => {
           const unread = !notif.is_read;
           const type = String(notif.notification_type || '').toLowerCase();
@@ -128,21 +128,21 @@ const VetNotif = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 120 },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  timeDivider: { fontSize: 16, fontWeight: '900', color: '#447C99' },
+  timeDivider: { fontSize: 16, fontWeight: '900', color: '#2c6ba3' },
   syncText: { fontSize: 11, fontWeight: '700', color: '#7a94a6', marginTop: 3 },
-  readAllButton: { backgroundColor: '#447C99', paddingHorizontal: 11, paddingVertical: 9, borderRadius: 13 },
+  readAllButton: { backgroundColor: '#2c6ba3', paddingHorizontal: 11, paddingVertical: 9, borderRadius: 13 },
   readAllDisabled: { backgroundColor: '#dce8ed' },
   readAllText: { fontSize: 10, fontWeight: '900', color: '#fff' },
   readAllTextDisabled: { color: '#8ca0aa' },
   notifCard: { flexDirection: 'row', backgroundColor: '#fcfeff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 14, marginBottom: 12, position: 'relative' },
   unreadCard: { borderColor: '#9bd4e0', backgroundColor: '#f4fbfd' },
   iconCircle: { width: 48, height: 48, borderRadius: 18, backgroundColor: '#e7f6f8', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  notifIcon: { width: 21, height: 21, tintColor: '#447C99' },
+  notifIcon: { width: 21, height: 21, tintColor: '#2c6ba3' },
   notifContent: { flex: 1 },
   notifHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  notifTitle: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: '900', color: '#24566d', marginRight: 10 },
+  notifTitle: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: '900', color: '#123a5e', marginRight: 10 },
   notifTime: { fontSize: 11, fontWeight: '800', color: '#7a94a6' },
-  notifType: { marginTop: 4, fontSize: 10, fontWeight: '900', color: '#5f9eb4', textTransform: 'uppercase' },
+  notifType: { marginTop: 4, fontSize: 10, fontWeight: '900', color: '#3a7ab8', textTransform: 'uppercase' },
   notifDescription: { marginTop: 6, fontSize: 13, lineHeight: 19, fontWeight: '600', color: '#5d7b91' },
   unreadDot: { position: 'absolute', top: 13, right: 13, width: 9, height: 9, borderRadius: 4.5, backgroundColor: '#f47c6b' },
   errorCard: { backgroundColor: '#fff0ee', borderRadius: 14, padding: 12, marginBottom: 12 },
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   loadingWrap: { paddingVertical: 48, alignItems: 'center' },
   loadingText: { marginTop: 12, color: '#5d7b91', fontWeight: '700' },
   emptyCard: { backgroundColor: '#fff', borderRadius: 20, padding: 22, borderWidth: 1, borderColor: '#dceef8', alignItems: 'center' },
-  emptyTitle: { fontSize: 16, fontWeight: '900', color: '#24566d' },
+  emptyTitle: { fontSize: 16, fontWeight: '900', color: '#123a5e' },
   emptyText: { marginTop: 7, fontSize: 13, lineHeight: 19, textAlign: 'center', color: '#6e8998', fontWeight: '600' },
 });
 

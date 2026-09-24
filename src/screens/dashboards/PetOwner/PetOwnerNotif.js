@@ -149,8 +149,8 @@ const PetOwnerNotif = ({ navigation, route }) => {
   return (
     <LinearGradient colors={['#f7fbfc', '#eef7f8', '#ffffff']} style={styles.background}>
       <SafeAreaView style={styles.container}>
-        <LinearGradient colors={['#63B6C5', '#63B6C5', '#63B6C5']} style={styles.headerBar}>
-          <LinearGradient colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']} style={styles.headerTopBand}>
+        <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.headerBar}>
+          <LinearGradient colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']} style={styles.headerTopBand}>
             <View style={styles.headerTopRow}>
               <TouchableOpacity style={styles.brandSection} onPress={() => navigate('petowner-screen')} activeOpacity={0.85}>
                 <View style={styles.logoWrap}><Image source={require('../../assets/paw1.png')} style={styles.headerLogo} resizeMode="contain" /></View>
@@ -205,7 +205,7 @@ const PetOwnerNotif = ({ navigation, route }) => {
               <TouchableOpacity
                 disabled={unreadCount === 0}
                 onPress={handleReadAll}
-                style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 14, backgroundColor: unreadCount ? '#447C99' : '#dce8ed' }}
+                style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 14, backgroundColor: unreadCount ? '#2c6ba3' : '#dce8ed' }}
               >
                 <Text style={{ color: unreadCount ? '#fff' : '#8ca0aa', fontWeight: '800', fontSize: 11 }}>Mark all read</Text>
               </TouchableOpacity>
@@ -215,7 +215,7 @@ const PetOwnerNotif = ({ navigation, route }) => {
           {error ? <View style={{ marginBottom: 12, padding: 12, borderRadius: 14, backgroundColor: '#fff0ee' }}><Text style={{ color: '#b44b3d', fontWeight: '700' }}>{error}</Text></View> : null}
 
           {loading ? (
-            <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color="#447C99" /><Text style={{ marginTop: 12, color: '#5d7b91', fontWeight: '700' }}>Loading notifications...</Text></View>
+            <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color="#2c6ba3" /><Text style={{ marginTop: 12, color: '#5d7b91', fontWeight: '700' }}>Loading notifications...</Text></View>
           ) : notifications.length ? (
             notifications.map((item) => {
               const accent = notificationAccent(item.notification_type);

@@ -109,7 +109,7 @@ export default function VetAppointment({ navigation, route }) {
   const currentPage = Math.min(page, totalPages);
   const pagedItems = visibleItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  return <VetShell navigation={navigation} route={route} subtitle="My Appointments" caption="Assigned clinic schedule">
+  return <VetShell navigation={navigation} route={route} subtitle="Appointments" caption="Assigned clinic schedule">
     <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}>
       <Text style={styles.helper}>Appointments use the same PawCruz web data and 10-minute scheduling flow. This veterinarian view is read-only; Staff controls appointment status and clinic check-in.</Text>
 
@@ -142,7 +142,7 @@ export default function VetAppointment({ navigation, route }) {
         />
       </View>
 
-      {loading && !items.length ? <ActivityIndicator size="large" color="#447C99" /> : null}
+      {loading && !items.length ? <ActivityIndicator size="large" color="#2c6ba3" /> : null}
       {error ? <View style={styles.empty}><Text style={styles.emptyTitle}>Appointments unavailable</Text><Text style={styles.emptyText}>{error}</Text></View> : null}
       {!loading && !error && !items.length ? <View style={styles.empty}><Text style={styles.emptyTitle}>No assigned appointments</Text><Text style={styles.emptyText}>Assigned appointments will appear here automatically.</Text></View> : null}
       {!loading && !error && items.length && !visibleItems.length ? <View style={styles.empty}><Text style={styles.emptyTitle}>No matching appointments</Text><Text style={styles.emptyText}>Try a different search term or status filter.</Text></View> : null}
@@ -221,23 +221,23 @@ const styles = StyleSheet.create({
   helper:{backgroundColor:'#e9f6fa',borderRadius:18,padding:14,color:'#466d80',fontSize:12,lineHeight:18,fontWeight:'700',marginBottom:14},
   searchBar:{backgroundColor:'#fcfeff',borderRadius:18,borderWidth:1,borderColor:'#d7edf9',padding:12,marginBottom:14,gap:10},
   searchRow:{flexDirection:'row',alignItems:'center',gap:10},
-  searchInput:{flex:1,minHeight:46,borderRadius:14,borderWidth:1,borderColor:'#d7edf9',backgroundColor:'#ffffff',paddingHorizontal:14,fontSize:14,fontWeight:'700',color:'#24566d'},
+  searchInput:{flex:1,minHeight:46,borderRadius:14,borderWidth:1,borderColor:'#d7edf9',backgroundColor:'#ffffff',paddingHorizontal:14,fontSize:14,fontWeight:'700',color:'#123a5e'},
   clearButton:{minHeight:46,paddingHorizontal:16,borderRadius:14,backgroundColor:'#eef4f8',alignItems:'center',justifyContent:'center'},
-  clearButtonText:{color:'#447C99',fontWeight:'900',fontSize:12},
+  clearButtonText:{color:'#2c6ba3',fontWeight:'900',fontSize:12},
   dropdown:{minHeight:46,borderWidth:1,borderColor:'#d7edf9',borderRadius:14,paddingHorizontal:14,backgroundColor:'#ffffff'},
   dropdownList:{borderRadius:14,borderColor:'#d7edf9'},
-  dropdownSelectedText:{fontSize:14,fontWeight:'700',color:'#24566d'},
+  dropdownSelectedText:{fontSize:14,fontWeight:'700',color:'#123a5e'},
   listRow:{backgroundColor:'#fff',borderRadius:18,borderWidth:1,borderColor:'#dceef8',paddingVertical:12,paddingHorizontal:14,marginBottom:10},
   listRowTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:4},
-  pet:{fontSize:16,fontWeight:'900',color:'#24566d',flex:1},
-  status:{backgroundColor:'#e7f6f8',color:'#447C99',fontWeight:'900',fontSize:11,paddingHorizontal:10,paddingVertical:5,borderRadius:999},
+  pet:{fontSize:16,fontWeight:'900',color:'#123a5e',flex:1},
+  status:{backgroundColor:'#e7f6f8',color:'#2c6ba3',fontWeight:'900',fontSize:11,paddingHorizontal:10,paddingVertical:5,borderRadius:999},
   cancelled:{backgroundColor:'#fde8e8',color:'#a74646'}, completed:{backgroundColor:'#e8eefc',color:'#4567a6'},
   listMeta:{fontSize:12,fontWeight:'700',color:'#5d7b91'},
   listReason:{fontSize:12,fontWeight:'600',color:'#78909b',marginTop:2},
   empty:{backgroundColor:'#fff',borderRadius:22,padding:24,alignItems:'center',borderWidth:1,borderColor:'#dceef8'},
-  emptyTitle:{fontSize:17,fontWeight:'900',color:'#24566d'}, emptyText:{marginTop:7,textAlign:'center',color:'#5d7b91'},
+  emptyTitle:{fontSize:17,fontWeight:'900',color:'#123a5e'}, emptyText:{marginTop:7,textAlign:'center',color:'#5d7b91'},
   pagination:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:6},
-  pageButton:{minHeight:42,paddingHorizontal:16,borderRadius:14,backgroundColor:'#447C99',alignItems:'center',justifyContent:'center'},
+  pageButton:{minHeight:42,paddingHorizontal:16,borderRadius:14,backgroundColor:'#2c6ba3',alignItems:'center',justifyContent:'center'},
   pageButtonDisabled:{backgroundColor:'#e3edf2'},
   pageButtonText:{color:'#ffffff',fontWeight:'900',fontSize:12},
   pageButtonTextDisabled:{color:'#a9bfca'},
@@ -245,8 +245,8 @@ const styles = StyleSheet.create({
   modalOverlay:{flex:1,backgroundColor:'rgba(20,40,50,0.45)',justifyContent:'center',padding:20},
   modalCard:{backgroundColor:'#fff',borderRadius:22,padding:20,maxHeight:'82%'},
   modalHeaderRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:10},
-  modalTitle:{fontSize:19,fontWeight:'900',color:'#24566d',flex:1,marginRight:10},
-  modalCloseButton:{marginTop:16,minHeight:46,borderRadius:14,backgroundColor:'#447C99',alignItems:'center',justifyContent:'center'},
+  modalTitle:{fontSize:19,fontWeight:'900',color:'#123a5e',flex:1,marginRight:10},
+  modalCloseButton:{marginTop:16,minHeight:46,borderRadius:14,backgroundColor:'#2c6ba3',alignItems:'center',justifyContent:'center'},
   modalCloseText:{color:'#fff',fontWeight:'900',fontSize:13},
   infoRow:{flexDirection:'row',justifyContent:'space-between',gap:12,paddingVertical:8,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:'#e6eef2'},
   infoLabel:{flex:.42,color:'#78909b',fontSize:12,fontWeight:'600'}, infoValue:{flex:.58,color:'#365f72',fontSize:12,fontWeight:'800',textAlign:'right'},

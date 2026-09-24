@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
@@ -97,7 +97,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -114,7 +114,7 @@ export const styles = StyleSheet.create({
     borderRadius: 4.5,
     backgroundColor: '#f47c6b',
     borderWidth: 2,
-    borderColor: '#447C99',
+    borderColor: '#2c6ba3',
   },
 
   notifIcon: {
@@ -132,7 +132,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -190,7 +190,7 @@ export const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
-    backgroundColor: 'rgba(68, 124, 153, 0.36)',
+    backgroundColor: 'rgba(44, 107, 163, 0.36)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.3)',
     justifyContent: 'center',
@@ -208,7 +208,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(68, 124, 153, 0.98)',
+    backgroundColor: 'rgba(44, 107, 163, 0.98)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignSelf: 'stretch',
@@ -232,7 +232,7 @@ export const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -258,7 +258,7 @@ export const styles = StyleSheet.create({
     marginBottom: 18,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -280,7 +280,7 @@ export const styles = StyleSheet.create({
   heroSlideCard: {
     marginTop: 4,
     minHeight: 210,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.18)',
@@ -371,7 +371,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   sectionSubtitle: {
@@ -454,7 +454,7 @@ export const styles = StyleSheet.create({
   },
 
   activityTrackAccentTeal: {
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
   },
 
   activityStatLabel: {
@@ -469,7 +469,7 @@ export const styles = StyleSheet.create({
     fontSize: 34,
     lineHeight: 42,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginTop: 6,
   },
 
@@ -736,7 +736,7 @@ export const styles = StyleSheet.create({
   iconImage: {
     width: 26,
     height: 26,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   menuLabel: {
@@ -754,7 +754,7 @@ export const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderWidth: 2,
     borderColor: '#d7eef3',
     alignItems: 'center',
@@ -803,11 +803,11 @@ export const styles = StyleSheet.create({
   navIcon: {
     width: 24,
     height: 24,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   activeNavIcon: {
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 });
 

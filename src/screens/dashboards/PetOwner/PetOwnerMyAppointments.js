@@ -155,8 +155,8 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
             </View>
           </View>
         )}
-        <LinearGradient colors={['#63B6C5', '#63B6C5', '#63B6C5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerBar}>
-          <LinearGradient colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTopBand}>
+        <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerBar}>
+          <LinearGradient colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTopBand}>
             <View style={styles.headerTopRow}>
               <TouchableOpacity style={styles.brandSection} onPress={() => navigation.navigate('petowner-screen', { user })} activeOpacity={0.85}>
                 <View style={styles.logoWrap}>
@@ -164,7 +164,7 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
                 </View>
                 <View style={styles.brandBlock}>
                   <Text style={styles.headerTitle}>PawCruz</Text>
-                  <Text style={styles.headerSubtitle}>My Appointments</Text>
+                  <Text style={styles.headerSubtitle}>Appointments</Text>
                 </View>
               </TouchableOpacity>
 
@@ -194,9 +194,9 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
         <PetOwnerSideDrawer visible={isSidebarVisible} onClose={() => setIsSidebarVisible(false)} navigation={navigation} user={user} activeKey="myAppointments" />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <LinearGradient colors={['#63B6C5', '#63B6C5', '#63B6C5']} style={styles.heroCard}>
+          <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.heroCard}>
             <Text style={styles.eyebrow}>APPOINTMENT HISTORY</Text>
-            <Text style={styles.title}>My Appointments</Text>
+            <Text style={styles.title}>Appointments</Text>
             <Text style={styles.subtitle}>View, reschedule, or cancel your eligible appointments.</Text>
           </LinearGradient>
 
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   headerBar: {
     marginHorizontal: 0, marginTop: 0, marginBottom: 16, paddingHorizontal: 22, paddingTop: 18, paddingBottom: 20,
     borderBottomLeftRadius: 30, borderBottomRightRadius: 30,
-    shadowColor: '#447C99', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 8,
+    shadowColor: '#2c6ba3', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 8,
   },
   headerTopBand: {
     marginHorizontal: -22, marginTop: -18, paddingHorizontal: 22, paddingTop: 18, paddingBottom: 16,
@@ -308,16 +308,16 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 12, fontWeight: '700', color: '#c3ddee', marginTop: 3 },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   notifButton: {
-    width: 46, height: 46, borderRadius: 15, backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    width: 46, height: 46, borderRadius: 15, backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1, borderColor: 'rgba(222, 242, 247, 0.34)', justifyContent: 'center', alignItems: 'center', position: 'relative',
   },
   notifBadge: {
     position: 'absolute', top: 11, right: 12, width: 9, height: 9, borderRadius: 4.5,
-    backgroundColor: '#f47c6b', borderWidth: 2, borderColor: '#447C99',
+    backgroundColor: '#f47c6b', borderWidth: 2, borderColor: '#2c6ba3',
   },
   notifIcon: { width: 21, height: 21, tintColor: '#ffffff' },
   profileButton: {
-    width: 46, height: 46, borderRadius: 15, backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    width: 46, height: 46, borderRadius: 15, backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1, borderColor: 'rgba(222, 242, 247, 0.34)', justifyContent: 'center', alignItems: 'center', marginLeft: 10, overflow: 'hidden',
   },
   profileIcon: { width: 20, height: 20, tintColor: '#ffffff' },
@@ -326,10 +326,10 @@ const styles = StyleSheet.create({
   headerCaption: { fontSize: 12, color: '#b8d4e5', fontWeight: '700', textAlign: 'right' },
   ownerName: { fontSize: 18, fontWeight: '800', color: '#ffffff', marginTop: 4, textAlign: 'right' },
   menuTriggerButton: {
-    width: 58, height: 58, borderRadius: 18, backgroundColor: 'rgba(68, 124, 153, 0.36)',
+    width: 58, height: 58, borderRadius: 18, backgroundColor: 'rgba(44, 107, 163, 0.36)',
     borderWidth: 1, borderColor: 'rgba(222, 242, 247, 0.3)', justifyContent: 'center', alignItems: 'center',
   },
-  menuTriggerButtonActive: { backgroundColor: 'rgba(68, 124, 153, 0.58)' },
+  menuTriggerButtonActive: { backgroundColor: 'rgba(44, 107, 163, 0.58)' },
   menuTriggerIcon: { width: 30, height: 30, tintColor: '#ffffff' },
 
   content: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 120 },
@@ -347,16 +347,16 @@ const styles = StyleSheet.create({
   },
   stickyNoticeSuccess: { backgroundColor: '#effbf4', borderColor: '#b9e8ca' },
   stickyNoticeError: { backgroundColor: '#fff4f4', borderColor: '#f0c5c5' },
-  stickyNoticeIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#447C99', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  stickyNoticeIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#2c6ba3', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   stickyNoticeIconText: { color: '#ffffff', fontSize: 20, fontWeight: '900', lineHeight: 22 },
-  stickyNoticeText: { flex: 1, color: '#24566d', fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  stickyNoticeText: { flex: 1, color: '#123a5e', fontSize: 13, lineHeight: 18, fontWeight: '800' },
   stickyNoticeClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
   stickyNoticeCloseText: { color: '#5e7886', fontSize: 26, fontWeight: '500', lineHeight: 28 },
   card: {
     backgroundColor: '#fcfeff', borderRadius: 28, padding: 18, borderWidth: 1, borderColor: '#edf7fd', marginBottom: 20,
-    shadowColor: '#63B6C5', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 18, elevation: 6,
+    shadowColor: '#3a7ab8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 18, elevation: 6,
   },
-  viewQueueButton: { minHeight: 40, paddingHorizontal: 11, borderRadius: 13, backgroundColor: '#447C99', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  viewQueueButton: { minHeight: 40, paddingHorizontal: 11, borderRadius: 13, backgroundColor: '#2c6ba3', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   viewQueueIcon: { width: 17, height: 17, tintColor: '#ffffff' },
   viewQueueText: { color: '#ffffff', fontSize: 12, fontWeight: '900' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 5, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2ecef' },
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   summaryValue: { color: '#365f72', fontSize: 12, fontWeight: '800', textAlign: 'right', flex: 0.58 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
   secondaryButton: { flex: 1, borderWidth: 1, borderColor: '#c6e5ed', paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: '#edf6f8' },
-  secondaryText: { color: '#447C99', fontWeight: '900' },
+  secondaryText: { color: '#2c6ba3', fontWeight: '900' },
   cancelButton: { flex: 1, borderWidth: 1, borderColor: '#e4a6a6', paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: '#fff8f8' },
   cancelText: { color: '#b54b4b', fontWeight: '800' },
   empty: { color: '#758b94', textAlign: 'center', paddingVertical: 24 },
@@ -373,19 +373,19 @@ const styles = StyleSheet.create({
   appointmentRowMain: { flex: 1, minWidth: 0, paddingVertical: 3 },
   appointmentRowActions: { alignItems: 'flex-end', gap: 8 },
   appointmentMeta: { color: '#5d7b91', fontSize: 12, fontWeight: '700', marginTop: 4 },
-  appointmentHint: { color: '#447C99', fontSize: 11, fontWeight: '800', marginTop: 5 },
+  appointmentHint: { color: '#2c6ba3', fontSize: 11, fontWeight: '800', marginTop: 5 },
   appointmentDetails: { marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2eef2' },
-  petName: { color: '#24566d', fontSize: 16, fontWeight: '900' },
+  petName: { color: '#123a5e', fontSize: 16, fontWeight: '900' },
   status: { backgroundColor: '#def4e6', color: '#26704a', fontWeight: '800', fontSize: 11, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
   statusCancelled: { backgroundColor: '#fde8e8', color: '#a74646' },
   statusCompleted: { backgroundColor: '#e8eefc', color: '#4567a6' },
 
   quickAssistFloat: {
-    position: 'absolute', right: 18, bottom: 16, width: 84, height: 84, borderRadius: 42, backgroundColor: '#447C99',
+    position: 'absolute', right: 18, bottom: 16, width: 84, height: 84, borderRadius: 42, backgroundColor: '#2c6ba3',
     borderWidth: 2, borderColor: '#d7eef3', alignItems: 'center', justifyContent: 'center', padding: 10,
-    zIndex: 1000, elevation: 18, shadowColor: '#24566d', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 16,
+    zIndex: 1000, elevation: 18, shadowColor: '#123a5e', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 16,
   },
   quickAssistTouch: { width: '100%', height: '100%', borderRadius: 37, alignItems: 'center', justifyContent: 'center' },
   quickAssistIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#e7f6f8', borderWidth: 1, borderColor: '#c8e4f5', alignItems: 'center', justifyContent: 'center' },
-  quickAssistIcon: { width: 30, height: 30, tintColor: '#24566d' },
+  quickAssistIcon: { width: 30, height: 30, tintColor: '#123a5e' },
 });

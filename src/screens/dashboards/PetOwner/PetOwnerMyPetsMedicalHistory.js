@@ -425,7 +425,7 @@ export default function PetOwnerMyPetsMedicalHistory({ pet, records = [], loadin
   if (loading) {
     return (
       <View style={styles.aiEmptyCard}>
-        <ActivityIndicator color="#447C99" />
+        <ActivityIndicator color="#2c6ba3" />
         <Text style={styles.aiEmptyText}>Loading medical history...</Text>
       </View>
     );

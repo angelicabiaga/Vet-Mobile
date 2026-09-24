@@ -5,6 +5,7 @@ import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TouchableOpacity
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from '../../styles/PetOwnerAppointmentDesign';
 import { getQueue, subscribeToQueue } from '../../../api/queueService';
+import { formatTime } from '../../../api/mobileAppointmentService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
@@ -14,6 +15,20 @@ const QueueSummaryRow = ({ label, value, last }) => (
     <Text style={personalStyles.summaryValue}>{value || '—'}</Text>
   </View>
 );
+
+const formatCheckInClockTime = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+};
+
+// A booked-ahead appointment keeps its reserved time as `original_appointment_time`;
+// a walk-in never had one, so it falls back to when Staff actually checked them in.
+const bookingInfo = (entry) => {
+  if (entry?.original_appointment_time) return { label: 'Appointment Time', value: formatTime(entry.original_appointment_time) };
+  return { label: 'Checked In At', value: formatCheckInClockTime(entry?.arrived_at) };
+};
 
 export default function PetOwnerQueue({ navigation, route }) {
   const user = route?.params?.user;
@@ -94,17 +109,13 @@ export default function PetOwnerQueue({ navigation, route }) {
   const pets = entry?.pets?.length ? entry.pets : (entry?.pet ? [entry.pet] : []);
   const petName = pets.length ? pets.map((p) => p.pet_name).join(', ') : 'Not assigned';
   const veterinarianName = entry?.veterinarian?.full_name || 'Not assigned';
-  const appointmentDate = entry?.appointment?.appointment_date || 'Not assigned';
-  const appointmentTime = entry?.appointment?.start_time || 'Not assigned';
-  const visitReason = entry?.appointment?.visit_reason || 'General Consultation';
-  const clientsAhead = entry?.clientsAhead ?? 0;
-  const estimatedWaitMinutes = entry?.estimatedWaitMinutes ?? 0;
+  const booking = entry ? bookingInfo(entry) : null;
 
   return (
     <LinearGradient colors={['#f7fbfc', '#eef7f8', '#ffffff']} style={styles.background}>
       <SafeAreaView style={styles.container}>
-        <LinearGradient colors={['#63B6C5', '#63B6C5', '#63B6C5']} style={styles.headerBar}>
-          <LinearGradient colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTopBand}>
+        <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.headerBar}>
+          <LinearGradient colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTopBand}>
             <View style={styles.headerTopRow}>
               <TouchableOpacity style={styles.brandSection} onPress={() => navigation.navigate('petowner-screen', { user })} activeOpacity={0.85}>
                 <View style={styles.logoWrap}><Image source={require('../../assets/paw1.png')} style={styles.headerLogo} resizeMode="contain" /></View>
@@ -144,14 +155,13 @@ export default function PetOwnerQueue({ navigation, route }) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.queueScrollContent}>
           <View style={personalStyles.summaryCard}>
             <View style={personalStyles.summaryHeader}>
-              <View>
-                <Text style={personalStyles.summaryEyebrow}>CLINIC CHECK-IN</Text>
-                <Text style={personalStyles.summaryTitle}>Queue Summary</Text>
-              </View>
-              <View style={personalStyles.queueNumberBadge}>
-                <Text style={personalStyles.queueNumberLabel}>QUEUE NO.</Text>
-                <Text style={personalStyles.queueNumberValue}>{loading ? '...' : queueNumber || '—'}</Text>
-              </View>
+              <Text style={personalStyles.summaryEyebrow}>CLINIC CHECK-IN</Text>
+              <Text style={personalStyles.summaryTitle}>Queue Summary</Text>
+            </View>
+
+            <View style={personalStyles.queueNumberBlock}>
+              <Text style={personalStyles.queueNumberLabel}>QUEUE NO.</Text>
+              <Text style={personalStyles.queueNumberValue}>{loading ? '...' : queueNumber || '—'}</Text>
             </View>
 
             {loading ? (
@@ -171,15 +181,11 @@ export default function PetOwnerQueue({ navigation, route }) {
                   </View>
                 ) : null}
 
-                <QueueSummaryRow label="Pet Owner" value={headerDisplayName} />
                 <QueueSummaryRow label="Pet" value={petName} />
                 {pets.length > 1 ? (
                   <QueueSummaryRow label="Visit Size" value={`${pets.length} pets · ${entry?.visitDurationMinutes || pets.length * 10} min visit`} />
                 ) : null}
-                <QueueSummaryRow label="Veterinarian" value={veterinarianName} />
-                <QueueSummaryRow label="Appointment Date" value={appointmentDate} />
-                <QueueSummaryRow label="Appointment Time" value={appointmentTime} />
-                <QueueSummaryRow label="Visit Reason" value={visitReason} last />
+                <QueueSummaryRow label="Veterinarian" value={veterinarianName} last />
 
                 <View style={personalStyles.statGrid}>
                   <View style={personalStyles.statBox}>
@@ -187,12 +193,8 @@ export default function PetOwnerQueue({ navigation, route }) {
                     <Text style={personalStyles.statLabel}>Status</Text>
                   </View>
                   <View style={personalStyles.statBox}>
-                    <Text style={personalStyles.statValue}>{clientsAhead}</Text>
-                    <Text style={personalStyles.statLabel}>Clients Ahead</Text>
-                  </View>
-                  <View style={personalStyles.statBox}>
-                    <Text style={personalStyles.statValue}>~{estimatedWaitMinutes} min</Text>
-                    <Text style={personalStyles.statLabel}>Estimated Wait</Text>
+                    <Text style={personalStyles.statValue}>{booking.value}</Text>
+                    <Text style={personalStyles.statLabel}>{booking.label}</Text>
                   </View>
                 </View>
 
@@ -233,12 +235,22 @@ const personalStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 7 },
     elevation: 3,
   },
-  summaryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#e2ecef' },
+  summaryHeader: { alignItems: 'center', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#e2ecef' },
   summaryEyebrow: { color: '#6f929f', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
-  summaryTitle: { color: '#24566d', fontSize: 23, fontWeight: '900', marginTop: 3 },
-  queueNumberBadge: { minWidth: 86, minHeight: 70, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#447C99', alignItems: 'center', justifyContent: 'center' },
-  queueNumberLabel: { color: '#dff2f7', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
-  queueNumberValue: { color: '#ffffff', fontSize: 25, lineHeight: 30, fontWeight: '900', marginTop: 2 },
+  summaryTitle: { color: '#123a5e', fontSize: 23, fontWeight: '900', marginTop: 3 },
+  queueNumberBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    minWidth: 160,
+    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    marginVertical: 18,
+    backgroundColor: '#2c6ba3',
+  },
+  queueNumberLabel: { color: '#dff2f7', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  queueNumberValue: { color: '#ffffff', fontSize: 48, lineHeight: 56, fontWeight: '900', marginTop: 4, textAlign: 'center' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2ecef' },
   summaryRowLast: { borderBottomWidth: 0 },
   summaryLabel: { color: '#78909b', fontSize: 12, fontWeight: '600', flex: 0.42 },
@@ -258,7 +270,7 @@ const personalStyles = StyleSheet.create({
     paddingVertical: 24,
   },
   emptyTitle: {
-    color: '#24566d',
+    color: '#123a5e',
     fontSize: 18,
     fontWeight: '900',
     textAlign: 'center',
@@ -290,7 +302,7 @@ const personalStyles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    color: '#318fbe',
+    color: '#2c6ba3',
     fontSize: 15,
     fontWeight: '900',
     marginBottom: 4,

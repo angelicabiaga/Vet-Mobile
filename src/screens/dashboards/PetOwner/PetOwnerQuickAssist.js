@@ -170,13 +170,13 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
         >
         <View style={styles.container}>
           <LinearGradient
-            colors={['#63B6C5', '#63B6C5', '#63B6C5']}
+            colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerBar}
           >
             <LinearGradient
-              colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']}
+              colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.headerTopBand}
@@ -371,7 +371,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
             ))}
             {sending ? (
               <View style={styles.aiTypingRow}>
-                <ActivityIndicator size="small" color="#447C99" />
+                <ActivityIndicator size="small" color="#2c6ba3" />
                 <Text style={styles.aiTypingText}>PawCruz AI is responding...</Text>
               </View>
             ) : null}
@@ -389,8 +389,8 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
                 onSubmitEditing={sendAiMessage}
                 returnKeyType="send"
                 textAlignVertical="center"
-                selectionColor="#447C99"
-                cursorColor="#447C99"
+                selectionColor="#2c6ba3"
+                cursorColor="#2c6ba3"
                 autoCorrect={true}
               />
               <TouchableOpacity onPress={sendAiMessage} disabled={!inputText.trim() || sending || !historyLoaded} activeOpacity={0.8}>
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     alignItems: 'center',
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     borderRadius: 4.5,
     backgroundColor: '#f47c6b',
     borderWidth: 2,
-    borderColor: '#447C99',
+    borderColor: '#2c6ba3',
   },
 
   notifIcon: {
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
-    backgroundColor: 'rgba(68, 124, 153, 0.36)',
+    backgroundColor: 'rgba(44, 107, 163, 0.36)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.3)',
     justifyContent: 'center',
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(68, 124, 153, 0.98)',
+    backgroundColor: 'rgba(44, 107, 163, 0.98)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignSelf: 'stretch',
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderWidth: 1,
     borderColor: '#dceaf0',
-    shadowColor: '#24566d',
+    shadowColor: '#123a5e',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
 
   userMessageCard: {
     maxWidth: '88%',
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 6,
     alignSelf: 'flex-end',
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#d5eaf1',
-    shadowColor: '#24566d',
+    shadowColor: '#123a5e',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
   },
   aiWelcomeTitle: {
     marginTop: 2,
-    color: '#24566d',
+    color: '#123a5e',
     fontSize: 17,
     lineHeight: 21,
     fontWeight: '900',

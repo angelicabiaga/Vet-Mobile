@@ -71,7 +71,7 @@ export default function VetSchedule({ navigation, route }) {
       >
         {loading && !weekly.length && !overrides.length ? (
           <View style={styles.emptyCard}>
-            <ActivityIndicator size="large" color="#447C99" />
+            <ActivityIndicator size="large" color="#2c6ba3" />
             <Text style={styles.emptyText}>Loading your schedule...</Text>
           </View>
         ) : null}
@@ -143,11 +143,11 @@ export default function VetSchedule({ navigation, route }) {
 const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 120 },
   sectionHeaderWrap: { marginBottom: 10, marginTop: 4 },
-  sectionTitle: { fontSize: 17, fontWeight: '900', color: '#24566d' },
+  sectionTitle: { fontSize: 17, fontWeight: '900', color: '#123a5e' },
   sectionSubtitle: { marginTop: 3, fontSize: 12, fontWeight: '600', color: '#5f7f8a' },
   card: { backgroundColor: '#fcfeff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 14, marginBottom: 18 },
   dayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#edf4f8' },
-  dayLabel: { fontSize: 13.5, fontWeight: '800', color: '#24566d' },
+  dayLabel: { fontSize: 13.5, fontWeight: '800', color: '#123a5e' },
   dayBadge: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
   dayBadgeOpen: { backgroundColor: '#e5f4ea' },
   dayBadgeClosed: { backgroundColor: '#f2f5f6' },
@@ -158,6 +158,6 @@ const styles = StyleSheet.create({
   emptyCard: { backgroundColor: '#fcfeff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 18, alignItems: 'center' },
   emptyText: { marginTop: 10, fontSize: 13, color: '#6a8aa0', fontWeight: '600' },
   errorText: { color: '#a33b3b', fontWeight: '700', textAlign: 'center' },
-  retryButton: { marginTop: 12, backgroundColor: '#447C99', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14 },
+  retryButton: { marginTop: 12, backgroundColor: '#2c6ba3', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14 },
   retryText: { color: '#fff', fontWeight: '900' },
 });

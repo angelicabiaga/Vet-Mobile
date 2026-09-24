@@ -12,7 +12,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/screens/assets/paw2-adaptive.png",
-        "backgroundColor": "#063B55"
+        "backgroundColor": "#FFFFFF"
       },
       "softwareKeyboardLayoutMode": "resize",
       "package": "PawCruz.App"
@@ -35,7 +35,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./src/screens/assets/paw2-adaptive.png",
+          "image": "./src/screens/assets/paw2-splash.png",
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF"
         }

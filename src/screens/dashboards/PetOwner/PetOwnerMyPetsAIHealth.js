@@ -25,7 +25,7 @@ const LEVEL_BADGE = { Low: 'statusBadgeGood', Moderate: 'statusBadgeWarn', High:
 const LEVEL_BADGE_TEXT = { Low: 'statusBadgeGoodText', Moderate: 'statusBadgeWarnText', High: 'statusBadgeRiskText' };
 
 function HealthScoreRing({ score, level }) {
-  const color = LEVEL_COLOR[level] || '#447C99';
+  const color = LEVEL_COLOR[level] || '#2c6ba3';
   const progress = Math.max(0, Math.min(100, score)) / 100;
   const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress);
 

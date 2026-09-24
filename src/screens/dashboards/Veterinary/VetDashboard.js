@@ -277,7 +277,7 @@ const VetDashboard = ({ navigation, route }) => {
         </View>
 
         {loading && !dashboardData.appointments.length && !dashboardData.medicalRecords.length ? (
-          <ActivityIndicator size="large" color="#447C99" style={{ marginBottom: 18 }} />
+          <ActivityIndicator size="large" color="#2c6ba3" style={{ marginBottom: 18 }} />
         ) : null}
 
         <View style={dashboardStyles.activityPanel}>
@@ -338,7 +338,7 @@ const localStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 22,
     marginBottom: 18,
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
     shadowColor: '#5b84a3',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.18,
@@ -348,7 +348,7 @@ const localStyles = StyleSheet.create({
   heroSlideCard: {
     marginTop: 4,
     minHeight: 210,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
@@ -435,7 +435,7 @@ const localStyles = StyleSheet.create({
     borderColor: '#dceef8',
     padding: 14,
     marginBottom: 22,
-    shadowColor: '#24566d',
+    shadowColor: '#123a5e',
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
@@ -452,7 +452,7 @@ const localStyles = StyleSheet.create({
     marginBottom: 12,
   },
   overviewLabel: { fontSize: 12, lineHeight: 17, fontWeight: '900', color: '#55798b', textTransform: 'uppercase' },
-  overviewValue: { marginTop: 8, fontSize: 34, lineHeight: 38, fontWeight: '900', color: '#24566d' },
+  overviewValue: { marginTop: 8, fontSize: 34, lineHeight: 38, fontWeight: '900', color: '#123a5e' },
   overviewDetail: { marginTop: 8, fontSize: 11.5, lineHeight: 17, fontWeight: '700', color: '#688493' },
   latestActivity: {
     marginTop: 2,
@@ -468,8 +468,8 @@ const localStyles = StyleSheet.create({
   serviceGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   serviceCard: { width: '48%', backgroundColor: '#fcfeff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 14, marginBottom: 12, minHeight: 150 },
   serviceIconWrap: { width: 48, height: 48, borderRadius: 18, backgroundColor: '#e7f6f8', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  serviceIcon: { width: 24, height: 24, tintColor: '#24566d' },
-  serviceTitle: { fontSize: 14, lineHeight: 19, fontWeight: '900', color: '#24566d' },
+  serviceIcon: { width: 24, height: 24, tintColor: '#123a5e' },
+  serviceTitle: { fontSize: 14, lineHeight: 19, fontWeight: '900', color: '#123a5e' },
   serviceSubtitle: { marginTop: 5, fontSize: 12, lineHeight: 17, fontWeight: '600', color: '#5d7b91' },
 });
 

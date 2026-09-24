@@ -6,7 +6,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#fcfeff',
   },
   topHeader: {
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 22,
@@ -14,7 +14,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#447C99',
+    shadowColor: '#2c6ba3',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 16,
@@ -22,7 +22,7 @@ export const styles = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
   calendarHeader: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -73,7 +73,7 @@ export const styles = StyleSheet.create({
   petNameText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
   },
   ownerText: {
     fontSize: 13,
@@ -90,7 +90,7 @@ export const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#447C99',
+    color: '#2c6ba3',
     textTransform: 'uppercase',
   },
   detailValue: {
@@ -106,7 +106,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewBtnText: {
-    color: '#24566d',
+    color: '#123a5e',
     fontSize: 13,
     fontWeight: 'bold',
   },

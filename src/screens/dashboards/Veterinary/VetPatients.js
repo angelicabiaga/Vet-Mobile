@@ -213,7 +213,7 @@ const VetPatients = ({ navigation, route }) => {
     return (
       <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Pet Owners">
         <View style={styles.emptyCard}>
-          <ActivityIndicator size="large" color="#447C99" />
+          <ActivityIndicator size="large" color="#2c6ba3" />
         </View>
       </VetShell>
     );
@@ -269,7 +269,7 @@ const VetPatients = ({ navigation, route }) => {
 
         {loading && !patients.length ? (
           <View style={styles.emptyCard}>
-            <ActivityIndicator size="large" color="#447C99" />
+            <ActivityIndicator size="large" color="#2c6ba3" />
             <Text style={styles.emptyText}>Loading animal patients...</Text>
           </View>
         ) : null}
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   searchInput: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
   patientCard: {
     backgroundColor: '#fcfeff',
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 21,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
   petPhoto: {
     width: 58,
@@ -437,14 +437,14 @@ const styles = StyleSheet.create({
   patientName: {
     fontSize: 17,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginRight: 8,
   },
   patientBreed: {
     marginTop: 4,
     fontSize: 12,
     fontWeight: '800',
-    color: '#447C99',
+    color: '#2c6ba3',
   },
   patientIdText: {
     marginTop: 4,
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
   patientFooterRow: {
     flexDirection: 'row',
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   statusBadgeNeutral: { backgroundColor: '#e8f4fb' },
-  statusBadgeNeutralText: { color: '#447C99' },
+  statusBadgeNeutralText: { color: '#2c6ba3' },
   statusBadgeGood: { backgroundColor: '#e5f4ea' },
   statusBadgeGoodText: { color: '#2f8f5b' },
   statusBadgeWarn: { backgroundColor: '#fdf1dc' },
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
   emptyText: {
     marginTop: 8,
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 12,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 14,

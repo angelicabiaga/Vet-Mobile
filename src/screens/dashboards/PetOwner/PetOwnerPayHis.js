@@ -51,8 +51,8 @@ export default function PetOwnerPayHis({ navigation, route }) {
   return (
     <LinearGradient colors={['#f7fbfc', '#eef7f8', '#ffffff']} style={styles.background}>
       <SafeAreaView style={styles.container}>
-        <LinearGradient colors={['#63B6C5', '#63B6C5', '#63B6C5']} style={styles.headerBar}>
-          <LinearGradient colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTopBand}>
+        <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.headerBar}>
+          <LinearGradient colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTopBand}>
             <View style={styles.headerTopRow}>
               <TouchableOpacity style={styles.brandSection} onPress={() => navigation.navigate('petowner-screen', { user })} activeOpacity={0.85}>
                 <View style={styles.logoWrap}><Image source={require('../../assets/paw1.png')} style={styles.headerLogo} resizeMode="contain" /></View>
@@ -78,7 +78,7 @@ export default function PetOwnerPayHis({ navigation, route }) {
           </View>
 
           {loading ? (
-            <View style={localStyles.stateCard}><ActivityIndicator color="#447C99" /><Text style={localStyles.stateText}>Loading payment history...</Text></View>
+            <View style={localStyles.stateCard}><ActivityIndicator color="#2c6ba3" /><Text style={localStyles.stateText}>Loading payment history...</Text></View>
           ) : null}
 
           {!loading && error ? (
@@ -160,21 +160,21 @@ const localStyles = StyleSheet.create({
   stateCard: { backgroundColor: '#fff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 22, alignItems: 'center', marginBottom: 16 },
   stateText: { marginTop: 10, color: '#67889a', fontWeight: '600', textAlign: 'center', lineHeight: 19 },
   errorText: { color: '#a33b3b', fontWeight: '800', textAlign: 'center' },
-  retryButton: { marginTop: 12, backgroundColor: '#447C99', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 20 },
+  retryButton: { marginTop: 12, backgroundColor: '#2c6ba3', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 20 },
   retryText: { color: '#fff', fontWeight: '900' },
-  emptyTitle: { color: '#24566d', fontSize: 17, fontWeight: '900' },
+  emptyTitle: { color: '#123a5e', fontSize: 17, fontWeight: '900' },
   txCard: { backgroundColor: '#fff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 16, marginBottom: 12 },
   txTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  txPetName: { fontSize: 16, fontWeight: '900', color: '#24566d' },
+  txPetName: { fontSize: 16, fontWeight: '900', color: '#123a5e' },
   txDate: { marginTop: 3, fontSize: 12, fontWeight: '700', color: '#64869a' },
   txTotalsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#edf4f8' },
   txAmountLabel: { fontSize: 12, fontWeight: '800', color: '#7892a0', textTransform: 'uppercase' },
-  txAmount: { fontSize: 18, fontWeight: '900', color: '#24566d' },
+  txAmount: { fontSize: 18, fontWeight: '900', color: '#123a5e' },
   txExpanded: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#edf4f8' },
   txDetailLine: { fontSize: 12.5, fontWeight: '700', color: '#5f7f94', marginBottom: 6, lineHeight: 18 },
   itemsBlock: { marginTop: 6, marginBottom: 6 },
   itemsTitle: { fontSize: 11, fontWeight: '900', color: '#7892a0', textTransform: 'uppercase', marginBottom: 6 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  itemName: { flex: 1, fontSize: 12.5, fontWeight: '700', color: '#24566d', marginRight: 10 },
-  itemPrice: { fontSize: 12.5, fontWeight: '800', color: '#24566d' },
+  itemName: { flex: 1, fontSize: 12.5, fontWeight: '700', color: '#123a5e', marginRight: 10 },
+  itemPrice: { fontSize: 12.5, fontWeight: '800', color: '#123a5e' },
 });

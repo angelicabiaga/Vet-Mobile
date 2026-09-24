@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   },
   iconText: { fontSize: 16, lineHeight: 18 },
   body: { flex: 1 },
-  title: { color: '#24566d', fontSize: 13, fontWeight: '900' },
+  title: { color: '#123a5e', fontSize: 13, fontWeight: '900' },
   message: { color: '#4e6a7b', fontSize: 12, fontWeight: '600', marginTop: 2, lineHeight: 16 },
   closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
   closeText: { color: '#5e7886', fontSize: 24, fontWeight: '500', lineHeight: 26 },

@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   },
   // Dark Blue Header (PawCruz Brand)
   topHeader: {
-    backgroundColor: '#63B6C5',
+    backgroundColor: '#3a7ab8',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 22,
@@ -17,7 +17,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#447C99',
+    shadowColor: '#2c6ba3',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 16,
@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
   // Teal Sub-header
   calendarHeader: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -56,7 +56,7 @@ export const styles = StyleSheet.create({
   monthText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
     marginLeft: 20,
     marginBottom: 12,
   },
@@ -70,7 +70,7 @@ export const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   selectedDateCard: {
-    backgroundColor: '#447C99', // Teal highlight
+    backgroundColor: '#2c6ba3', // Teal highlight
   },
   dayLabel: {
     fontSize: 12,
@@ -80,7 +80,7 @@ export const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
   },
   selectedText: {
     color: '#fcfeff', // White text when background is teal
@@ -90,7 +90,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#24566d',
+    color: '#123a5e',
     marginHorizontal: 20,
     marginTop: 20,
     marginBottom: 15,
@@ -105,7 +105,7 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     borderLeftWidth: 5,
-    borderLeftColor: '#447C99', // Teal accent line on the side
+    borderLeftColor: '#2c6ba3', // Teal accent line on the side
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -119,7 +119,7 @@ export const styles = StyleSheet.create({
   },
   petNameText: {
     fontSize: 17,
-    color: '#24566d',
+    color: '#123a5e',
     fontWeight: '700',
   },
   ownerText: {
@@ -135,7 +135,7 @@ export const styles = StyleSheet.create({
   },
   typeText: {
     fontSize: 11,
-    color: '#447C99',
+    color: '#2c6ba3',
     fontWeight: 'bold',
     textTransform: 'uppercase',
   },

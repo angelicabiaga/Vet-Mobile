@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerOnboardingTutorial, { hasSeenPetOwnerTutorial, markPetOwnerTutorialSeen } from './PetOwnerOnboardingTutorial';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -57,6 +58,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
   ];
 
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [dashboardActivity, setDashboardActivity] = useState({
     pets: [],
     appointments: [],
@@ -153,6 +155,24 @@ const PetOwnerDashboard = ({ navigation, route }) => {
 
     return () => clearInterval(interval);
   }, [heroSlides.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentUser?.id) return undefined;
+
+    hasSeenPetOwnerTutorial(currentUser.id).then((seen) => {
+      if (!cancelled && !seen) setShowTutorial(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
+
+  const dismissTutorial = useCallback(() => {
+    setShowTutorial(false);
+    markPetOwnerTutorialSeen(currentUser?.id);
+  }, [currentUser?.id]);
 
   const openHeaderMenu = () => {
     if (isHeaderMenuVisible || isHeaderMenuAnimating.current) {
@@ -252,13 +272,13 @@ const PetOwnerDashboard = ({ navigation, route }) => {
     >
       <SafeAreaView style={styles.container}>
         <LinearGradient
-          colors={['#63B6C5', '#63B6C5', '#63B6C5']}
+          colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerBar}
         >
           <LinearGradient
-            colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']}
+            colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerTopBand}
@@ -440,7 +460,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
           contentContainerStyle={styles.scrollContent}
         >
           <LinearGradient
-            colors={['#63B6C5', '#63B6C5', '#63B6C5']}
+            colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.welcomeCard}
@@ -562,7 +582,6 @@ const PetOwnerDashboard = ({ navigation, route }) => {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.menuLabel}>My</Text>
               <Text style={styles.menuLabel}>Appointments</Text>
             </TouchableOpacity>
 
@@ -615,6 +634,8 @@ const PetOwnerDashboard = ({ navigation, route }) => {
             </View>
           </TouchableOpacity>
         </View>
+
+        <PetOwnerOnboardingTutorial visible={showTutorial} onSkip={dismissTutorial} onFinish={dismissTutorial} />
       </SafeAreaView>
     </LinearGradient>
   );

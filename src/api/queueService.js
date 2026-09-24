@@ -69,6 +69,13 @@ async function enrich(rows) {
 }
 
 export async function getQueue({ ownerId, veterinarianId, date = todayLocal() } = {}) {
+  // ownerId narrows which rows the caller gets back, but must NOT narrow the
+  // pool the DB query fetches -- clientsAhead/estimatedWaitMinutes below has
+  // to see the clinic's whole live queue for the day to count correctly.
+  // Filtering the query itself by owner_id would leave `rows` holding only
+  // that owner's own entry, so ahead would always compute to 0 regardless of
+  // how many other clients are actually waiting. It's applied as a final
+  // step instead, after the real queue-wide stats are computed.
   let query = supabase
     .from('queue_entries')
     .select('*')
@@ -77,7 +84,6 @@ export async function getQueue({ ownerId, veterinarianId, date = todayLocal() } 
     .order('manual_order', { ascending: true, nullsFirst: false })
     .order('arrived_at', { ascending: true });
 
-  if (ownerId) query = query.eq('owner_id', ownerId);
   if (veterinarianId) query = query.eq('veterinarian_id', veterinarianId);
 
   const { data, error } = await query;
@@ -93,7 +99,7 @@ export async function getQueue({ ownerId, veterinarianId, date = todayLocal() } 
     return !['Completed', 'Cancelled'].includes(row.appointment?.status);
   });
 
-  return rows.map((row, index) => {
+  const withQueueStats = rows.map((row, index) => {
     // Same-owner entries (e.g. a second walk-in pet) never count as
     // "ahead" of that owner's own place in line.
     const ahead = rows
@@ -106,23 +112,26 @@ export async function getQueue({ ownerId, veterinarianId, date = todayLocal() } 
       estimatedWaitMinutes,
     };
   });
+
+  return ownerId ? withQueueStats.filter((row) => row.owner_id === ownerId) : withQueueStats;
 }
 
 export function subscribeToQueue(callback, { ownerId, veterinarianId } = {}) {
-  const filter = ownerId
-    ? `owner_id=eq.${ownerId}`
-    : veterinarianId
-      ? `veterinarian_id=eq.${veterinarianId}`
-      : undefined;
+  // A pet owner's clientsAhead/estimatedWaitMinutes depend on every other
+  // owner's queue entries for the day, so their subscription must listen to
+  // the whole queue -- filtering by owner_id would miss the very changes
+  // (another client being served, added, or leaving) that move their place
+  // in line. Only the veterinarian's own-queue view can safely scope this.
+  const filter = !ownerId && veterinarianId
+    ? `veterinarian_id=eq.${veterinarianId}`
+    : undefined;
 
   const config = { event: '*', schema: 'public', table: 'queue_entries' };
   if (filter) config.filter = filter;
 
-  const appointmentFilter = ownerId
-    ? `owner_id=eq.${ownerId}`
-    : veterinarianId
-      ? `veterinarian_id=eq.${veterinarianId}`
-      : undefined;
+  const appointmentFilter = !ownerId && veterinarianId
+    ? `veterinarian_id=eq.${veterinarianId}`
+    : undefined;
   const appointmentConfig = { event: '*', schema: 'public', table: 'appointments' };
   if (appointmentFilter) appointmentConfig.filter = appointmentFilter;
 

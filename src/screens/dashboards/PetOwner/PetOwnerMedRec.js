@@ -23,7 +23,7 @@ export default function PetOwnerMedRec({ navigation, route }) {
   return (
     <LinearGradient colors={['#f7fbfc', '#eef7f8', '#ffffff']} style={styles.background}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#447C99" />
+        <ActivityIndicator size="large" color="#2c6ba3" />
       </View>
     </LinearGradient>
   );

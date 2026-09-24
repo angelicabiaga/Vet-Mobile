@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
@@ -78,7 +78,7 @@ export const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -113,7 +113,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -130,7 +130,7 @@ export const styles = StyleSheet.create({
     borderRadius: 4.5,
     backgroundColor: '#f47c6b',
     borderWidth: 2,
-    borderColor: '#447C99',
+    borderColor: '#2c6ba3',
   },
 
   notifIcon: {
@@ -148,7 +148,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -208,7 +208,7 @@ export const styles = StyleSheet.create({
   notificationToastTitle: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 4,
   },
 
@@ -261,7 +261,7 @@ export const styles = StyleSheet.create({
   ownerBadge: {
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
@@ -278,7 +278,7 @@ export const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
-    backgroundColor: 'rgba(68, 124, 153, 0.36)',
+    backgroundColor: 'rgba(44, 107, 163, 0.36)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.3)',
     justifyContent: 'center',
@@ -296,7 +296,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(68, 124, 153, 0.98)',
+    backgroundColor: 'rgba(44, 107, 163, 0.98)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignSelf: 'stretch',
@@ -316,7 +316,7 @@ export const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -342,7 +342,7 @@ export const styles = StyleSheet.create({
     marginBottom: 18,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -384,7 +384,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   sectionSubtitle: {
@@ -403,7 +403,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
         shadowRadius: 18,
@@ -417,7 +417,7 @@ export const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 10,
     marginTop: 4,
   },
@@ -443,14 +443,14 @@ export const styles = StyleSheet.create({
   },
 
   reasonCardActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   reasonCardTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   reasonCardTitleActive: {
@@ -480,7 +480,7 @@ export const styles = StyleSheet.create({
   reasonDetailLabel: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 6,
   },
 
@@ -508,7 +508,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   reasonSelectValuePlaceholder: {
@@ -537,7 +537,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
     marginTop: 12,
   },
 
@@ -563,7 +563,7 @@ export const styles = StyleSheet.create({
   reasonSummaryValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   flowStepBadge: {
@@ -581,7 +581,7 @@ export const styles = StyleSheet.create({
   flowStepBadgeText: {
     fontSize: 12,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     textAlign: 'center',
   },
 
@@ -607,7 +607,7 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 12,
   },
 
@@ -615,7 +615,7 @@ export const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     minHeight: 40,
     borderRadius: 14,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -640,14 +640,14 @@ export const styles = StyleSheet.create({
   },
 
   petChipActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   petChipTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 4,
   },
 
@@ -682,14 +682,14 @@ export const styles = StyleSheet.create({
   addPetChipPlus: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 4,
   },
 
   addPetChipTitle: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 3,
   },
 
@@ -741,7 +741,7 @@ export const styles = StyleSheet.create({
   visitCalendarTriggerValue: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   visitCalendarTriggerValuePlaceholder: {
@@ -751,7 +751,7 @@ export const styles = StyleSheet.create({
   visitCalendarTriggerIconImage: {
     width: 26,
     height: 26,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   optionChip: {
@@ -767,14 +767,14 @@ export const styles = StyleSheet.create({
   },
 
   optionChipActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   optionChipText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     textAlign: 'center',
   },
 
@@ -794,7 +794,7 @@ export const styles = StyleSheet.create({
   rescheduleBannerTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 4,
   },
 
@@ -838,14 +838,14 @@ export const styles = StyleSheet.create({
   },
 
   selectorChipActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   selectorChipText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   selectorChipTextActive: {
@@ -868,7 +868,7 @@ export const styles = StyleSheet.create({
   calendarMonth: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   calendarMeta: {
@@ -911,8 +911,8 @@ export const styles = StyleSheet.create({
   },
 
   calendarDayCellActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   calendarDayCellMuted: {
@@ -922,7 +922,7 @@ export const styles = StyleSheet.create({
   calendarDayText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   calendarDayTextActive: {
@@ -949,7 +949,7 @@ export const styles = StyleSheet.create({
   timeCalendarTitle: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   timeCalendarMeta: {
@@ -973,14 +973,14 @@ export const styles = StyleSheet.create({
   },
 
   slotChipActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   slotChipText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   slotChipTextActive: {
@@ -999,7 +999,7 @@ export const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 10,
   },
 
@@ -1031,7 +1031,7 @@ export const styles = StyleSheet.create({
   primaryActionButtonFull: {
     minHeight: 54,
     borderRadius: 18,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1055,7 +1055,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -1081,7 +1081,7 @@ export const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1100,13 +1100,13 @@ export const styles = StyleSheet.create({
   recommendationTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   recommendationValue: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginTop: 3,
     marginBottom: 4,
   },
@@ -1127,7 +1127,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -1141,7 +1141,7 @@ export const styles = StyleSheet.create({
   managementTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   managementMeta: {
@@ -1164,7 +1164,7 @@ export const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 6,
   },
 
@@ -1205,7 +1205,7 @@ export const styles = StyleSheet.create({
   managementInfoValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   managementActionRow: {
@@ -1225,8 +1225,8 @@ export const styles = StyleSheet.create({
   },
 
   managementActionButtonBlue: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   managementActionButtonDanger: {
@@ -1320,7 +1320,7 @@ export const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -1354,14 +1354,14 @@ export const styles = StyleSheet.create({
   },
 
   reasonPickerOptionActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   reasonPickerOptionText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   reasonPickerOptionTextActive: {
@@ -1394,7 +1394,7 @@ export const styles = StyleSheet.create({
   scheduleCalendarNavButtonText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   scheduleCalendarTitleWrap: {
@@ -1407,7 +1407,7 @@ export const styles = StyleSheet.create({
   scheduleCalendarActiveMonth: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -1444,13 +1444,13 @@ export const styles = StyleSheet.create({
   scheduleDropdownSelectedText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   scheduleDropdownItemText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   scheduleDropdownIcon: {
@@ -1503,7 +1503,7 @@ export const styles = StyleSheet.create({
   },
 
   scheduleCalendarDayCellSelected: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
   },
 
   scheduleCalendarDayCellAvailableSelected: {
@@ -1515,7 +1515,7 @@ export const styles = StyleSheet.create({
   scheduleCalendarDayText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   scheduleCalendarDayTextEmpty: {
@@ -1576,7 +1576,7 @@ export const styles = StyleSheet.create({
     width: '48%',
     minHeight: 48,
     borderRadius: 16,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1609,7 +1609,7 @@ export const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderWidth: 2,
     borderColor: '#d7eef3',
     alignItems: 'center',
@@ -1658,11 +1658,11 @@ export const styles = StyleSheet.create({
   navIcon: {
     width: 24,
     height: 24,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   activeNavIcon: {
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   navLabel: {
@@ -1674,7 +1674,7 @@ export const styles = StyleSheet.create({
     fontWeight: '800',
   },
   appointmentIntroCard: {
-    backgroundColor: '#24566d',
+    backgroundColor: '#123a5e',
     borderRadius: 24,
     padding: 18,
     marginBottom: 18,
@@ -1748,7 +1748,7 @@ export const styles = StyleSheet.create({
     marginBottom: 14,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 7 },
         shadowOpacity: 0.12,
         shadowRadius: 14,
@@ -1832,7 +1832,7 @@ export const styles = StyleSheet.create({
   queueRefreshButton: {
     minHeight: 50,
     borderRadius: 16,
-    backgroundColor: '#24566d',
+    backgroundColor: '#123a5e',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 14,

@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 const statusStyle = (status) => status === 'Serving' ? styles.serving : status === 'Completed' ? styles.completed : styles.waiting;
 
 export default function LiveQueueList({ entries, loading, error, publicMode = false }) {
-  if (loading && !entries.length) return <ActivityIndicator size="large" color="#447C99" style={{ marginTop: 36 }} />;
+  if (loading && !entries.length) return <ActivityIndicator size="large" color="#2c6ba3" style={{ marginTop: 36 }} />;
   if (error && !entries.length) return <View style={styles.empty}><Text style={styles.emptyTitle}>Queue unavailable</Text><Text style={styles.emptyText}>{error}</Text></View>;
   if (!entries.length) return <View style={styles.empty}><Text style={styles.emptyTitle}>No active queue</Text><Text style={styles.emptyText}>Queue entries will appear after Staff checks clients in.</Text></View>;
 
@@ -20,6 +20,6 @@ export default function LiveQueueList({ entries, loading, error, publicMode = fa
 }
 
 const styles = StyleSheet.create({
-  nowCard:{backgroundColor:'#24566d',borderRadius:24,padding:20,marginBottom:16,alignItems:'center'},nowLabel:{color:'#cce8f2',fontSize:11,fontWeight:'900'},nowNumber:{color:'#fff',fontSize:38,fontWeight:'900',marginVertical:5},nowVet:{color:'#fff',fontSize:13,fontWeight:'700'},
-  card:{backgroundColor:'#fff',borderWidth:1,borderColor:'#dceef8',borderRadius:20,padding:16,marginBottom:10},number:{fontSize:22,fontWeight:'900',color:'#24566d'},secondary:{fontSize:12,color:'#5d7b91',marginTop:3},badge:{position:'absolute',right:14,top:14,borderRadius:999,paddingHorizontal:11,paddingVertical:6},waiting:{backgroundColor:'#fff4d6'},serving:{backgroundColor:'#dff6e8'},completed:{backgroundColor:'#e8eef2'},badgeText:{fontSize:11,fontWeight:'900',color:'#24566d'},vet:{marginTop:10,fontSize:12,fontWeight:'700',color:'#5d7b91'},eta:{marginTop:5,fontSize:12,fontWeight:'800',color:'#447C99'},empty:{backgroundColor:'#fff',borderRadius:22,padding:24,alignItems:'center',borderWidth:1,borderColor:'#dceef8',marginTop:20},emptyTitle:{fontSize:17,fontWeight:'900',color:'#24566d'},emptyText:{marginTop:7,textAlign:'center',color:'#5d7b91',lineHeight:19}
+  nowCard:{backgroundColor:'#123a5e',borderRadius:24,padding:20,marginBottom:16,alignItems:'center'},nowLabel:{color:'#cce8f2',fontSize:11,fontWeight:'900'},nowNumber:{color:'#fff',fontSize:38,fontWeight:'900',marginVertical:5},nowVet:{color:'#fff',fontSize:13,fontWeight:'700'},
+  card:{backgroundColor:'#fff',borderWidth:1,borderColor:'#dceef8',borderRadius:20,padding:16,marginBottom:10},number:{fontSize:22,fontWeight:'900',color:'#123a5e'},secondary:{fontSize:12,color:'#5d7b91',marginTop:3},badge:{position:'absolute',right:14,top:14,borderRadius:999,paddingHorizontal:11,paddingVertical:6},waiting:{backgroundColor:'#fff4d6'},serving:{backgroundColor:'#dff6e8'},completed:{backgroundColor:'#e8eef2'},badgeText:{fontSize:11,fontWeight:'900',color:'#123a5e'},vet:{marginTop:10,fontSize:12,fontWeight:'700',color:'#5d7b91'},eta:{marginTop:5,fontSize:12,fontWeight:'800',color:'#2c6ba3'},empty:{backgroundColor:'#fff',borderRadius:22,padding:24,alignItems:'center',borderWidth:1,borderColor:'#dceef8',marginTop:20},emptyTitle:{fontSize:17,fontWeight:'900',color:'#123a5e'},emptyText:{marginTop:7,textAlign:'center',color:'#5d7b91',lineHeight:19}
 });

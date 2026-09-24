@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
@@ -80,7 +80,7 @@ export const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -115,7 +115,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -132,7 +132,7 @@ export const styles = StyleSheet.create({
     borderRadius: 4.5,
     backgroundColor: '#f47c6b',
     borderWidth: 2,
-    borderColor: '#447C99',
+    borderColor: '#2c6ba3',
   },
 
   notifIcon: {
@@ -150,7 +150,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -207,7 +207,7 @@ export const styles = StyleSheet.create({
   ownerBadge: {
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.20)',
@@ -224,7 +224,7 @@ export const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
-    backgroundColor: 'rgba(68, 124, 153, 0.36)',
+    backgroundColor: 'rgba(44, 107, 163, 0.36)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.3)',
     justifyContent: 'center',
@@ -242,7 +242,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(68, 124, 153, 0.98)',
+    backgroundColor: 'rgba(44, 107, 163, 0.98)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignSelf: 'stretch',
@@ -262,7 +262,7 @@ export const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -288,7 +288,7 @@ export const styles = StyleSheet.create({
     marginBottom: 18,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -330,7 +330,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   sectionSubtitle: {
@@ -349,7 +349,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -379,14 +379,14 @@ export const styles = StyleSheet.create({
   },
 
   petChipActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   petChipTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 4,
   },
 
@@ -413,7 +413,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
         shadowRadius: 18,
@@ -453,7 +453,7 @@ export const styles = StyleSheet.create({
   petName: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   petMeta: {
@@ -499,7 +499,7 @@ export const styles = StyleSheet.create({
   infoValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   dualSectionCard: {
@@ -511,7 +511,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -525,7 +525,7 @@ export const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 12,
   },
 
@@ -565,7 +565,7 @@ export const styles = StyleSheet.create({
   timelineTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   timelineMeta: {
@@ -592,7 +592,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -619,7 +619,7 @@ export const styles = StyleSheet.create({
   dataRowTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   dataRowSubtext: {
@@ -632,7 +632,7 @@ export const styles = StyleSheet.create({
   dataRowValue: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     textAlign: 'right',
     maxWidth: '42%',
   },
@@ -657,7 +657,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginRight: 10,
   },
 
@@ -673,7 +673,7 @@ export const styles = StyleSheet.create({
   resultBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#447C99',
+    color: '#2c6ba3',
   },
 
   resultNote: {
@@ -692,7 +692,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -718,7 +718,7 @@ export const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -737,7 +737,7 @@ export const styles = StyleSheet.create({
   analysisTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   analysisNote: {
@@ -760,7 +760,7 @@ export const styles = StyleSheet.create({
   insightTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 8,
   },
 
@@ -778,7 +778,7 @@ export const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderWidth: 2,
     borderColor: '#d7eef3',
     alignItems: 'center',

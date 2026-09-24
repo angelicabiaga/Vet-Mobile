@@ -550,13 +550,13 @@ const PetOwnerProfile = ({ navigation, route }) => {
     >
       <SafeAreaView style={styles.container}>
         <LinearGradient
-          colors={['#63B6C5', '#63B6C5', '#63B6C5']}
+          colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerBar}
         >
           <LinearGradient
-            colors={['#1f4e66', '#2f6f86', '#447C99', '#5f9eb4']}
+            colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerTopBand}

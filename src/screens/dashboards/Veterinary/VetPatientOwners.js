@@ -130,7 +130,7 @@ const VetPatientOwners = ({ navigation, route }) => {
 
         {loading && !owners.length ? (
           <View style={styles.emptyCard}>
-            <ActivityIndicator size="large" color="#447C99" />
+            <ActivityIndicator size="large" color="#2c6ba3" />
             <Text style={styles.emptyText}>Loading pet owners...</Text>
           </View>
         ) : null}
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 14,
   },
-  searchInput: { fontSize: 14, fontWeight: '700', color: '#24566d' },
+  searchInput: { fontSize: 14, fontWeight: '700', color: '#123a5e' },
   ownerCard: {
     backgroundColor: '#fcfeff',
     borderRadius: 22,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   ownerTopRow: { flexDirection: 'row', alignItems: 'flex-start' },
   ownerAvatar: { width: 58, height: 58, borderRadius: 20, marginRight: 12, backgroundColor: '#e7f6f8' },
   ownerInfo: { flex: 1 },
-  ownerName: { fontSize: 16.5, fontWeight: '900', color: '#24566d' },
+  ownerName: { fontSize: 16.5, fontWeight: '900', color: '#123a5e' },
   ownerDetail: { marginTop: 3, fontSize: 12, fontWeight: '600', color: '#5d7b91' },
   ownerFooterRow: {
     flexDirection: 'row',
@@ -232,21 +232,21 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#edf4f8',
   },
-  patientCountText: { flex: 1, fontSize: 12, fontWeight: '800', color: '#447C99', marginRight: 10 },
+  patientCountText: { flex: 1, fontSize: 12, fontWeight: '800', color: '#2c6ba3', marginRight: 10 },
   viewOwnerChip: {
     minHeight: 44,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     alignItems: 'center',
     justifyContent: 'center',
   },
   viewOwnerChipText: { fontSize: 12, fontWeight: '900', color: '#ffffff' },
   emptyCard: { backgroundColor: '#fcfeff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 18, alignItems: 'center' },
-  emptyTitle: { fontSize: 16, fontWeight: '900', color: '#24566d' },
+  emptyTitle: { fontSize: 16, fontWeight: '900', color: '#123a5e' },
   emptyText: { marginTop: 8, fontSize: 13, lineHeight: 19, textAlign: 'center', fontWeight: '600', color: '#5d7b91' },
   errorText: { color: '#a33b3b', textAlign: 'center', fontWeight: '700' },
-  retryButton: { marginTop: 12, backgroundColor: '#447C99', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14 },
+  retryButton: { marginTop: 12, backgroundColor: '#2c6ba3', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14 },
   retryText: { color: '#ffffff', fontWeight: '900' },
 });
 

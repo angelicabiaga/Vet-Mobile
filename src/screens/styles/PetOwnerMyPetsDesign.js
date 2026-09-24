@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
@@ -78,7 +78,7 @@ export const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -113,7 +113,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -130,7 +130,7 @@ export const styles = StyleSheet.create({
     borderRadius: 4.5,
     backgroundColor: '#f47c6b',
     borderWidth: 2,
-    borderColor: '#447C99',
+    borderColor: '#2c6ba3',
   },
 
   notifIcon: {
@@ -148,7 +148,7 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
     justifyContent: 'center',
@@ -181,7 +181,7 @@ export const styles = StyleSheet.create({
     borderColor: '#dceef8',
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
@@ -196,7 +196,7 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   headerNotificationPointer: {
@@ -249,7 +249,7 @@ export const styles = StyleSheet.create({
   ownerBadge: {
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.34)',
@@ -266,7 +266,7 @@ export const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
-    backgroundColor: 'rgba(68, 124, 153, 0.36)',
+    backgroundColor: 'rgba(44, 107, 163, 0.36)',
     borderWidth: 1,
     borderColor: 'rgba(222, 242, 247, 0.3)',
     justifyContent: 'center',
@@ -284,7 +284,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(68, 124, 153, 0.98)',
+    backgroundColor: 'rgba(44, 107, 163, 0.98)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignSelf: 'stretch',
@@ -304,7 +304,7 @@ export const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -330,7 +330,7 @@ export const styles = StyleSheet.create({
     marginBottom: 18,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -372,7 +372,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   sectionSubtitle: {
@@ -391,7 +391,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
         shadowRadius: 18,
@@ -426,7 +426,7 @@ export const styles = StyleSheet.create({
     minHeight: 48,
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   searchEmptyState: {
@@ -442,7 +442,7 @@ export const styles = StyleSheet.create({
   searchEmptyTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 6,
   },
 
@@ -466,8 +466,8 @@ export const styles = StyleSheet.create({
   },
 
   petRowActive: {
-    backgroundColor: '#447C99',
-    borderColor: '#447C99',
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
   },
 
   petAvatar: {
@@ -482,13 +482,13 @@ export const styles = StyleSheet.create({
   petAvatarText: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   petAvatarImage: {
     width: 28,
     height: 28,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   petAvatarImageCustom: {
@@ -505,7 +505,7 @@ export const styles = StyleSheet.create({
   petRowName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   petRowNameActive: {
@@ -533,14 +533,14 @@ export const styles = StyleSheet.create({
   },
 
   petStatusPillActive: {
-    backgroundColor: 'rgba(68, 124, 153, 0.42)',
+    backgroundColor: 'rgba(44, 107, 163, 0.42)',
     borderColor: 'rgba(222, 242, 247, 0.3)',
   },
 
   petStatusText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   petStatusTextActive: {
@@ -563,14 +563,14 @@ export const styles = StyleSheet.create({
   addPetPlus: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginRight: 8,
   },
 
   addPetText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   emptyModeCard: {
@@ -585,7 +585,7 @@ export const styles = StyleSheet.create({
   emptyModeTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 6,
   },
 
@@ -605,7 +605,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#63B6C5',
+        shadowColor: '#3a7ab8',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
@@ -652,7 +652,7 @@ export const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -661,7 +661,7 @@ export const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -695,13 +695,13 @@ export const styles = StyleSheet.create({
   largePetAvatarText: {
     fontSize: 30,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   largePetAvatarImage: {
     width: 48,
     height: 48,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   largePetAvatarImageCustom: {
@@ -718,7 +718,7 @@ export const styles = StyleSheet.create({
   profileName: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   profileBreed: {
@@ -765,7 +765,7 @@ export const styles = StyleSheet.create({
   profileInfoValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   innerSectionCard: {
@@ -780,7 +780,7 @@ export const styles = StyleSheet.create({
   recordCardTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 10,
   },
 
@@ -798,7 +798,7 @@ export const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     marginTop: 6,
     marginRight: 10,
   },
@@ -828,7 +828,7 @@ export const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     marginTop: 5,
     marginRight: 12,
   },
@@ -846,7 +846,7 @@ export const styles = StyleSheet.create({
   visitTimelineText: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#24566d',
+    color: '#123a5e',
     fontWeight: '700',
   },
 
@@ -864,7 +864,7 @@ export const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     textAlign: 'center',
@@ -877,7 +877,7 @@ export const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderWidth: 2,
     borderColor: '#ffffff',
     justifyContent: 'center',
@@ -940,7 +940,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   textAreaField: {
@@ -953,7 +953,7 @@ export const styles = StyleSheet.create({
     paddingTop: 14,
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   pickerFieldWrap: {
@@ -1005,13 +1005,13 @@ export const styles = StyleSheet.create({
   dropdownSelectedText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   dropdownItemText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   dropdownIcon: {
@@ -1072,13 +1072,13 @@ export const styles = StyleSheet.create({
   calendarTriggerValue: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   calendarTriggerIconImage: {
     width: 26,
     height: 26,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   birthdayAgeSummary: {
@@ -1103,7 +1103,7 @@ export const styles = StyleSheet.create({
   birthdayAgeValue: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   birthdayRow: {
@@ -1134,7 +1134,7 @@ export const styles = StyleSheet.create({
   },
 
   birthdayPicker: {
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   photoOptionButton: {
@@ -1152,7 +1152,7 @@ export const styles = StyleSheet.create({
   photoOptionButtonText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   modalOverlay: {
@@ -1172,7 +1172,7 @@ export const styles = StyleSheet.create({
     borderColor: '#dbeef8',
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
@@ -1192,7 +1192,7 @@ export const styles = StyleSheet.create({
     borderColor: '#dbeef8',
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
@@ -1206,7 +1206,7 @@ export const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -1244,7 +1244,7 @@ export const styles = StyleSheet.create({
     width: '48%',
     minHeight: 48,
     borderRadius: 16,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1258,7 +1258,7 @@ export const styles = StyleSheet.create({
   modalSingleButton: {
     minHeight: 48,
     borderRadius: 16,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 18,
@@ -1296,7 +1296,7 @@ export const styles = StyleSheet.create({
   calendarNavButtonText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   calendarTitleWrap: {
@@ -1309,7 +1309,7 @@ export const styles = StyleSheet.create({
   calendarActiveMonth: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -1368,13 +1368,13 @@ export const styles = StyleSheet.create({
   },
 
   calendarDayCellSelected: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
   },
 
   calendarDayText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
 
   calendarDayTextEmpty: {
@@ -1401,7 +1401,7 @@ export const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderWidth: 2,
     borderColor: '#d7eef3',
     alignItems: 'center',
@@ -1409,7 +1409,7 @@ export const styles = StyleSheet.create({
     padding: 10,
     ...Platform.select({
       ios: {
-        shadowColor: '#447C99',
+        shadowColor: '#2c6ba3',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
@@ -1450,11 +1450,11 @@ export const styles = StyleSheet.create({
   navIcon: {
     width: 24,
     height: 24,
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   activeNavIcon: {
-    tintColor: '#24566d',
+    tintColor: '#123a5e',
   },
 
   navLabel: {
@@ -1498,7 +1498,7 @@ export const styles = StyleSheet.create({
   patientPhotoFallbackText: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
   patientInfo: {
     flex: 1,
@@ -1511,7 +1511,7 @@ export const styles = StyleSheet.create({
   patientName: {
     fontSize: 17,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
     marginRight: 8,
   },
   patientSpeciesBreed: {
@@ -1543,7 +1543,7 @@ export const styles = StyleSheet.create({
     marginTop: 3,
     fontSize: 12.5,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
   patientCardFooterRow: {
     flexDirection: 'row',
@@ -1555,7 +1555,7 @@ export const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1579,7 +1579,7 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   statusBadgeNeutral: { backgroundColor: '#e8f4fb' },
-  statusBadgeNeutralText: { color: '#447C99' },
+  statusBadgeNeutralText: { color: '#2c6ba3' },
   statusBadgeGood: { backgroundColor: '#e5f4ea' },
   statusBadgeGoodText: { color: '#2f8f5b' },
   statusBadgeWarn: { backgroundColor: '#fdf1dc' },
@@ -1614,7 +1614,7 @@ export const styles = StyleSheet.create({
   ownerInfoValue: {
     fontSize: 13.5,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
   ownerInfoSub: {
     marginTop: 2,
@@ -1640,7 +1640,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   tabButtonActive: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
   },
   tabButtonText: {
     fontSize: 13,
@@ -1675,7 +1675,7 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   latestBadge: {
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 3,
@@ -1698,7 +1698,7 @@ export const styles = StyleSheet.create({
   consultationTitleText: {
     fontSize: 15.5,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
   consultationSubLine: {
     marginTop: 4,
@@ -1722,7 +1722,7 @@ export const styles = StyleSheet.create({
   recordStatusBadgeText: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: '#447C99',
+    color: '#2c6ba3',
   },
   chevronButton: {
     width: 44,
@@ -1735,7 +1735,7 @@ export const styles = StyleSheet.create({
   chevronText: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#447C99',
+    color: '#2c6ba3',
   },
   consultationExpandedBody: {
     marginTop: 14,
@@ -1758,7 +1758,7 @@ export const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 19,
     fontWeight: '700',
-    color: '#24566d',
+    color: '#123a5e',
   },
   fieldRow2Col: {
     flexDirection: 'row',
@@ -1810,7 +1810,7 @@ export const styles = StyleSheet.create({
   billingRefreshText: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: '#447C99',
+    color: '#2c6ba3',
   },
   billingMutedText: {
     fontSize: 12.5,
@@ -1841,7 +1841,7 @@ export const styles = StyleSheet.create({
   billingRowTitle: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#24566d',
+    color: '#123a5e',
   },
   billingRowMeta: {
     marginTop: 3,
@@ -1867,7 +1867,7 @@ export const styles = StyleSheet.create({
   billingStatusPillText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#447C99',
+    color: '#2c6ba3',
   },
   billingActionButton: {
     flexDirection: 'row',
@@ -1876,7 +1876,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 12,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
   },
   billingActionButtonText: {
     fontSize: 10.5,
@@ -1914,7 +1914,7 @@ export const styles = StyleSheet.create({
   printButtonText: {
     fontSize: 12.5,
     fontWeight: '900',
-    color: '#447C99',
+    color: '#2c6ba3',
   },
 
   // --- Per-consultation AI Health Insight subsection ---
@@ -2223,7 +2223,7 @@ export const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#447C99',
+    backgroundColor: '#2c6ba3',
     marginTop: 6,
     marginRight: 8,
   },
@@ -2249,7 +2249,7 @@ export const styles = StyleSheet.create({
   preventiveLabel: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#24566d',
+    color: '#123a5e',
   },
   preventiveSub: {
     marginTop: 2,
