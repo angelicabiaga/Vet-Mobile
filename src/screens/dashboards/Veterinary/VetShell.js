@@ -1,28 +1,18 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
-import PetOwnerSideDrawer from '../PetOwner/PetOwnerSideDrawer';
-import { Animated, Easing, Image, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles as dashboardStyles } from '../../styles/VetDashboardDesign';
 import { getNotifications, subscribeNotifications } from '../../../api/notificationService';
 import useResolvedSessionUser from '../../../hooks/useResolvedSessionUser';
+import PetOwnerHeaderGreeting from '../PetOwner/PetOwnerHeaderGreeting';
+import VetBottomNav from './VetBottomNav';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
-const HEADER_MENU_ITEMS = [
-  { key: 'dashboard', label: 'Dashboard', icon: require('../../assets/Dashboard_Icon.png'), route: 'vet-screen' },
-  { key: 'profile', label: 'Profile', icon: require('../../assets/UserManagement_Icon.png'), route: 'VetProfile' },
-  { key: 'notifications', label: 'Notifications', icon: require('../../assets/Bell_Icon.png'), route: 'VetNotif' },
-  { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
-  { key: 'appointments', label: 'Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
-  { key: 'schedule', label: 'Schedule', icon: require('../../assets/calendar.png'), route: 'VetSchedule' },
-  { key: 'patients', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
-];
-
-const getActiveMenuKey = (routeName) => {
+// Which bottom-bar tab a Vet screen belongs to (sub-screens highlight their parent tab).
+const getActiveTabKey = (routeName) => {
   if (routeName === 'vet-screen') return 'dashboard';
-  if (routeName === 'VetProfile') return 'profile';
-  if (routeName === 'VetNotif') return 'notifications';
   if (routeName === 'VetMessages') return 'messages';
   if (routeName === 'VetAppointment') return 'appointments';
   if (routeName === 'VetSchedule') return 'schedule';
@@ -41,8 +31,6 @@ export const getVetUser = (route) => route?.params?.user || route?.params || nul
 const VetShell = ({ navigation, route, subtitle, caption, children, showBack = false, lowerHeaderScrollY, lowerHeaderAnimation }) => {
   const currentUser = useResolvedSessionUser(getVetUser(route));
   const profileImageUri = currentUser?.avatar_url || currentUser?.profileImageUri || currentUser?.avatar || '';
-  const menuAnim = React.useRef(new Animated.Value(0)).current;
-  const [menuOpen, setMenuOpen] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const profileId = currentUser?.id || currentUser?.user_id || currentUser?.profile_id || null;
 
@@ -73,7 +61,7 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
       unsubscribe?.();
     };
   }, [profileId, refreshUnread]);
-  const isMenuAnimating = React.useRef(false);
+
   const lowerHeaderTranslateY = lowerHeaderScrollY
     ? lowerHeaderScrollY.interpolate({ inputRange: [0, 72], outputRange: [0, -72], extrapolate: 'clamp' })
     : 0;
@@ -93,51 +81,6 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
 
   const navigateVet = (screen) => {
     navigation.navigate(screen, currentUser ? { user: currentUser } : undefined);
-  };
-
-  const openMenu = () => {
-    if (menuOpen || isMenuAnimating.current) {
-      return;
-    }
-
-    isMenuAnimating.current = true;
-    setMenuOpen(true);
-    menuAnim.stopAnimation();
-    Animated.timing(menuAnim, {
-      toValue: 1,
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      isMenuAnimating.current = false;
-    });
-  };
-
-  const closeMenu = () => {
-    if (isMenuAnimating.current || !menuOpen) {
-      return;
-    }
-
-    isMenuAnimating.current = true;
-    menuAnim.stopAnimation();
-    Animated.timing(menuAnim, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.inOut(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      isMenuAnimating.current = false;
-      setMenuOpen(false);
-    });
-  };
-
-  const toggleMenu = () => {
-    if (menuOpen) {
-      closeMenu();
-      return;
-    }
-
-    openMenu();
   };
 
   return (
@@ -184,66 +127,23 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
 
           <Animated.View style={[dashboardStyles.headerBottomRowWrap, lowerHeaderAnimatedStyle]}>
             <View style={dashboardStyles.headerBottomRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TouchableOpacity style={dashboardStyles.menuTriggerButton} onPress={toggleMenu} activeOpacity={0.85}>
-                  <Image source={require('../../assets/List.png')} style={dashboardStyles.menuTriggerIcon} resizeMode="contain" />
+              {showBack ? (
+                <TouchableOpacity style={dashboardStyles.menuTriggerButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+                  <Image source={require('../../assets/Back_Icon.png')} style={dashboardStyles.menuTriggerIcon} resizeMode="contain" />
                 </TouchableOpacity>
-                {showBack ? (
-                  <TouchableOpacity style={[dashboardStyles.menuTriggerButton, { marginLeft: 14 }]} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-                    <Image source={require('../../assets/Back_Icon.png')} style={dashboardStyles.menuTriggerIcon} resizeMode="contain" />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-              <View style={dashboardStyles.ownerSummary}>
-                <Text style={dashboardStyles.headerCaption}>{caption}</Text>
-                <Text style={dashboardStyles.ownerName}>{getVetName(currentUser)}</Text>
-              </View>
+              ) : null}
+              {/* No divider line beside the back button, same as Quick Assist. */}
+              <PetOwnerHeaderGreeting caption={caption} name={getVetName(currentUser)} accent={!showBack} />
             </View>
           </Animated.View>
-
-          <PetOwnerSideDrawer
-            visible={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            navigation={navigation}
-            user={currentUser}
-            activeKey={getActiveMenuKey(route?.name)}
-            role="veterinarian"
-          />
-
-          {false ? (
-            <Animated.View
-              style={[
-                dashboardStyles.headerMenuPanel,
-                {
-                  opacity: menuAnim,
-                  transform: [{ translateY: menuAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
-                },
-              ]}
-            >
-              {HEADER_MENU_ITEMS.map((item, index) => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[dashboardStyles.headerMenuItem, index === HEADER_MENU_ITEMS.length - 1 && dashboardStyles.headerMenuItemLast]}
-                  onPress={() => {
-                    setMenuOpen(false);
-                    menuAnim.setValue(0);
-                    navigateVet(item.route);
-                  }}
-                  activeOpacity={0.88}
-                >
-                  <View style={dashboardStyles.headerMenuItemIconWrap}>
-                    <Image source={item.icon} style={dashboardStyles.headerMenuItemIcon} resizeMode="contain" />
-                  </View>
-                  <Text style={dashboardStyles.headerMenuItemLabel}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </Animated.View>
-          ) : null}
         </LinearGradient>
 
-        {children}
+        {/* Fills the space between header and bar so the bar stays at the bottom
+            even for short content (loading / empty states). */}
+        <View style={{ flex: 1 }}>{children}</View>
 
-        </SafeAreaView>
+        <VetBottomNav navigation={navigation} user={currentUser} activeKey={getActiveTabKey(route?.name)} />
+      </SafeAreaView>
     </LinearGradient>
   );
 };

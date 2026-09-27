@@ -58,7 +58,7 @@ export default function VetSchedule({ navigation, route }) {
       navigation={navigation}
       route={route}
       subtitle="Schedule"
-      caption="Your Availability"
+      caption="Manage your availability"
       lowerHeaderAnimation={lowerHeaderAnimation}
     >
       <ScrollView

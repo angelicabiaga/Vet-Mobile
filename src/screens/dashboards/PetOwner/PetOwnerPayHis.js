@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -65,10 +66,8 @@ export default function PetOwnerPayHis({ navigation, route }) {
             </View>
           </LinearGradient>
           <View style={styles.headerBottomRow}>
-            <TouchableOpacity style={styles.menuTriggerButton} onPress={() => setIsHeaderMenuVisible(true)} activeOpacity={0.85}><Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" /></TouchableOpacity>
-            <View style={styles.ownerSummary}><Text style={styles.headerCaption}>Invoices and receipts from your visits</Text><Text style={styles.ownerName}>{headerDisplayName}</Text></View>
+            <PetOwnerHeaderGreeting caption="Invoices and receipts from your visits" user={user} />
           </View>
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={user} activeKey="payment-history" />
         </LinearGradient>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={localStyles.scrollContent}>
@@ -150,6 +149,7 @@ export default function PetOwnerPayHis({ navigation, route }) {
             );
           }) : null}
         </ScrollView>
+        <PetOwnerBottomNav navigation={navigation} user={user} />
       </SafeAreaView>
     </LinearGradient>
   );

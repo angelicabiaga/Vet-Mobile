@@ -81,7 +81,7 @@ const VetNotif = ({ navigation, route }) => {
   };
 
   return (
-    <VetShell navigation={navigation} route={{ ...route, params: { ...(route?.params || {}), user: user || routeUser } }} subtitle="Notifications" caption={unreadCount ? `${unreadCount} unread` : 'Clinical Alerts'} lowerHeaderAnimation={lowerHeaderAnimation}>
+    <VetShell navigation={navigation} route={{ ...route, params: { ...(route?.params || {}), user: user || routeUser } }} subtitle="Notifications" caption={unreadCount ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'You are all caught up'} lowerHeaderAnimation={lowerHeaderAnimation}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}

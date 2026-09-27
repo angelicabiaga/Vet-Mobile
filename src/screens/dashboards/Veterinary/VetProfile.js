@@ -394,7 +394,7 @@ const VetProfile = ({ navigation, route }) => {
   const avatarUri = isEditing ? draftProfile.avatar_url : profileData.avatar_url;
 
   return (
-    <VetShell navigation={navigation} route={route} subtitle="Veterinary Profile" caption="Account Settings" lowerHeaderAnimation={lowerHeaderAnimation}>
+    <VetShell navigation={navigation} route={route} subtitle="Veterinary Profile" caption="Account overview" lowerHeaderAnimation={lowerHeaderAnimation}>
       <ScrollView ref={scrollViewRef} onScroll={handleScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.sectionHeaderWrap}>
           <Text style={styles.sectionTitle}>{isEditing ? 'Edit Profile' : 'Profile Overview'}</Text>

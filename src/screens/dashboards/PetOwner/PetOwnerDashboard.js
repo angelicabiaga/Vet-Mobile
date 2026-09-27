@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import PetOwnerOnboardingTutorial, { hasSeenPetOwnerTutorial, markPetOwnerTutorialSeen } from './PetOwnerOnboardingTutorial';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -361,26 +362,11 @@ const PetOwnerDashboard = ({ navigation, route }) => {
             ]}
           >
             <View style={styles.headerBottomRow}>
-            <TouchableOpacity
-              style={styles.menuTriggerButton}
-              onPress={toggleHeaderMenu}
-              activeOpacity={0.85}
-            >
-              <Image
-                source={require('../../assets/List.png')}
-                style={styles.menuTriggerIcon}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
 
-            <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>Welcome</Text>
-              <Text style={styles.ownerName}>{headerDisplayName}</Text>
-            </View>
+            <PetOwnerHeaderGreeting caption="Welcome back" user={loggedInUser} />
             </View>
           </Animated.View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={currentUser} activeKey="dashboard" />
           {false ? (
             <Animated.View
               style={[
@@ -466,7 +452,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
             style={styles.welcomeCard}
           >
             <View style={styles.heroQueueEyebrowRow}>
-              <Text style={styles.heroQueueEyebrow}>MY QUEUE</Text>
+              <Text style={styles.heroQueueEyebrow}>QUEUE</Text>
               <View style={styles.heroQueueStatusPill}>
                 <Text style={styles.heroQueueStatusPillText} numberOfLines={1}>{queueStatusLabel}</Text>
               </View>
@@ -616,26 +602,31 @@ const PetOwnerDashboard = ({ navigation, route }) => {
               <Text style={styles.menuLabel}>Messages</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={[styles.menuCard, styles.menuCardWide]}
+              onPress={() => navigation.navigate('PetOwnerQueue', { user: currentUser })}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.iconCircle, styles.iconCircleWide]}>
+                <Image
+                  source={require('../../assets/List.png')}
+                  style={styles.iconImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.menuWideTextWrap}>
+                <Text style={[styles.menuLabel, styles.menuLabelWide]}>Queue</Text>
+                <Text style={styles.menuWideSubtitle}>Your check-in number and status</Text>
+              </View>
+              <Text style={styles.menuWideChevron}>›</Text>
+            </TouchableOpacity>
+
           </View>
         </ScrollView>
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={[styles.navItem, styles.activeNavItem]}
-            onPress={() => navigation.navigate('PetOwnerQuickAssist', { user: currentUser })}
-            activeOpacity={0.9}
-          >
-            <View style={[styles.navIconWrap, styles.activeNavIconWrap]}>
-              <Image
-                source={require('../../assets/support.png')}
-                style={[styles.navIcon, styles.activeNavIcon]}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
 
         <PetOwnerOnboardingTutorial visible={showTutorial} onSkip={dismissTutorial} onFinish={dismissTutorial} />
+        <PetOwnerBottomNav navigation={navigation} user={currentUser} activeKey="dashboard" />
       </SafeAreaView>
     </LinearGradient>
   );

@@ -90,7 +90,7 @@ export default function VetInventory({ navigation, route }) {
       navigation={navigation}
       route={route}
       subtitle="Inventory"
-      caption="Clinical Supplies"
+      caption="Check clinical supplies"
       lowerHeaderAnimation={lowerHeaderAnimation}
     >
       <ScrollView

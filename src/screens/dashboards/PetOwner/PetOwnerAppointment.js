@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -283,22 +284,11 @@ export default function PetOwnerAppointment({ navigation, route }) {
           </LinearGradient>
 
           <View style={styles.headerBottomRow}>
-            <TouchableOpacity
-              style={[styles.menuTriggerButton, isSidebarVisible && styles.menuTriggerButtonActive]}
-              onPress={() => setIsSidebarVisible((current) => !current)}
-              activeOpacity={0.85}
-            >
-              <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
-            </TouchableOpacity>
-            <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>Welcome</Text>
-              <Text style={styles.ownerName}>{ownerName}</Text>
-            </View>
+            <PetOwnerHeaderGreeting caption="Book your appointment" user={user} />
           </View>
 
         </LinearGradient>
 
-        <PetOwnerSideDrawer visible={isSidebarVisible} onClose={() => setIsSidebarVisible(false)} navigation={navigation} user={user} activeKey="appointment" />
         {false && isSidebarMounted ? (
           <View style={styles.sidebarOverlay}>
             <Animated.View style={[styles.sidebarBackdrop, { opacity: sidebarAnimation }]}>
@@ -441,23 +431,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
           </TouchableOpacity>
         </ScrollView>
 
-        <View style={styles.quickAssistFloat}>
-          <TouchableOpacity
-            style={styles.quickAssistTouch}
-            onPress={() => navigation.navigate('PetOwnerQuickAssist', { user })}
-            activeOpacity={0.88}
-            accessibilityRole="button"
-            accessibilityLabel="Open Quick Assist"
-          >
-            <View style={styles.quickAssistIconWrap}>
-              <Image
-                source={require('../../assets/support.png')}
-                style={styles.quickAssistIcon}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
+        <PetOwnerBottomNav navigation={navigation} user={user} activeKey="appointment" />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -543,13 +517,13 @@ const styles = StyleSheet.create({
   menuTriggerButtonActive: { backgroundColor: 'rgba(44, 107, 163, 0.58)' },
   menuTriggerIcon: { width: 30, height: 30, tintColor: '#ffffff' },
   sidebarOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 3000,
     elevation: 30,
     flexDirection: 'row',
   },
   sidebarBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(28, 43, 51, 0.62)',
   },
   sidebarBackdropTouch: { flex: 1 },

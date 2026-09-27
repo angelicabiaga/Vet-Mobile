@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -198,28 +199,11 @@ const PetOwnerMyPets = ({ navigation, route }) => {
             ]}
           >
             <View style={styles.headerBottomRow}>
-              <TouchableOpacity
-                style={styles.menuTriggerButton}
-                onPress={() => setIsHeaderMenuVisible(true)}
-                activeOpacity={0.85}
-              >
-                <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
-              </TouchableOpacity>
 
-              <View style={styles.ownerSummary}>
-                <Text style={styles.headerCaption}>Manage your animal patients</Text>
-                <Text style={styles.ownerName}>{headerDisplayName}</Text>
-              </View>
+              <PetOwnerHeaderGreeting caption="Manage your animal patients" user={loggedInUser} />
             </View>
           </Animated.View>
 
-          <PetOwnerSideDrawer
-            visible={isHeaderMenuVisible}
-            onClose={() => setIsHeaderMenuVisible(false)}
-            navigation={navigation}
-            user={loggedInUser}
-            activeKey="pets"
-          />
         </LinearGradient>
 
         <ScrollView
@@ -356,21 +340,7 @@ const PetOwnerMyPets = ({ navigation, route }) => {
           </View>
         </ScrollView>
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={[styles.navItem, styles.activeNavItem]}
-            onPress={() => navigation.navigate('PetOwnerQuickAssist', { user: loggedInUser })}
-            activeOpacity={0.9}
-          >
-            <View style={[styles.navIconWrap, styles.activeNavIconWrap]}>
-              <Image
-                source={require('../../assets/support.png')}
-                style={[styles.navIcon, styles.activeNavIcon]}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
+        <PetOwnerBottomNav navigation={navigation} user={loggedInUser} activeKey="pets" />
       </SafeAreaView>
     </LinearGradient>
   );

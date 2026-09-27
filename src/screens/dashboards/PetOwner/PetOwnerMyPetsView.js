@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -168,27 +169,10 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
           </LinearGradient>
 
           <View style={styles.headerBottomRow}>
-            <TouchableOpacity
-              style={styles.menuTriggerButton}
-              onPress={() => setIsHeaderMenuVisible(true)}
-              activeOpacity={0.85}
-            >
-              <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
-            </TouchableOpacity>
 
-            <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>Animal patient details</Text>
-              <Text style={styles.ownerName}>{headerDisplayName}</Text>
-            </View>
+            <PetOwnerHeaderGreeting caption="Animal patient details" user={loggedInUser} />
           </View>
 
-          <PetOwnerSideDrawer
-            visible={isHeaderMenuVisible}
-            onClose={() => setIsHeaderMenuVisible(false)}
-            navigation={navigation}
-            user={loggedInUser}
-            activeKey="pets"
-          />
         </LinearGradient>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -316,6 +300,7 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
             ) : null}
           </View>
         </ScrollView>
+        <PetOwnerBottomNav navigation={navigation} user={loggedInUser} activeKey="pets" />
       </SafeAreaView>
     </LinearGradient>
   );

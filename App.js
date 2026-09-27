@@ -47,8 +47,15 @@ import PetOwnerQuickAssist from "./src/screens/dashboards/PetOwner/PetOwnerQuick
 import PetOwnerStaffMessages from "./src/screens/dashboards/PetOwner/PetOwnerStaffMessages";
 import PetOwnerVetMessages from "./src/screens/dashboards/PetOwner/PetOwnerVetMessages";
 import PetOwnerQueue from "./src/screens/dashboards/PetOwner/PetOwnerQueue";
+import { PET_OWNER_TAB_ROUTES } from "./src/screens/dashboards/PetOwner/PetOwnerBottomNav";
+import { VET_TAB_ROUTES } from "./src/screens/dashboards/Veterinary/VetBottomNav";
 
 const Stack = createNativeStackNavigator();
+
+// Bottom-bar tabs (Pet Owner and Veterinarian) crossfade instead of sliding in
+// like a new page, so the bar stays put and only the content changes.
+const TAB_ROUTES = [...PET_OWNER_TAB_ROUTES, ...VET_TAB_ROUTES];
+const TAB_SCREEN_OPTIONS = { animation: "fade", animationDuration: 220 };
 
 const linking = {
   prefixes: [
@@ -80,7 +87,10 @@ function AppNavigator({ navigationRef }) {
     >
       <Stack.Navigator
         initialRouteName="login"
-        screenOptions={{ headerShown: false }}
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          ...(TAB_ROUTES.includes(route.name) ? TAB_SCREEN_OPTIONS : null),
+        })}
       >
         {/* Authentication */}
         <Stack.Screen name="login" component={LoginScreen} />

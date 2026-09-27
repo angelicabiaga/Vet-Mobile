@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
@@ -650,26 +651,11 @@ const PetOwnerAppointmentSchedule = ({ navigation, route }) => {
 
           <View style={styles.headerBottomRowWrap}>
             <View style={styles.headerBottomRow}>
-              <TouchableOpacity
-                style={styles.menuTriggerButton}
-                onPress={toggleHeaderMenu}
-                activeOpacity={0.85}
-              >
-                <Image
-                  source={require('../../assets/List.png')}
-                  style={styles.menuTriggerIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
 
-              <View style={styles.flowHeaderTextWrap}>
-                <Text style={styles.headerCaption}>Choose pet, vet, date and time</Text>
-                <Text style={styles.ownerName}>{headerDisplayName}</Text>
-              </View>
+              <PetOwnerHeaderGreeting caption="Choose pet, vet, date and time" user={loggedInUser} />
             </View>
           </View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={loggedInUser} activeKey="appointment" />
           {false ? (
             <Animated.View
               style={[
@@ -1077,21 +1063,6 @@ const PetOwnerAppointmentSchedule = ({ navigation, route }) => {
           </View>
         </ScrollView>
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={[styles.navItem, styles.activeNavItem]}
-            onPress={() => navigation.navigate('PetOwnerQuickAssist', { user: loggedInUser })}
-            activeOpacity={0.9}
-          >
-            <View style={[styles.navIconWrap, styles.activeNavIconWrap]}>
-              <Image
-                source={require('../../assets/support.png')}
-                style={[styles.navIcon, styles.activeNavIcon]}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
 
         <Modal
           transparent
@@ -1347,6 +1318,7 @@ const PetOwnerAppointmentSchedule = ({ navigation, route }) => {
             </View>
           </View>
         </Modal>
+        <PetOwnerBottomNav navigation={navigation} user={loggedInUser} activeKey="appointment" />
       </SafeAreaView>
     </LinearGradient>
   );

@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -240,17 +240,6 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
 
             <View style={styles.headerBottomRow}>
               <View style={messageStyles.headerControls}>
-                <TouchableOpacity
-                  style={styles.menuTriggerButton}
-                  onPress={toggleHeaderMenu}
-                  activeOpacity={0.85}
-                >
-                  <Image
-                    source={require('../../assets/List.png')}
-                    style={styles.menuTriggerIcon}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={messageStyles.backTriggerButton}
@@ -265,13 +254,9 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.ownerSummary}>
-                <Text style={styles.headerCaption}>AI Cruz Chatbot</Text>
-                <Text style={styles.ownerName}>{displayName}</Text>
-              </View>
+              <PetOwnerHeaderGreeting caption="Chat with PawCruz AI" user={loggedInUser} accent={false} />
             </View>
 
-            <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={loggedInUser} />
             {false ? (
               <Animated.View
                 style={[
@@ -310,30 +295,6 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
             ) : null}
           </LinearGradient>
 
-          <View style={styles.disclaimerCard}>
-            <Text style={styles.disclaimerText}>
-              Disclaimer: Quick Assist responses are AI-generated and designed to provide
-              general information and guidance. Please verify important health concerns
-              with a veterinarian for proper care.
-            </Text>
-          </View>
-
-          <View style={styles.aiWelcomeCard}>
-            <View style={styles.aiWelcomeTop}>
-              <View style={styles.aiAvatarWrap}>
-                <Image source={require('../../assets/support.png')} style={styles.aiAvatarImage} resizeMode="contain" />
-              </View>
-              <View style={styles.aiWelcomeTextWrap}>
-                <Text style={styles.aiWelcomeEyebrow}>PAWCRUZ QUICK ASSIST</Text>
-                <Text style={styles.aiWelcomeTitle}>Ask PawCruz AI</Text>
-                <Text style={styles.aiWelcomeBody}>Get quick, general pet-care guidance and help understanding PawCruz records.</Text>
-              </View>
-            </View>
-            <View style={styles.aiSafetyChip}>
-              <Text style={styles.aiSafetyChipText}>For urgent symptoms, contact a veterinarian immediately.</Text>
-            </View>
-          </View>
-
           <ScrollView
             ref={chatScrollRef}
             style={styles.chatArea}
@@ -343,6 +304,28 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
             keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
             onContentSizeChange={() => chatScrollRef.current?.scrollToEnd?.({ animated: true })}
           >
+            {/* Intro + disclaimer scroll with the conversation so they never
+                squeeze the chat, especially while the keyboard is open. */}
+            <View style={styles.aiWelcomeCard}>
+              <View style={styles.aiWelcomeTop}>
+                <View style={styles.aiAvatarWrap}>
+                  <Image source={require('../../assets/support.png')} style={styles.aiAvatarImage} resizeMode="contain" />
+                </View>
+                <View style={styles.aiWelcomeTextWrap}>
+                  <Text style={styles.aiWelcomeEyebrow}>PAWCRUZ QUICK ASSIST</Text>
+                  <Text style={styles.aiWelcomeTitle}>Ask PawCruz AI</Text>
+                  <Text style={styles.aiWelcomeBody}>Get quick, general pet-care guidance and help understanding PawCruz records.</Text>
+                </View>
+              </View>
+              <View style={styles.aiSafetyChip}>
+                <Text style={styles.aiSafetyChipText}>For urgent symptoms, contact a veterinarian immediately.</Text>
+              </View>
+              <Text style={styles.disclaimerText}>
+                Responses are AI-generated for general information and guidance. Please verify
+                important health concerns with a veterinarian for proper care.
+              </Text>
+            </View>
+
             {chatMessages.map((item) => (
               <View
                 key={item.id}
@@ -650,24 +633,12 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 
-  disclaimerCard: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 18,
-    backgroundColor: '#f7fbfc',
-    borderWidth: 1,
-    borderColor: '#dbeaf0',
-  },
-
   disclaimerText: {
-    color: '#597789',
-    fontSize: 11.5,
-    lineHeight: 17,
-    fontWeight: '700',
-    textAlign: 'center',
+    marginTop: 8,
+    color: '#7a93a2',
+    fontSize: 10.5,
+    lineHeight: 15,
+    fontWeight: '600',
   },
 
   chatArea: {
@@ -771,8 +742,7 @@ const styles = StyleSheet.create({
   },
 
   aiWelcomeCard: {
-    marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 14,
     padding: 13,
     borderRadius: 19,
     backgroundColor: '#ffffff',

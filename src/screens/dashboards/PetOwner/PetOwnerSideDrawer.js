@@ -22,7 +22,7 @@ const PET_OWNER_MENU_ITEMS = [
   { key: 'pets', label: 'Animal Patients', icon: require('../../assets/Pets_Icon.png'), route: 'PetOwnerMyPets' },
   { key: 'appointment', label: 'Book Appointments', icon: require('../../assets/Appointment_Icon.png'), route: 'PetOwnerAppointment' },
   { key: 'myAppointments', label: 'Appointments', icon: require('../../assets/List.png'), route: 'PetOwnerMyAppointments' },
-  { key: 'queue', label: 'My Queue', icon: require('../../assets/List.png'), route: 'PetOwnerQueue' },
+  { key: 'queue', label: 'Queue', icon: require('../../assets/List.png'), route: 'PetOwnerQueue' },
   { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
 ];
 
@@ -138,7 +138,7 @@ export default function PetOwnerSideDrawer({ visible, onClose, navigation, user,
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, flexDirection: 'row' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(28,43,51,0.62)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(28,43,51,0.62)' },
   backdropTouch: { flex: 1 },
   drawer: {
     width: '75%', height: '100%', paddingHorizontal: 16, paddingTop: 54, paddingBottom: 20,

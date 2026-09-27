@@ -107,7 +107,7 @@ const VetPatientOwners = ({ navigation, route }) => {
       navigation={navigation}
       route={route}
       subtitle="Animal Patients"
-      caption="Pet Owners"
+      caption="Browse pet owners"
       lowerHeaderAnimation={lowerHeaderAnimation}
     >
       <ScrollView

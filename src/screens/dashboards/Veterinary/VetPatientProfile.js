@@ -73,7 +73,7 @@ export default function VetPatientProfile({ navigation, route }) {
 
   if (patientLoaded && !patient) {
     return (
-      <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Patient Care" showBack lowerHeaderAnimation={lowerHeaderAnimation}>
+      <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Animal patient profile" showBack lowerHeaderAnimation={lowerHeaderAnimation}>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>Animal patient not found</Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => navigation.navigate('VetPatientOwners', { user: currentUser })} activeOpacity={0.9}>
@@ -86,7 +86,7 @@ export default function VetPatientProfile({ navigation, route }) {
 
   if (!patient) {
     return (
-      <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Patient Care" showBack lowerHeaderAnimation={lowerHeaderAnimation}>
+      <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Animal patient profile" showBack lowerHeaderAnimation={lowerHeaderAnimation}>
         <View style={[styles.emptyCard, { alignItems: 'center' }]}>
           <ActivityIndicator size="large" color="#2c6ba3" />
         </View>
@@ -95,7 +95,7 @@ export default function VetPatientProfile({ navigation, route }) {
   }
 
   return (
-    <VetShell navigation={navigation} route={route} subtitle="Animal Patient Profile" caption="Patient Care" showBack lowerHeaderAnimation={lowerHeaderAnimation}>
+    <VetShell navigation={navigation} route={route} subtitle="Animal Patient Profile" caption="Animal patient profile" showBack lowerHeaderAnimation={lowerHeaderAnimation}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} onScroll={handleScroll} scrollEventThrottle={16}>
         <View style={styles.detailCard}>
           <View style={styles.headerRow}>

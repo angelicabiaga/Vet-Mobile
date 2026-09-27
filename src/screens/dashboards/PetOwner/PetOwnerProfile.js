@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
@@ -649,26 +650,11 @@ const PetOwnerProfile = ({ navigation, route }) => {
             ]}
           >
             <View style={styles.headerBottomRow}>
-            <TouchableOpacity
-              style={styles.menuTriggerButton}
-              onPress={toggleHeaderMenu}
-              activeOpacity={0.85}
-            >
-              <Image
-                source={require('../../assets/List.png')}
-                style={styles.menuTriggerIcon}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
 
-            <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>Account overview</Text>
-              <Text style={styles.ownerName}>{profileData.username}</Text>
-            </View>
+            <PetOwnerHeaderGreeting caption="Account overview" name={profileData.fullName || profileData.username} />
             </View>
           </Animated.View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={currentUser} />
           {false ? (
             <Animated.View
               style={[
@@ -1009,21 +995,6 @@ const PetOwnerProfile = ({ navigation, route }) => {
           </View>
         </ScrollView>
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={[styles.navItem, styles.activeNavItem]}
-            onPress={() => navigation.navigate('PetOwnerQuickAssist', { user: currentUser })}
-            activeOpacity={0.9}
-          >
-            <View style={[styles.navIconWrap, styles.activeNavIconWrap]}>
-              <Image
-                source={require('../../assets/support.png')}
-                style={[styles.navIcon, styles.activeNavIcon]}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
 
         <ProfileOtpModal visible={showOtpModal} purpose={otpPurpose} destinationEmail={otpPurpose === 'change_email' ? draftProfile.email : profileData.email} busy={otpLoading} error={otpError} onClearError={() => setOtpError('')} onVerify={verifyProfileOtp} onResend={sendProfileOtp} onCancel={() => { if (!otpLoading) { setShowOtpModal(false); setOtpError(''); } }} />
 
@@ -1158,6 +1129,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
         >
           Are you sure you want to logout?
         </CustomModal>
+        <PetOwnerBottomNav navigation={navigation} user={currentUser} />
       </SafeAreaView>
     </LinearGradient>
   );

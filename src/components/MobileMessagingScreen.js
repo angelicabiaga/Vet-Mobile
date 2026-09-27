@@ -1,5 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from '../screens/dashboards/PetOwner/PetOwnerSideDrawer';
+import PetOwnerBottomNav from '../screens/dashboards/PetOwner/PetOwnerBottomNav';
+import VetBottomNav from '../screens/dashboards/Veterinary/VetBottomNav';
+import PetOwnerHeaderGreeting from '../screens/dashboards/PetOwner/PetOwnerHeaderGreeting';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Alert, Animated, Easing, FlatList, Image, KeyboardAvoidingView, Linking, Modal, Platform,
@@ -64,7 +66,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
       headerMenuItems: [
         { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "petowner-screen" },
         { key: "appointment", label: "Appointment", icon: require("../screens/assets/Appointment_Icon.png"), route: "PetOwnerAppointment" },
-        { key: "queue", label: "My Queue", icon: require("../screens/assets/List.png"), route: "PetOwnerQueue" },
+        { key: "queue", label: "Queue", icon: require("../screens/assets/List.png"), route: "PetOwnerQueue" },
         { key: "mypets", label: "Animal Patients", icon: require("../screens/assets/Pets_Icon.png"), route: "PetOwnerMyPets" },
         { key: "messages", label: "Messages", icon: require("../screens/assets/Message_Icon.png"), route: "PetOwnerMessages" },
       ],
@@ -73,6 +75,8 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
 
   const roleMeta = ROLE_META[currentRole] || ROLE_META.pet_owner;
   const { headerMenuItems } = roleMeta;
+  // Both roles navigate with their own bottom tab bar.
+  const isPetOwner = roleMeta.sideDrawerRole === "pet_owner";
 
   const toggleHeaderMenu = () => {
     const nextVisible = !isHeaderMenuVisible;
@@ -275,23 +279,13 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
           </LinearGradient>
 
           <View style={styles.dashboardBottomRow}>
-            <TouchableOpacity style={styles.menuTriggerButton} onPress={toggleHeaderMenu} activeOpacity={0.85}>
-              <Image source={require("../screens/assets/List.png")} style={styles.menuTriggerIcon} resizeMode="contain" />
-            </TouchableOpacity>
-            <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>{activeConversation ? "Chatting with" : "Messages"}</Text>
-              <Text style={styles.ownerName} numberOfLines={1}>{activeConversation ? titleFor(activeConversation) : displayName}</Text>
-            </View>
+            <PetOwnerHeaderGreeting
+              caption={activeConversation ? "Chatting with" : isPetOwner ? "Your clinic conversations" : "Talk to pet owners"}
+              name={activeConversation ? titleFor(activeConversation) : undefined}
+              user={profile}
+            />
           </View>
 
-          <PetOwnerSideDrawer
-            visible={isHeaderMenuVisible}
-            onClose={() => setIsHeaderMenuVisible(false)}
-            navigation={navigation}
-            user={profile}
-            activeKey="messages"
-            role={roleMeta.sideDrawerRole}
-          />
           {false ? (
             <Animated.View style={[styles.headerMenuPanel, { opacity: headerMenuAnimation, transform: [{ translateY: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) }, { scale: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }] }]}>
               {headerMenuItems.map((item) => (
@@ -413,25 +407,13 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
           </KeyboardAvoidingView>
         )}
 
-        {roleMeta.showQuickAssist ? (
-          <View style={styles.quickAssistFloat}>
-            <TouchableOpacity
-              style={styles.quickAssistTouch}
-              onPress={() => navigation.navigate("PetOwnerQuickAssist", { user: profile })}
-              activeOpacity={0.88}
-              accessibilityRole="button"
-              accessibilityLabel="Open Quick Assist"
-            >
-              <View style={styles.quickAssistIconWrap}>
-                <Image
-                  source={require("../screens/assets/support.png")}
-                  style={styles.quickAssistIcon}
-                  resizeMode="contain"
-                />
-              </View>
-            </TouchableOpacity>
-          </View>
-        ) : null}
+        {/* Inside an open thread the bar steps aside (the thread has its own back
+            button) so the conversation and composer get the full height. */}
+        {activeConversation ? null : isPetOwner ? (
+          <PetOwnerBottomNav navigation={navigation} user={profile} activeKey="messages" />
+        ) : (
+          <VetBottomNav navigation={navigation} user={profile} activeKey="messages" />
+        )}
 
         <Modal visible={showNew} transparent animationType="fade" onRequestClose={() => setShowNew(false)}>
           <View style={styles.modalOverlay}><View style={styles.modalCard}>

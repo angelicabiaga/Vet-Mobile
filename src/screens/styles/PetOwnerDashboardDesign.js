@@ -898,6 +898,43 @@ export const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
+  menuCardWide: {
+    width: '100%',
+    minHeight: 84,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 16,
+  },
+
+  iconCircleWide: {
+    marginBottom: 0,
+    marginRight: 14,
+  },
+
+  menuWideTextWrap: {
+    flex: 1,
+  },
+
+  menuLabelWide: {
+    fontSize: 14,
+    textAlign: 'left',
+  },
+
+  menuWideSubtitle: {
+    marginTop: 3,
+    fontSize: 11.5,
+    color: '#6f8a9c',
+    fontWeight: '600',
+  },
+
+  menuWideChevron: {
+    fontSize: 26,
+    lineHeight: 28,
+    color: '#8fb0c4',
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+
   bottomNav: {
     position: 'absolute',
     right: 18,

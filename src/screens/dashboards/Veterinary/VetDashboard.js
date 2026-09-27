@@ -213,7 +213,7 @@ const VetDashboard = ({ navigation, route }) => {
       navigation={navigation}
       route={route}
       subtitle="Veterinary Dashboard"
-      caption="Clinical Workspace"
+      caption="Welcome back"
       lowerHeaderAnimation={lowerHeaderAnimation}
     >
       <ScrollView

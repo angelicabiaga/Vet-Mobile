@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,7 +120,7 @@ export default function PetOwnerQueue({ navigation, route }) {
             <View style={styles.headerTopRow}>
               <TouchableOpacity style={styles.brandSection} onPress={() => navigation.navigate('petowner-screen', { user })} activeOpacity={0.85}>
                 <View style={styles.logoWrap}><Image source={require('../../assets/paw1.png')} style={styles.headerLogo} resizeMode="contain" /></View>
-                <View style={styles.brandBlock}><Text style={styles.headerTitle}>PawCruz</Text><Text style={styles.headerSubtitle}>My Queue</Text></View>
+                <View style={styles.brandBlock}><Text style={styles.headerTitle}>PawCruz</Text><Text style={styles.headerSubtitle}>Queue</Text></View>
               </TouchableOpacity>
               <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.notifButton} onPress={() => navigation.navigate('PetOwnerNotif', { user })} activeOpacity={0.85}>
@@ -133,13 +134,9 @@ export default function PetOwnerQueue({ navigation, route }) {
           </LinearGradient>
 
           <View style={styles.headerBottomRow}>
-            <TouchableOpacity style={styles.menuTriggerButton} onPress={toggleHeaderMenu} activeOpacity={0.85}>
-              <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
-            </TouchableOpacity>
-            <View style={styles.ownerSummary}><Text style={styles.headerCaption}>Your assigned queue number</Text><Text style={styles.ownerName}>{headerDisplayName}</Text></View>
+            <PetOwnerHeaderGreeting caption="Track your queue number" user={user} />
           </View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={user} activeKey="queue" />
           {false ? (
             <Animated.View style={[styles.headerMenuPanel, { opacity: headerMenuAnimation, transform: [{ translateY: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-18, 0] }) }] }] }>
               {headerMenuItems.map((item) => (
@@ -208,13 +205,7 @@ export default function PetOwnerQueue({ navigation, route }) {
           </TouchableOpacity>
         </ScrollView>
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={[styles.navItem, styles.activeNavItem]} onPress={() => navigation.navigate('PetOwnerQuickAssist', { user })} activeOpacity={0.9}>
-            <View style={[styles.navIconWrap, styles.activeNavIconWrap]}>
-              <Image source={require('../../assets/support.png')} style={[styles.navIcon, styles.activeNavIcon]} resizeMode="contain" />
-            </View>
-          </TouchableOpacity>
-        </View>
+        <PetOwnerBottomNav navigation={navigation} user={user} activeKey="queue" />
       </SafeAreaView>
     </LinearGradient>
   );

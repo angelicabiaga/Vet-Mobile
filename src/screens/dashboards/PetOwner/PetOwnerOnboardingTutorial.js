@@ -37,9 +37,9 @@ const STEPS = [
   },
   {
     key: 'menu',
-    icon: require('../../assets/List.png'),
-    title: 'Open the menu anytime',
-    description: 'Tap the menu icon next to "Welcome" to jump to Book Appointment, Appointments, Animal Patients, My Queue, or Messages from any screen.',
+    icon: require('../../assets/Dashboard_Icon.png'),
+    title: 'Get around from the bottom bar',
+    description: 'Use the navigation bar at the bottom of the screen to jump to Home, Pets, Book, Appointments, Queue, or Messages from any screen.',
   },
   {
     key: 'queue',

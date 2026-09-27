@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -181,17 +182,10 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
           </LinearGradient>
 
           <View style={styles.headerBottomRow}>
-            <TouchableOpacity style={[styles.menuTriggerButton, isSidebarVisible && styles.menuTriggerButtonActive]} onPress={() => setIsSidebarVisible((current) => !current)} activeOpacity={0.85}>
-              <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
-            </TouchableOpacity>
-            <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>Welcome</Text>
-              <Text style={styles.ownerName}>{ownerName}</Text>
-            </View>
+            <PetOwnerHeaderGreeting caption="Your appointment history" user={user} />
           </View>
         </LinearGradient>
 
-        <PetOwnerSideDrawer visible={isSidebarVisible} onClose={() => setIsSidebarVisible(false)} navigation={navigation} user={user} activeKey="myAppointments" />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.heroCard}>
@@ -268,13 +262,7 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
           </View>
         </ScrollView>
 
-        <View style={styles.quickAssistFloat}>
-          <TouchableOpacity style={styles.quickAssistTouch} onPress={() => navigation.navigate('PetOwnerQuickAssist', { user })} activeOpacity={0.88} accessibilityRole="button" accessibilityLabel="Open Quick Assist">
-            <View style={styles.quickAssistIconWrap}>
-              <Image source={require('../../assets/support.png')} style={styles.quickAssistIcon} resizeMode="contain" />
-            </View>
-          </TouchableOpacity>
-        </View>
+        <PetOwnerBottomNav navigation={navigation} user={user} activeKey="myAppointments" />
       </SafeAreaView>
     </LinearGradient>
   );

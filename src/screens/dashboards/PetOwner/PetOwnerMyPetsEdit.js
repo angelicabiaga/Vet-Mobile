@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -495,17 +496,10 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
           </LinearGradient>
 
           <View style={styles.headerBottomRow}>
-            <TouchableOpacity style={styles.menuTriggerButton} onPress={toggleHeaderMenu} activeOpacity={0.85}>
-              <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
-            </TouchableOpacity>
 
-            <View style={styles.ownerSummary}>
-              <Text style={styles.headerCaption}>Manage your pets</Text>
-              <Text style={styles.ownerName}>{headerDisplayName}</Text>
-            </View>
+            <PetOwnerHeaderGreeting caption="Edit your pet's profile" user={loggedInUser} />
           </View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={loggedInUser} activeKey="pets" />
           {false ? (
             <Animated.View
               style={[
@@ -909,6 +903,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
             </View>
           </View>
         </Modal>
+        <PetOwnerBottomNav navigation={navigation} user={loggedInUser} activeKey="pets" />
       </SafeAreaView>
     </LinearGradient>
   );

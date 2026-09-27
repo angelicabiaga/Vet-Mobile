@@ -211,7 +211,7 @@ const VetPatients = ({ navigation, route }) => {
 
   if (!ownerId) {
     return (
-      <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Pet Owners">
+      <VetShell navigation={navigation} route={route} subtitle="Animal Patients" caption="Review animal patients">
         <View style={styles.emptyCard}>
           <ActivityIndicator size="large" color="#2c6ba3" />
         </View>
@@ -243,7 +243,7 @@ const VetPatients = ({ navigation, route }) => {
       navigation={navigation}
       route={route}
       subtitle={ownerName ? `${ownerName}'s Animal Patients` : 'Animal Patients'}
-      caption="Patient Care"
+      caption="Review animal patients"
       showBack
       lowerHeaderAnimation={lowerHeaderAnimation}
     >

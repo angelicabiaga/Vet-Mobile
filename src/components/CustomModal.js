@@ -15,7 +15,7 @@ export default function CustomModal({ show, onClose, children, extraAction }) {
     <Modal transparent animationType="fade">
       <View style={styles.overlay}>
         <Pressable
-          style={[styles.backdrop, StyleSheet.absoluteFillObject]}
+          style={[styles.backdrop, StyleSheet.absoluteFill]}
           onPress={onClose}
           accessibilityLabel="Dismiss dialog"
           accessibilityRole="button"

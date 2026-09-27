@@ -109,7 +109,7 @@ export default function VetAppointment({ navigation, route }) {
   const currentPage = Math.min(page, totalPages);
   const pagedItems = visibleItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  return <VetShell navigation={navigation} route={route} subtitle="Appointments" caption="Assigned clinic schedule">
+  return <VetShell navigation={navigation} route={route} subtitle="Appointments" caption="Review your appointments">
     <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}>
       <Text style={styles.helper}>Appointments use the same PawCruz web data and 10-minute scheduling flow. This veterinarian view is read-only; Staff controls appointment status and clinic check-in.</Text>
 

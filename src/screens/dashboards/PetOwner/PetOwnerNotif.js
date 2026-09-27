@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerSideDrawer from './PetOwnerSideDrawer';
+import PetOwnerBottomNav from './PetOwnerBottomNav';
+import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -170,14 +171,10 @@ const PetOwnerNotif = ({ navigation, route }) => {
 
           <Animated.View style={[styles.headerBottomRowWrap, { opacity: lowerHeaderAnimation }]}>
             <View style={styles.headerBottomRow}>
-              <TouchableOpacity style={styles.menuTriggerButton} onPress={toggleHeaderMenu} activeOpacity={0.85}>
-                <Image source={require('../../assets/List.png')} style={styles.menuTriggerIcon} resizeMode="contain" />
-              </TouchableOpacity>
-              <View style={styles.ownerSummary}><Text style={styles.headerCaption}>{unreadCount ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'You are all caught up'}</Text><Text style={styles.ownerName}>{headerDisplayName}</Text></View>
+              <PetOwnerHeaderGreeting caption={unreadCount ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'You are all caught up'} user={routeUser} />
             </View>
           </Animated.View>
 
-          <PetOwnerSideDrawer visible={isHeaderMenuVisible} onClose={() => setIsHeaderMenuVisible(false)} navigation={navigation} user={routeUser} />
           {false ? (
             <Animated.View style={[styles.headerMenuPanel, { opacity: headerMenuAnimation, transform: [{ translateY: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) }] }] }>
               {headerMenuItems.map((item) => (
@@ -240,11 +237,7 @@ const PetOwnerNotif = ({ navigation, route }) => {
           )}
         </ScrollView>
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={[styles.navItem, styles.activeNavItem]} onPress={() => navigate('PetOwnerQuickAssist')} activeOpacity={0.9}>
-            <View style={[styles.navIconWrap, styles.activeNavIconWrap]}><Image source={require('../../assets/support.png')} style={[styles.navIcon, styles.activeNavIcon]} resizeMode="contain" /></View>
-          </TouchableOpacity>
-        </View>
+        <PetOwnerBottomNav navigation={navigation} user={routeUser} />
       </SafeAreaView>
     </LinearGradient>
   );
