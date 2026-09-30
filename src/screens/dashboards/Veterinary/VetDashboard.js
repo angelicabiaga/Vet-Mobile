@@ -33,7 +33,7 @@ const HERO_SLIDES = [
     key: 'schedule',
     label: 'Check your schedule',
     title: 'Know your availability before the clinic books your day.',
-    description: 'Open Schedule to review your weekly hours and any upcoming date-specific changes.',
+    description: 'Open Schedule to review your hours, request leave ahead, or report a same-day emergency.',
     route: 'VetSchedule',
   },
 ];
@@ -41,7 +41,7 @@ const HERO_SLIDES = [
 const SERVICE_CARDS = [
   { key: 'patients', title: 'Animal Patients', subtitle: 'Pets and medical history', icon: require('../../assets/Pets_Icon.png'), route: 'VetPatientOwners' },
   { key: 'appointments', title: 'Appointments', subtitle: 'Check daily schedule', icon: require('../../assets/Appointment_Icon.png'), route: 'VetAppointment' },
-  { key: 'schedule', title: 'Schedule', subtitle: 'Your weekly availability', icon: require('../../assets/calendar.png'), route: 'VetSchedule' },
+  { key: 'schedule', title: 'Schedule', subtitle: 'Hours & leave requests', icon: require('../../assets/calendar.png'), route: 'VetSchedule' },
   { key: 'messages', title: 'Messages', subtitle: 'Talk to pet owners', icon: require('../../assets/Message_Icon.png'), route: 'VetMessages' },
 ];
 

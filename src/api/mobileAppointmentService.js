@@ -72,17 +72,11 @@ export async function getAvailableSlots(veterinarianId, appointmentDate, exclude
     String(overrideError?.message || '').toLowerCase().includes('veterinarian_schedule_overrides');
   if (overrideError && !overrideMissing) throw new Error('Unable to load the selected date schedule.');
 
+  // Leave / adjusted hours first, then the schedule the clinic created for
+  // that date (VET_SCHEDULE_CALENDAR.sql). No created schedule means nothing
+  // can be booked yet. Before that SQL is run, the weekly roster applies.
   let schedule = overrideMissing ? null : override;
-  if (!schedule) {
-    const { data: weekly, error: scheduleError } = await supabase
-      .from('veterinarian_schedules')
-      .select('start_time, end_time, is_available')
-      .eq('veterinarian_id', veterinarianId)
-      .eq('day_of_week', dayOfWeek)
-      .maybeSingle();
-    if (scheduleError) throw new Error('Unable to load the veterinarian schedule.');
-    schedule = weekly;
-  }
+  if (!schedule) schedule = await getCreatedScheduleDay(veterinarianId, appointmentDate, dayOfWeek);
 
   if (!schedule?.is_available || !schedule.start_time || !schedule.end_time) return [];
 
@@ -98,15 +92,39 @@ export async function getAvailableSlots(veterinarianId, appointmentDate, exclude
   if (bookedError) throw new Error('Unable to load booked appointment times.');
 
   const bookedTimes = new Set((booked || []).map((item) => normalizeTime(item.start_time)));
+  // Slots offered to another owner in a pending doctor change are held for
+  // them until they answer (matches the web app).
+  const { data: holds } = await supabase
+    .from('queue_doctor_offers')
+    .select('proposed_time, pet_ids')
+    .eq('proposed_veterinarian_id', veterinarianId)
+    .eq('offer_date', appointmentDate)
+    .eq('status', 'Pending');
+  (holds || []).forEach((hold) => {
+    let time = normalizeTime(hold.proposed_time);
+    for (let i = 0; i < Math.max(hold.pet_ids?.length || 0, 1); i += 1) {
+      bookedTimes.add(time);
+      time = addTenMinutes(time);
+    }
+  });
   const slots = [];
   let current = normalizeTime(schedule.start_time);
   if (current < CLINIC_OPEN_TIME) current = CLINIC_OPEN_TIME;
 
-  // Web and mobile share the same clinic booking window.
-  // The final 10-minute slot starts at 6:50 PM and ends at 7:00 PM.
-  const end = CLINIC_CLOSE_TIME;
+  // Web and mobile share the same clinic booking window: the final
+  // 10-minute slot starts at 6:50 PM and ends at 7:00 PM. A vet's own
+  // schedule (weekly or a date override, e.g. an approved leave-early day)
+  // can end sooner, and today's past times can't be booked -- the web app
+  // already skips both, and the database rejects them anyway.
+  const scheduleEnd = normalizeTime(schedule.end_time);
+  const end = scheduleEnd < CLINIC_CLOSE_TIME ? scheduleEnd : CLINIC_CLOSE_TIME;
+  const isToday = appointmentDate === todayLocal();
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
   while (current < end) {
-    if (!bookedTimes.has(current)) slots.push(current);
+    const [slotHour, slotMinute] = current.split(':').map(Number);
+    const isPast = isToday && slotHour * 60 + slotMinute <= nowMinutes;
+    if (!bookedTimes.has(current) && !isPast) slots.push(current);
     current = addTenMinutes(current);
   }
   return slots;
@@ -115,6 +133,38 @@ export async function getAvailableSlots(veterinarianId, appointmentDate, exclude
 const isMissingTableError = (error, tableName) =>
   ['42P01', 'PGRST205'].includes(error?.code) ||
   String(error?.message || '').toLowerCase().includes(tableName);
+
+// The created schedule for one vet and date, or null when none was created.
+async function getCreatedScheduleDay(veterinarianId, appointmentDate, dayOfWeek) {
+  const { data, error } = await supabase
+    .from('veterinarian_schedule_days')
+    .select('start_time, end_time, is_available')
+    .eq('veterinarian_id', veterinarianId)
+    .eq('schedule_date', appointmentDate)
+    .maybeSingle();
+  if (!error) return data;
+  if (!isMissingTableError(error, 'veterinarian_schedule_days')) throw new Error('Unable to load the veterinarian schedule.');
+  const { data: weekly, error: weeklyError } = await supabase
+    .from('veterinarian_schedules')
+    .select('start_time, end_time, is_available')
+    .eq('veterinarian_id', veterinarianId)
+    .eq('day_of_week', dayOfWeek)
+    .maybeSingle();
+  if (weeklyError) throw new Error('Unable to load the veterinarian schedule.');
+  return weekly;
+}
+
+// Whether the clinic has released this vet's schedule for the date (a
+// created schedule day or adjusted hours). Used to explain empty slots.
+export async function isScheduleOpen(veterinarianId, appointmentDate) {
+  if (!veterinarianId || !appointmentDate) return true;
+  const [{ data: day, error }, { data: adjusted }] = await Promise.all([
+    supabase.from('veterinarian_schedule_days').select('id').eq('veterinarian_id', veterinarianId).eq('schedule_date', appointmentDate).limit(1),
+    supabase.from('veterinarian_schedule_overrides').select('id').eq('veterinarian_id', veterinarianId).eq('schedule_date', appointmentDate).is('leave_request_id', null).limit(1),
+  ]);
+  if (error) return true;
+  return (day || []).length > 0 || (adjusted || []).length > 0;
+}
 
 // Read-only view of a veterinarian's own weekly availability, for the
 // Schedule nav item. Reuses the exact table getAvailableSlots already reads

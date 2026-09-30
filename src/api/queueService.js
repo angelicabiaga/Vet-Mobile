@@ -138,10 +138,14 @@ export function subscribeToQueue(callback, { ownerId, veterinarianId } = {}) {
   // Listen to both queue changes and appointment status changes. A Staff action
   // that completes/cancels the appointment therefore clears the Pet Owner queue
   // immediately even before the fallback refresh runs.
+  const offerConfig = { event: '*', schema: 'public', table: 'queue_doctor_offers' };
+  if (ownerId) offerConfig.filter = `owner_id=eq.${ownerId}`;
+
   const channel = supabase
     .channel(`mobile-queue-${ownerId || veterinarianId || 'live'}-${Date.now()}`)
     .on('postgres_changes', config, () => callback?.())
     .on('postgres_changes', appointmentConfig, () => callback?.())
+    .on('postgres_changes', offerConfig, () => callback?.())
     .subscribe();
 
   return () => {

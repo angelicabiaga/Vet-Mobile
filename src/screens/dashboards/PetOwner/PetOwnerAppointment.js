@@ -21,6 +21,7 @@ import {
   createAppointment,
   formatTime,
   getAvailableSlots,
+  isScheduleOpen,
   getPetsByOwner,
   getVeterinarians,
   rescheduleAppointment,
@@ -48,6 +49,8 @@ export default function PetOwnerAppointment({ navigation, route }) {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [slotLoading, setSlotLoading] = useState(false);
+  // The clinic hasn't released this vet's schedule for the chosen date yet.
+  const [scheduleClosed, setScheduleClosed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [message, setMessage] = useState('');
@@ -160,6 +163,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
     let active = true;
     async function loadSlots() {
       setForm((current) => ({ ...current, startTime: '' }));
+      setScheduleClosed(false);
       if (!form.veterinarianId || !form.appointmentDate) {
         setSlots([]);
         return;
@@ -168,6 +172,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
         setSlotLoading(true);
         const rows = await getAvailableSlots(form.veterinarianId, form.appointmentDate, editing?.id || null);
         if (active) setSlots(rows);
+        if (active && !rows.length) setScheduleClosed(!(await isScheduleOpen(form.veterinarianId, form.appointmentDate)));
       } catch (error) {
         if (active) setMessage(error.message);
       } finally {
@@ -390,10 +395,13 @@ export default function PetOwnerAppointment({ navigation, route }) {
               style={styles.dropdown}
               data={slots.map((slot) => ({ value: slot, label: `${formatTime(slot)} – ${formatTime(addTenMinutes(slot))}` }))}
               labelField="label" valueField="value" value={form.startTime}
-              placeholder={slotLoading ? 'Loading available times...' : slots.length ? 'Select available time' : 'No available slots'}
+              placeholder={slotLoading ? 'Loading available times...' : slots.length ? 'Select available time' : scheduleClosed ? 'Schedule not open yet' : 'No available slots'}
               disable={slotLoading || !form.veterinarianId || !slots.length}
               onChange={(item) => setForm((current) => ({ ...current, startTime: item.value }))}
             />
+            {!slotLoading && scheduleClosed ? (
+              <Text style={styles.scheduleNote}>The clinic hasn't released this veterinarian's schedule for this date yet. Please choose an earlier date.</Text>
+            ) : null}
 
             <FieldLabel text="Visit Reason" optional />
             <TextInput style={styles.input} value={form.visitReason} onChangeText={(value) => setForm((current) => ({ ...current, visitReason: value }))} placeholder="Example: Routine checkup" maxLength={200} />
@@ -446,6 +454,7 @@ function SummaryRow({ label, value }) {
 }
 
 const styles = StyleSheet.create({
+  scheduleNote: { color: '#9d6817', fontSize: 12.5, fontWeight: '700', lineHeight: 18, marginTop: -4, marginBottom: 10 },
   background: { flex: 1, backgroundColor: '#f7fbfc' },
   safe: { flex: 1, backgroundColor: 'transparent' },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f7fbfc' },

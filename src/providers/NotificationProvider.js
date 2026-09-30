@@ -30,6 +30,11 @@ const MESSAGE_ROUTE_BY_ROLE = {
   veterinarian: 'VetMessages',
 };
 
+// "Schedule Update" (leave approved/declined/revoked/acknowledged).
+const SCHEDULE_ROUTE_BY_ROLE = {
+  veterinarian: 'VetSchedule',
+};
+
 function resolveRouteForNotification(notification, role) {
   const type = String(notification?.notification_type || '').toLowerCase();
   const normalizedRole = String(role || '').toLowerCase();
@@ -40,6 +45,14 @@ function resolveRouteForNotification(notification, role) {
   if (type.includes('message')) {
     const name = MESSAGE_ROUTE_BY_ROLE[normalizedRole];
     return name ? { name } : null;
+  }
+  if (type.includes('schedule') || type.includes('leave')) {
+    const name = SCHEDULE_ROUTE_BY_ROLE[normalizedRole];
+    return name ? { name } : null;
+  }
+  // "Queue Update": e.g. a doctor change the owner must confirm in My Queue.
+  if (type.includes('queue') && normalizedRole === 'pet_owner') {
+    return { name: 'PetOwnerQueue' };
   }
   return null;
 }
