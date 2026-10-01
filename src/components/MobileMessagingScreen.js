@@ -34,6 +34,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   const [showNew, setShowNew] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
   const [subject, setSubject] = useState("");
+  const [recipientSearch, setRecipientSearch] = useState("");
   const headerMenuAnimation = useRef(new Animated.Value(0)).current;
   const [isHeaderMenuVisible, setIsHeaderMenuVisible] = useState(false);
 
@@ -211,11 +212,25 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
     return `${senderName}: ${content}`;
   };
 
+  // Clinic team (Admin, Staff) first, then everyone else; each group by name.
+  const ROLE_ORDER = { admin: 0, administrator: 0, staff: 1, veterinarian: 2, pet_owner: 3 };
+  const recipientQuery = recipientSearch.trim().toLowerCase();
+  const visibleContacts = contacts
+    .filter((contact) => !recipientQuery || [contact.full_name, contact.username, contact.email, roleLabel(contact.role)]
+      .some((value) => String(value || "").toLowerCase().includes(recipientQuery)))
+    .sort((a, b) => {
+      const byRole = (ROLE_ORDER[normalizeRole(a.role)] ?? 9) - (ROLE_ORDER[normalizeRole(b.role)] ?? 9);
+      if (byRole) return byRole;
+      return String(a.full_name || a.username || "").localeCompare(String(b.full_name || b.username || ""));
+    });
+
+  const closeNew = () => { setShowNew(false); setRecipientSearch(""); };
+
   const createNew = async () => {
     if (!selectedContact?.id) return Alert.alert("New Conversation", "Choose a recipient first.");
     try {
       const conversation = await createConversation(profile, [selectedContact.id], subject || `Chat with ${selectedContact.full_name || "PawCruz"}`);
-      setShowNew(false); setSelectedContact(null); setSubject("");
+      closeNew(); setSelectedContact(null); setSubject("");
       await loadOverview();
       const refreshed = await getConversations(profile);
       setActiveConversation((refreshed || []).find((c) => c.id === conversation.id) || conversation);
@@ -415,16 +430,17 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
           <VetBottomNav navigation={navigation} user={profile} activeKey="messages" />
         )}
 
-        <Modal visible={showNew} transparent animationType="fade" onRequestClose={() => setShowNew(false)}>
+        <Modal visible={showNew} transparent animationType="fade" onRequestClose={closeNew}>
           <View style={styles.modalOverlay}><View style={styles.modalCard}>
-            <View style={styles.row}><Text style={styles.modalTitle}>New Conversation</Text><TouchableOpacity onPress={() => setShowNew(false)}><Text style={styles.close}>×</Text></TouchableOpacity></View>
+            <View style={styles.row}><Text style={styles.modalTitle}>New Conversation</Text><TouchableOpacity onPress={closeNew}><Text style={styles.close}>×</Text></TouchableOpacity></View>
             <TextInput style={styles.subjectInput} value={subject} onChangeText={setSubject} placeholder="Subject (optional)" placeholderTextColor="#8aa0af" />
             <Text style={styles.recipientLabel}>Choose recipient</Text>
-            <FlatList data={contacts} keyExtractor={(item) => String(item.id)} style={styles.contactsList}
-              ListEmptyComponent={<Text style={styles.emptyText}>No active recipients found.</Text>}
+            <TextInput style={styles.recipientSearchInput} value={recipientSearch} onChangeText={setRecipientSearch} placeholder="Search name, email, or role (e.g. Staff)" placeholderTextColor="#8aa0af" autoCapitalize="none" />
+            <FlatList data={visibleContacts} keyExtractor={(item) => String(item.id)} style={styles.contactsList}
+              ListEmptyComponent={<Text style={styles.emptyText}>{recipientQuery ? "No recipients match your search." : "No active recipients found."}</Text>}
               renderItem={({ item }) => <TouchableOpacity style={[styles.contactRow, selectedContact?.id === item.id && styles.contactSelected]} onPress={() => setSelectedContact(item)}>
                 <View style={styles.avatarSmall}><Text style={styles.avatarSmallText}>{(item.full_name || item.username || "U").charAt(0).toUpperCase()}</Text></View>
-                <View style={{ flex: 1 }}><Text style={styles.contactName}>{item.full_name || item.username || item.email}</Text><Text style={styles.contactRole}>{String(item.role || "").replace(/_/g, " ")}{item.email ? ` • ${item.email}` : ""}</Text></View>
+                <View style={{ flex: 1 }}><Text style={styles.contactName}>{item.full_name || item.username || item.email}</Text><Text style={styles.contactRole}>{roleLabel(item.role)}{item.email ? ` • ${item.email}` : ""}</Text></View>
               </TouchableOpacity>}
             />
             <TouchableOpacity style={[styles.primary, !selectedContact && { opacity: 0.5 }]} onPress={createNew} disabled={!selectedContact}><Text style={styles.primaryText}>Create Conversation</Text></TouchableOpacity>
@@ -482,7 +498,7 @@ const styles = StyleSheet.create({
   empty:{alignItems:"center"},emptyTitle:{fontSize:20,fontWeight:"900",color:"#123a5e"},emptyText:{fontSize:13,color:"#728a99",fontWeight:"600",textAlign:"center",marginTop:7,marginBottom:16},primary:{backgroundColor:"#2c6ba3",paddingVertical:13,paddingHorizontal:20,borderRadius:14,alignItems:"center",justifyContent:"center"},primaryText:{color:"#fff",fontWeight:"900"},
   chatWrap:{flex:1},messagesContent:{padding:16,paddingBottom:20},bubble:{alignSelf:"flex-start",maxWidth:"82%",backgroundColor:"#fcfeff",borderRadius:18,borderTopLeftRadius:5,padding:12,marginBottom:10,borderWidth:1,borderColor:"#dfedf2"},bubbleMine:{alignSelf:"flex-end",backgroundColor:"#dff3f8",borderTopLeftRadius:18,borderTopRightRadius:5,borderColor:"#c6e5ed"},senderMine:{textAlign:"right",color:"#256297"},sender:{fontSize:10,fontWeight:"900",color:"#2c6ba3",marginBottom:4},messageText:{fontSize:14,lineHeight:20,color:"#294b5d",fontWeight:"600"},messageTime:{fontSize:9,color:"#8499a5",marginTop:6},attachment:{fontSize:13,color:"#217ba7",fontWeight:"800",marginTop:4},emptyChat:{paddingTop:80,alignItems:"center"},
   composer:{flexDirection:"row",alignItems:"flex-end",paddingHorizontal:14,paddingTop:10,paddingBottom:Platform.OS === "ios" ? 10 : 12,borderTopWidth:1,borderColor:"#dbeaf0",backgroundColor:"#fcfeff",gap:8,zIndex:20,elevation:20},attachButton:{width:42,height:42,borderRadius:14,backgroundColor:"#edf6f8",alignItems:"center",justifyContent:"center"},attachText:{fontSize:25,color:"#2c6ba3",fontWeight:"700"},inputTouchArea:{flex:1,minHeight:44,maxHeight:112,borderWidth:1,borderColor:"#cfe1e8",borderRadius:14,backgroundColor:"#fbfdfe",justifyContent:"center"},input:{width:"100%",minHeight:42,maxHeight:110,paddingHorizontal:12,paddingTop:11,paddingBottom:9,color:"#294b5d",fontSize:14,fontWeight:"600",backgroundColor:"transparent"},sendButton:{height:42,paddingHorizontal:15,borderRadius:14,backgroundColor:"#2c6ba3",alignItems:"center",justifyContent:"center"},sendButtonDisabled:{opacity:.45},sendText:{color:"#fff",fontWeight:"900"},fileBar:{flexDirection:"row",alignItems:"center",paddingHorizontal:14,paddingVertical:8,backgroundColor:"#edf6f8"},fileName:{flex:1,fontSize:11,color:"#527489",fontWeight:"700"},removeFile:{fontSize:22,color:"#7b5960",fontWeight:"900",paddingHorizontal:8},
-  modalOverlay:{flex:1,backgroundColor:"#17334499",justifyContent:"center",padding:20},modalCard:{backgroundColor:"#fcfeff",borderRadius:22,padding:18,maxHeight:"78%"},modalTitle:{fontSize:20,fontWeight:"900",color:"#123a5e"},close:{fontSize:30,color:"#587687",fontWeight:"600",paddingHorizontal:6},subjectInput:{borderWidth:1,borderColor:"#cee2e9",borderRadius:12,padding:12,marginTop:14,color:"#294b5d"},recipientLabel:{fontSize:12,fontWeight:"900",color:"#567487",marginTop:15,marginBottom:7,textTransform:"uppercase"},contactsList:{maxHeight:340,marginBottom:14},contactRow:{flexDirection:"row",alignItems:"center",padding:10,borderRadius:14,borderWidth:1,borderColor:"#e1edf1",marginBottom:8},contactSelected:{backgroundColor:"#e8f6fa",borderColor:"#69aec1"},avatarSmall:{width:40,height:40,borderRadius:14,backgroundColor:"#e3f2f5",alignItems:"center",justifyContent:"center",marginRight:10},avatarSmallText:{fontWeight:"900",color:"#2d6b82"},contactName:{fontSize:14,fontWeight:"900",color:"#294f62"},contactRole:{fontSize:10,color:"#78909d",fontWeight:"700",marginTop:3,textTransform:"capitalize"},
+  modalOverlay:{flex:1,backgroundColor:"#17334499",justifyContent:"center",padding:20},modalCard:{backgroundColor:"#fcfeff",borderRadius:22,padding:18,maxHeight:"78%"},modalTitle:{fontSize:20,fontWeight:"900",color:"#123a5e"},close:{fontSize:30,color:"#587687",fontWeight:"600",paddingHorizontal:6},subjectInput:{borderWidth:1,borderColor:"#cee2e9",borderRadius:12,padding:12,marginTop:14,color:"#294b5d"},recipientLabel:{fontSize:12,fontWeight:"900",color:"#567487",marginTop:15,marginBottom:7,textTransform:"uppercase"},contactsList:{maxHeight:340,marginBottom:14},contactRow:{flexDirection:"row",alignItems:"center",padding:10,borderRadius:14,borderWidth:1,borderColor:"#e1edf1",marginBottom:8},contactSelected:{backgroundColor:"#e8f6fa",borderColor:"#69aec1"},avatarSmall:{width:40,height:40,borderRadius:14,backgroundColor:"#e3f2f5",alignItems:"center",justifyContent:"center",marginRight:10},avatarSmallText:{fontWeight:"900",color:"#2d6b82"},contactName:{fontSize:14,fontWeight:"900",color:"#294f62"},contactRole:{fontSize:10,color:"#78909d",fontWeight:"700",marginTop:3},recipientSearchInput:{borderWidth:1,borderColor:"#cee2e9",borderRadius:12,paddingHorizontal:12,paddingVertical:10,marginBottom:10,color:"#294b5d",backgroundColor:"#ffffff"},
   quickAssistFloat:{position:"absolute",right:18,bottom:18,width:84,height:84,borderRadius:42,backgroundColor:"#2c6ba3",borderWidth:2,borderColor:"#d7eef3",alignItems:"center",justifyContent:"center",padding:10,zIndex:1000,elevation:18,shadowColor:"#123a5e",shadowOffset:{width:0,height:8},shadowOpacity:.18,shadowRadius:16},
   quickAssistTouch:{width:"100%",height:"100%",borderRadius:37,alignItems:"center",justifyContent:"center"},
   quickAssistIconWrap:{width:52,height:52,borderRadius:26,backgroundColor:"#e7f6f8",borderWidth:1,borderColor:"#c8e4f5",alignItems:"center",justifyContent:"center"},

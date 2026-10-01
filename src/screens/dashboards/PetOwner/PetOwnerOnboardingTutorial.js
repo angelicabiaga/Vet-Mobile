@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../../../utils/secureStorage';
 
 const STORAGE_KEY_PREFIX = 'pawcruz_pet_owner_tutorial_seen_';
 

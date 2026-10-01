@@ -16,9 +16,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from '../../styles/PetOwnerDashboardDesign';
 import { loadPetOwnerDashboard, subscribeToPetOwnerDashboard, unsubscribeChannels } from '../../../api/petService';
+import { getQueue } from '../../../api/queueService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
-const ACTIVE_QUEUE_STATUSES = ['Waiting', 'Serving', 'Now Serving'];
+
+// getQueue already limits rows to today's Waiting/Serving tickets whose appointment
+// isn't Completed/Cancelled. On top of that the ticket must be checked in by Staff
+// (arrival time + assigned number) and not on hold for a doctor change.
+const findCheckedInQueueEntry = (rows) =>
+  (rows || []).find((row) => !row.doctor_offer_id && row.arrived_at && row.queue_number) || null;
 
 const PetOwnerDashboard = ({ navigation, route }) => {
   const loggedInUser = route?.params?.user;
@@ -67,6 +73,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
     queues: [],
     activityLogs: [],
   });
+  const [checkedInQueue, setCheckedInQueue] = useState(null);
 
   const petProfilesCount = dashboardActivity.pets.length;
   const activeAppointments = dashboardActivity.appointments.filter((item) => !["Completed", "Cancelled"].includes(item.status));
@@ -80,12 +87,13 @@ const PetOwnerDashboard = ({ navigation, route }) => {
     ? `${bookedPet?.pet_name || 'Pet'} - ${bookedAppointment.appointment_date || ''}`
     : 'No active request yet';
 
-  const activeQueueEntry = dashboardActivity.queues.find((entry) => ACTIVE_QUEUE_STATUSES.includes(entry.status)) || null;
+  // Same rule as My Queue: a number shows only once Staff has checked the visit in today.
+  const activeQueueEntry = checkedInQueue;
   const hasActiveQueue = Boolean(activeQueueEntry);
   const queueNumber = activeQueueEntry?.queue_number || null;
   const queueStatusLabel = hasActiveQueue ? activeQueueEntry.status : 'No Active Queue';
-  const queuePet = hasActiveQueue ? dashboardActivity.pets.find((pet) => pet.id === activeQueueEntry.pet_id) : null;
-  const queuePetName = hasActiveQueue ? (queuePet?.pet_name || 'Pet') : 'No pet checked in';
+  const queuePetNames = (activeQueueEntry?.pets || []).map((pet) => pet.pet_name).filter(Boolean).join(', ');
+  const queuePetName = hasActiveQueue ? (queuePetNames || 'Pet') : 'No pet checked in';
 
   const activityTracks = [
     {
@@ -131,7 +139,12 @@ const PetOwnerDashboard = ({ navigation, route }) => {
   const refreshDashboard = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
-      setDashboardActivity(await loadPetOwnerDashboard(currentUser.id));
+      const [activity, queueRows] = await Promise.all([
+        loadPetOwnerDashboard(currentUser.id),
+        getQueue({ ownerId: currentUser.id }).catch(() => []),
+      ]);
+      setDashboardActivity(activity);
+      setCheckedInQueue(findCheckedInQueueEntry(queueRows));
     } catch (error) {
       console.warn("Unable to sync Pet Owner dashboard:", error);
     }
@@ -445,6 +458,8 @@ const PetOwnerDashboard = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* Queue card appears only once Staff has checked the visit in and assigned a number. */}
+          {queueNumber ? (
           <LinearGradient
             colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']}
             start={{ x: 0, y: 0 }}
@@ -475,6 +490,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
               <Text style={styles.heroViewQueueText}>View Queue</Text>
             </TouchableOpacity>
           </LinearGradient>
+          ) : null}
 
           <View style={styles.heroSlideCard}>
             <Image

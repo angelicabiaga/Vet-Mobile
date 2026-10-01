@@ -1,6 +1,6 @@
 // lib/api.js (React Native / Expo)
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStorage";
 import { NativeModules, Platform } from "react-native";
 
 const API_PORT = "5000";

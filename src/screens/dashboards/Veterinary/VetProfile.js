@@ -21,6 +21,7 @@ import {
 } from '../../../components/ProfileParts';
 import VetShell, { getVetUser } from './VetShell';
 import { getProfile, subscribeProfile, updateProfileAvatar, updateVeterinarianProfile, uploadProfileAvatar } from '../../../api/profileService';
+import { logoutAndResetToLogin } from '../../../api/authService';
 import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../../../utils/contactValidation';
 import { isValidPrcLicense, INVALID_PRC_LICENSE_MESSAGE } from '../../../utils/prcValidation';
 import { getVerification, subscribeToVerification, submitVerification } from '../../../api/vetVerificationService';
@@ -474,7 +475,7 @@ const VetProfile = ({ navigation, route }) => {
         onClose={() => setShowLogoutModal(false)}
         extraAction={
           <>
-            <TouchableOpacity style={styles.confirmBtn} onPress={() => { setShowLogoutModal(false); navigation.replace('login'); }} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.confirmBtn} onPress={() => { setShowLogoutModal(false); logoutAndResetToLogin(navigation); }} activeOpacity={0.9}>
               <Text style={styles.confirmBtnText}>Logout</Text>
             </TouchableOpacity>
 

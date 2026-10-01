@@ -18,6 +18,7 @@ import {
   completeRegistrationOtp,
   verifyPasswordResetOtp,
   resendAuthOtp,
+  resetToDashboard,
 } from "../../api/authService";
 import otpBg from "../assets/reset.jpg";
 
@@ -87,18 +88,7 @@ const LoginOtpScreen = () => {
 
       const { user } = await verifyLoginOtp(email, otpValue, { rememberDevice });
 
-      const role = user.role;
-      if (role === "veterinarian") {
-        navigation.replace("vet-screen", {
-          user: { ...user, email: user?.email || email },
-        });
-      }
-      else if (role === "pet_owner") {
-        navigation.replace("petowner-screen", {
-          user: { ...user, email: user?.email || email },
-        });
-      }
-      else {
+      if (!resetToDashboard(navigation, { ...user, email: user?.email || email })) {
         setError("This app is available for Veterinarian and Pet Owner accounts only. Please sign in at the PawCruz web system.");
       }
     } catch (err) {

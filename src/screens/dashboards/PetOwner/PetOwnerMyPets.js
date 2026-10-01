@@ -213,10 +213,6 @@ const PetOwnerMyPets = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.sectionHeaderWrap}>
-            <Text style={styles.sectionTitle}>Animal Patients</Text>
-            <Text style={styles.sectionSubtitle}>Select a patient to view its profile</Text>
-          </View>
 
           <View style={styles.petListCard}>
             <View style={styles.searchBarWrap}>

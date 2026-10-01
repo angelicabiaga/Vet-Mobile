@@ -20,13 +20,16 @@ const getActiveTabKey = (routeName) => {
     routeName === 'VetPatientOwners' ||
     routeName === 'VetPatients' ||
     routeName === 'VetPatientProfile' ||
+    routeName === 'VetPatientEdit' ||
     routeName === 'VetMedRec'
   ) return 'patients';
   return undefined;
 };
 
 export const getVetName = (user) => user?.full_name || user?.fullName || user?.name || user?.username || 'Veterinarian';
-export const getVetUser = (route) => route?.params?.user || route?.params || null;
+// Only the explicit `user` param is the logged-in account. Never fall back to the
+// raw params: on patient screens they describe the pet owner being viewed.
+export const getVetUser = (route) => route?.params?.user || null;
 
 // showGreeting={false} drops the caption + name row under the header, for
 // screens that already show the vet's name (the profile).

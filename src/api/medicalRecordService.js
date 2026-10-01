@@ -48,7 +48,7 @@ export async function getMobileMedicalRecords(profile, { petId = '', status = ''
 
   if (role === 'pet_owner' || role === 'pet owner' || role === 'owner') {
     query = query.eq('owner_id', profileId).eq('record_status', 'Finalized');
-  } else if (role === 'veterinarian' || role === 'vet') {
+  } else if ((role === 'veterinarian' || role === 'vet') && !petId) {
     query = query.eq('veterinarian_id', profileId);
   }
   if (petId) query = query.eq('pet_id', petId);
@@ -68,7 +68,11 @@ export async function getMobileMedicalRecords(profile, { petId = '', status = ''
   if (role === 'pet_owner' || role === 'pet owner' || role === 'owner') {
     rows = rows.filter((r) => String(r.owner_id) === String(profileId) && r.record_status === 'Finalized');
   } else if (role === 'veterinarian' || role === 'vet') {
-    rows = rows.filter((r) => String(r.veterinarian_id) === String(profileId));
+    // One animal patient's profile: its complete history from every vet
+    // (finalized records) plus this vet's own drafts. Without a pet: own records only.
+    rows = petId
+      ? rows.filter((r) => r.record_status === 'Finalized' || String(r.veterinarian_id) === String(profileId))
+      : rows.filter((r) => String(r.veterinarian_id) === String(profileId));
   }
   if (petId) rows = rows.filter((r) => String(r.pet_id) === String(petId));
 
@@ -82,14 +86,16 @@ export async function getMobileMedicalRecords(profile, { petId = '', status = ''
   ].some((value) => String(value || '').toLowerCase().includes(term)));
 }
 
-export function subscribeToMedicalRecords(profile, onChange) {
+export function subscribeToMedicalRecords(profile, onChange, { petId = '' } = {}) {
   const profileId = profile?.id || profile?.user_id || profile?.profile_id;
   const role = normalizeRole(profile?.role || profile?.user_role || profile?.type);
   if (!profileId || typeof onChange !== 'function') return () => {};
 
-  const filter = (role === 'veterinarian' || role === 'vet')
-    ? `veterinarian_id=eq.${profileId}`
-    : `owner_id=eq.${profileId}`;
+  const filter = petId
+    ? `pet_id=eq.${petId}`
+    : (role === 'veterinarian' || role === 'vet')
+      ? `veterinarian_id=eq.${profileId}`
+      : `owner_id=eq.${profileId}`;
 
   const channel = supabase
     .channel(`mobile-medical-records-${profileId}-${Date.now()}`)

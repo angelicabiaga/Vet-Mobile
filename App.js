@@ -1,7 +1,10 @@
 import { NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as Linking from "expo-linking";
+import { useEffect } from "react";
 import { NotificationProvider, useNotificationContext } from "./src/providers/NotificationProvider";
+import { getStoredSession } from "./src/api/authService";
+import { getSessionUser, setSessionUser, subscribeSessionUser, withSessionUser } from "./src/session/sessionStore";
 
 // Core Screens
 import LoginScreen from "./src/screens/LoginScreen";
@@ -25,6 +28,7 @@ import VetLiveQueue from "./src/screens/dashboards/Veterinary/VetLiveQueue";
 import VetPatients from "./src/screens/dashboards/Veterinary/VetPatients";
 import VetPatientOwners from "./src/screens/dashboards/Veterinary/VetPatientOwners";
 import VetPatientProfile from "./src/screens/dashboards/Veterinary/VetPatientProfile";
+import VetPatientEdit from "./src/screens/dashboards/Veterinary/VetPatientEdit";
 import VetSchedule from "./src/screens/dashboards/Veterinary/VetSchedule";
 
 // Public Queue
@@ -73,8 +77,25 @@ const linking = {
 function AppNavigator({ navigationRef }) {
   const { setActiveUser } = useNotificationContext();
 
+  // Restore the logged-in account saved on this device / browser tab.
+  useEffect(() => {
+    getStoredSession()
+      .then((session) => {
+        if (!getSessionUser()) setSessionUser(session?.profile || null);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Notifications always follow the logged-in account, never a route's params.
+  useEffect(() => subscribeSessionUser((user) => setActiveUser(user)), [setActiveUser]);
+
   const syncActiveUser = () => {
-    const user = navigationRef.current?.getCurrentRoute()?.params?.user;
+    const route = navigationRef.current?.getCurrentRoute();
+    if (route?.name === "login") {
+      setActiveUser(null);
+      return;
+    }
+    const user = getSessionUser() || route?.params?.user;
     if (user) setActiveUser(user);
   };
 
@@ -109,117 +130,121 @@ function AppNavigator({ navigationRef }) {
         {/* Veterinarian Flow */}
         <Stack.Screen
           name="vet-screen"
-          component={VetDashboard}
+          component={withSessionUser(VetDashboard)}
         />
         <Stack.Screen
           name="VetPatientOwners"
-          component={VetPatientOwners}
+          component={withSessionUser(VetPatientOwners)}
         />
         <Stack.Screen
           name="VetPatients"
-          component={VetPatients}
+          component={withSessionUser(VetPatients)}
         />
         <Stack.Screen
           name="VetPatientProfile"
-          component={VetPatientProfile}
+          component={withSessionUser(VetPatientProfile)}
+        />
+        <Stack.Screen
+          name="VetPatientEdit"
+          component={withSessionUser(VetPatientEdit)}
         />
         <Stack.Screen
           name="VetSchedule"
-          component={VetSchedule}
+          component={withSessionUser(VetSchedule)}
         />
         <Stack.Screen
           name="VetAppointment"
-          component={VetAppointment}
+          component={withSessionUser(VetAppointment)}
         />
         <Stack.Screen
           name="VetMedRec"
-          component={VetMedRec}
+          component={withSessionUser(VetMedRec)}
         />
         <Stack.Screen
           name="VetMessages"
-          component={VetMessages}
+          component={withSessionUser(VetMessages)}
         />
         <Stack.Screen
           name="VetNotif"
-          component={VetNotif}
+          component={withSessionUser(VetNotif)}
         />
         <Stack.Screen
           name="VetProfile"
-          component={VetProfile}
+          component={withSessionUser(VetProfile)}
         />
         <Stack.Screen
           name="VetInventory"
-          component={VetInventory}
+          component={withSessionUser(VetInventory)}
         />
         <Stack.Screen
           name="VetLiveQueue"
-          component={VetLiveQueue}
+          component={withSessionUser(VetLiveQueue)}
         />
 
         {/* Pet Owner Flow */}
         <Stack.Screen
           name="petowner-screen"
-          component={PetOwnerDashboard}
+          component={withSessionUser(PetOwnerDashboard)}
         />
         <Stack.Screen
           name="PetOwnerAppointment"
-          component={PetOwnerAppointment}
+          component={withSessionUser(PetOwnerAppointment)}
         />
         <Stack.Screen
           name="PetOwnerMyAppointments"
-          component={PetOwnerMyAppointments}
+          component={withSessionUser(PetOwnerMyAppointments)}
         />
         <Stack.Screen
           name="PetOwnerAppointmentSchedule"
-          component={PetOwnerAppointmentSchedule}
+          component={withSessionUser(PetOwnerAppointmentSchedule)}
         />
         <Stack.Screen
           name="PetOwnerMedRec"
-          component={PetOwnerMedRec}
+          component={withSessionUser(PetOwnerMedRec)}
         />
         <Stack.Screen
           name="PetOwnerMessages"
-          component={PetOwnerMessages}
+          component={withSessionUser(PetOwnerMessages)}
         />
         <Stack.Screen
           name="PetOwnerStaffMessages"
-          component={PetOwnerStaffMessages}
+          component={withSessionUser(PetOwnerStaffMessages)}
         />
         <Stack.Screen
           name="PetOwnerVetMessages"
-          component={PetOwnerVetMessages}
+          component={withSessionUser(PetOwnerVetMessages)}
         />
         <Stack.Screen
           name="PetOwnerQuickAssist"
-          component={PetOwnerQuickAssist}
+          component={withSessionUser(PetOwnerQuickAssist)}
         />
         <Stack.Screen
           name="PetOwnerMyPets"
-          component={PetOwnerMyPets}
+          component={withSessionUser(PetOwnerMyPets)}
         />
         <Stack.Screen
           name="PetOwnerMyPetsEdit"
-          component={PetOwnerMyPetsEdit}
+          component={withSessionUser(PetOwnerMyPetsEdit)}
         />
         <Stack.Screen
           name="PetOwnerMyPetsView"
-          component={PetOwnerMyPetsView}
+          component={withSessionUser(PetOwnerMyPetsView)}
         />
         <Stack.Screen
           name="PetOwnerNotif"
-          component={PetOwnerNotif}
+          component={withSessionUser(PetOwnerNotif)}
         />
         <Stack.Screen
           name="PetOwnerPayHis"
-          component={PetOwnerPayHis}
+          component={withSessionUser(PetOwnerPayHis)}
         />
         <Stack.Screen
           name="PetOwnerProfile"
-          component={PetOwnerProfile}
+          component={withSessionUser(PetOwnerProfile)}
         />
         <Stack.Screen
           name="PetOwnerQueue"
-          component={PetOwnerQueue}
+          component={withSessionUser(PetOwnerQueue)}
         />
       </Stack.Navigator>
     </NavigationContainer>

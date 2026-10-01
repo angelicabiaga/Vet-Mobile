@@ -335,7 +335,7 @@ export default function PetOwnerQueue({ navigation, route }) {
       // Pet owners never receive the clinic's live queue list. They only see
       // their own Staff-assigned queue number, if they have checked in. A
       // ticket on hold for a doctor change shows as the offer card instead.
-      const nextEntry = (data || []).find((row) => !row.doctor_offer_id) || null;
+      const nextEntry = (data || []).find((row) => !row.doctor_offer_id && row.arrived_at && row.queue_number) || null;
       setEntry(nextEntry);
       setOffers(pendingOffers || []);
       const alert = nextEntry && nextEntry.status === 'Waiting'

@@ -173,6 +173,137 @@ export async function saveOwnerPet(pet, ownerId) {
   return saved;
 }
 
+// ---------------------------------------------------------------------------
+// Veterinarian: edit an existing animal patient's details.
+// Updates ONLY the pet's own descriptive fields on the row with this id. The
+// owner, photo, archive flag and every medical record/appointment linked to the
+// pet are never touched, and nothing is ever inserted.
+// ---------------------------------------------------------------------------
+export const PET_SEX_OPTIONS = ["Male", "Female", "Unknown"];
+const PET_NAME_PATTERN = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9][A-Za-zÀ-ÖØ-öø-ÿ0-9 .'-]*$/;
+const PET_TEXT_PATTERN = /^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ /'-]*$/;
+
+const pad2 = (value) => String(value).padStart(2, "0");
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+};
+
+// Returns { fieldName: message } for every missing or invalid field ({} = valid).
+export function validatePatientDetails(values) {
+  const errors = {};
+  const name = String(values.petName || "").trim();
+  const species = String(values.species || "").trim();
+  const breed = String(values.breed || "").trim();
+  const color = String(values.color || "").trim();
+  const weight = String(values.weight ?? "").trim();
+  const microchip = String(values.microchipNumber || "").trim();
+  const { birthYear, birthMonth, birthDay } = values;
+
+  if (!name) errors.petName = "Pet name is required.";
+  else if (name.length < 2 || name.length > 50) errors.petName = "Pet name must be 2 to 50 characters.";
+  else if (!PET_NAME_PATTERN.test(name)) errors.petName = "Pet name can only use letters, numbers, spaces, periods, hyphens and apostrophes.";
+
+  if (!species) errors.species = "Species is required.";
+
+  if (!breed) errors.breed = "Breed is required.";
+  else if (breed.length > 60 || !PET_TEXT_PATTERN.test(breed)) errors.breed = "Enter a valid breed (letters only).";
+
+  if (!values.sex) errors.sex = "Sex is required.";
+  else if (!PET_SEX_OPTIONS.includes(values.sex)) errors.sex = "Select a valid sex.";
+
+  if (!birthYear || !birthMonth || !birthDay) {
+    errors.birthday = "Birthday is required.";
+  } else {
+    const y = Number(birthYear);
+    const m = Number(birthMonth);
+    const d = Number(birthDay);
+    const date = new Date(y, m - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
+      errors.birthday = "Enter a valid birthday.";
+    } else if (`${y}-${pad2(m)}-${pad2(d)}` > todayKey()) {
+      errors.birthday = "Birthday cannot be in the future.";
+    }
+  }
+
+  if (weight) {
+    const kg = Number(weight);
+    if (!/^\d+(\.\d{1,2})?$/.test(weight) || !Number.isFinite(kg) || kg <= 0 || kg > 200) {
+      errors.weight = "Enter a valid weight from 0.01 to 200 kg.";
+    }
+  }
+
+  if (color && (color.length > 40 || !PET_TEXT_PATTERN.test(color))) {
+    errors.color = "Enter a valid color (letters only).";
+  }
+
+  if (microchip && !/^\d{9,15}$/.test(microchip)) {
+    errors.microchipNumber = "Microchip number must be 9 to 15 digits.";
+  }
+
+  ["allergies", "existingConditions", "notes"].forEach((field) => {
+    if (String(values[field] || "").trim().length > 500) errors[field] = "Keep this under 500 characters.";
+  });
+
+  return errors;
+}
+
+// Throws an Error whose `fieldErrors` holds per-field messages when validation fails.
+export async function updatePatientDetails(petId, values, veterinarian) {
+  if (!petId) throw new Error("This animal patient could not be found. Please go back and try again.");
+  const fieldErrors = validatePatientDetails(values);
+  if (Object.keys(fieldErrors).length) {
+    const validationError = new Error("Please fix the highlighted fields.");
+    validationError.fieldErrors = fieldErrors;
+    throw validationError;
+  }
+
+  const text = (value) => String(value || "").trim() || null;
+  const row = {
+    pet_name: String(values.petName).trim(),
+    species: String(values.species).trim(),
+    breed: String(values.breed).trim(),
+    sex: values.sex,
+    date_of_birth: `${values.birthYear}-${pad2(values.birthMonth)}-${pad2(values.birthDay)}`,
+    weight: String(values.weight ?? "").trim() ? Number(values.weight) : null,
+    color: text(values.color),
+    microchip_number: text(values.microchipNumber),
+    allergies: text(values.allergies),
+    existing_conditions: text(values.existingConditions),
+    notes: text(values.notes),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from("pets")
+    .update(row)
+    .eq("id", petId)
+    .select("id,owner_id,pet_name");
+
+  if (error) {
+    const message = String(error.message || "").toLowerCase();
+    if (error.code === "23505" || message.includes("microchip")) {
+      const duplicateError = new Error("Please fix the highlighted fields.");
+      duplicateError.fieldErrors = { microchipNumber: "That microchip number is already registered to another pet." };
+      throw duplicateError;
+    }
+    throw new Error("Unable to save the animal patient details right now. Please try again.");
+  }
+  if (!data?.length) throw new Error("This animal patient could not be found. It may have been removed.");
+
+  const vetId = veterinarian?.id || veterinarian?.user_id || veterinarian?.profile_id || null;
+  if (vetId) {
+    supabase.from("activity_logs").insert({
+      user_id: vetId,
+      role: "veterinarian",
+      action: "Animal patient updated",
+      module: "Animal Patients",
+      description: `${row.pet_name} details updated from the mobile app.`,
+    }).then(() => {}, () => {});
+  }
+  return data[0];
+}
+
 export function subscribeToOwnerPets(ownerId, onChange) {
   if (!ownerId) return null;
   return supabase

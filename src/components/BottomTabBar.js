@@ -146,7 +146,8 @@ function switchTab(navigation, homeRoute, item, user) {
   const current = routes[state?.index ?? routes.length - 1];
   if (current?.name === item.route) return;
 
-  const homeIndex = routes.findIndex((route) => route.name === homeRoute);
+  // Newest Home: an older Home lower in the stack must never be reused.
+  const homeIndex = routes.map((route) => route.name).lastIndexOf(homeRoute);
   if (homeIndex === -1) {
     navigation.navigate(item.route, params);
     return;

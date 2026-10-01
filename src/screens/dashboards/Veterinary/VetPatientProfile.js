@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import VetShell, { getVetUser } from './VetShell';
@@ -28,6 +28,15 @@ export default function VetPatientProfile({ navigation, route }) {
   const [recordsError, setRecordsError] = useState('');
   const [activeTab, setActiveTab] = useState('medical');
   const [aiTabVisited, setAiTabVisited] = useState(false);
+  // Set when returning from Edit after a successful save; reload + confirm.
+  const savedAt = route?.params?.savedAt;
+  const [savedNotice, setSavedNotice] = useState(false);
+  useEffect(() => {
+    if (!savedAt) return undefined;
+    setSavedNotice(true);
+    const timer = setTimeout(() => setSavedNotice(false), 4000);
+    return () => clearTimeout(timer);
+  }, [savedAt]);
 
   const loadPatient = useCallback(async () => {
     if (!petId) return;
@@ -55,10 +64,11 @@ export default function VetPatientProfile({ navigation, route }) {
       loadRecords();
       const unsubscribe = subscribeToMedicalRecords(
         { ...currentUser, role: currentUser?.role || 'veterinarian' },
-        loadRecords
+        loadRecords,
+        { petId }
       );
       return () => { unsubscribe?.(); };
-    }, [loadPatient, loadRecords, currentUser])
+    }, [loadPatient, loadRecords, currentUser, petId])
   );
 
   const uiPet = useMemo(() => toUiPet(patient), [patient]);
@@ -97,6 +107,11 @@ export default function VetPatientProfile({ navigation, route }) {
   return (
     <VetShell navigation={navigation} route={route} subtitle="Animal Patient Profile" caption="Animal patient profile" showBack lowerHeaderAnimation={lowerHeaderAnimation}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} onScroll={handleScroll} scrollEventThrottle={16}>
+        {savedNotice ? (
+          <View style={styles.successBox}>
+            <Text style={styles.successText}>✓ Animal patient details updated successfully.</Text>
+          </View>
+        ) : null}
         <View style={styles.detailCard}>
           <View style={styles.headerRow}>
             {activePhoto.source ? (
@@ -139,6 +154,16 @@ export default function VetPatientProfile({ navigation, route }) {
               <Text style={styles.ownerSub}>{[patient.owner?.email, patient.owner?.phone].filter(Boolean).join(' · ')}</Text>
             ) : null}
           </View>
+
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('VetPatientEdit', { user: currentUser, petId })}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${patient.pet_name || 'animal patient'} details`}
+          >
+            <Text style={styles.editButtonText}>Edit Details</Text>
+          </TouchableOpacity>
 
           <View style={styles.tabRow}>
             <TouchableOpacity style={[styles.tabButton, activeTab === 'medical' && styles.tabButtonActive]} onPress={() => selectTab('medical')} activeOpacity={0.9} accessibilityRole="tab" accessibilityState={{ selected: activeTab === 'medical' }}>
@@ -185,6 +210,10 @@ const styles = StyleSheet.create({
   ownerValue: { fontSize: 13.5, fontWeight: '800', color: '#123a5e' },
   ownerSub: { marginTop: 2, fontSize: 12, fontWeight: '600', color: '#5f7f94' },
   tabRow: { flexDirection: 'row', backgroundColor: '#eef6fb', borderRadius: 16, padding: 4, marginBottom: 16 },
+  editButton: { height: 46, borderRadius: 14, backgroundColor: '#2c6ba3', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  editButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '900' },
+  successBox: { marginBottom: 12, paddingVertical: 11, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, borderColor: '#b9e8ca', backgroundColor: '#effbf4' },
+  successText: { color: '#1f7a4a', fontSize: 13, fontWeight: '800', textAlign: 'center' },
   tabButton: { flex: 1, minHeight: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   tabButtonActive: { backgroundColor: '#2c6ba3' },
   tabButtonText: { fontSize: 13, fontWeight: '800', color: '#5f7f94' },

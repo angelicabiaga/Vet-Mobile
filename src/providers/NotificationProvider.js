@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import { Platform, View } from 'react-native';
+import Notifications from '../utils/notificationsModule';
 import {
   subscribeNotifications,
   markNotificationRead,
@@ -127,6 +127,9 @@ export function NotificationProvider({ navigationRef, children }) {
       }
     };
 
+    // Push notification responses are native-only; expo-notifications has no web support for these.
+    if (Platform.OS === 'web' || !Notifications) return undefined;
+
     const subscription = Notifications.addNotificationResponseReceivedListener(navigateToNotification);
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) navigateToNotification(response);
@@ -198,8 +201,21 @@ export function NotificationProvider({ navigationRef, children }) {
     <NotificationContext.Provider value={{ setActiveUser }}>
       <View style={{ flex: 1 }}>
         {children}
-        <NotificationToast notification={toast} onPress={handlePress} onDismiss={handleDismiss} />
+        <ToastErrorBoundary>
+          <NotificationToast notification={toast} onPress={handlePress} onDismiss={handleDismiss} />
+        </ToastErrorBoundary>
       </View>
     </NotificationContext.Provider>
   );
+}
+
+// A broken notification must never blank the app: drop the toast and log why.
+class ToastErrorBoundary extends React.Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error) { console.error('[PawCruz] Notification popup failed:', error); }
+  componentDidUpdate(prevProps) {
+    if (this.state.hasError && prevProps.children !== this.props.children) this.setState({ hasError: false });
+  }
+  render() { return this.state.hasError ? null : this.props.children; }
 }

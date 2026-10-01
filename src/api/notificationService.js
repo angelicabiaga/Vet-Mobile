@@ -84,38 +84,70 @@ function uniqueChannelName(profileId) {
   return `mobile-notifications-${profileId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// The live connection drops whenever the phone switches network, sleeps, or the
+// app is backgrounded (status CHANNEL_ERROR / TIMED_OUT). That's expected on
+// mobile, so instead of warning, reconnect with a growing delay (5s → 30s max)
+// and refresh once reconnected so nothing missed while offline is lost.
+const RETRY_BASE_MS = 5000;
+const RETRY_MAX_MS = 30000;
+
 export function subscribeNotifications(profileId, handlers = {}) {
   if (!profileId) return () => {};
 
-  const channel = supabase
-    .channel(uniqueChannelName(profileId))
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'notifications' },
-      (payload) => {
-        const item = payload.new || payload.old;
-        if (!item) return;
-
-        const appliesToUser = !item.recipient_id || item.recipient_id === profileId;
-        if (!appliesToUser) return;
-
-        if (payload.eventType === 'INSERT') handlers.onInsert?.(payload.new);
-        if (payload.eventType === 'UPDATE') handlers.onUpdate?.(payload.new);
-        if (payload.eventType === 'DELETE') handlers.onDelete?.(payload.old);
-        handlers.onChange?.(payload);
-      },
-    )
-    .subscribe((status) => {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.warn(`Notification realtime channel status: ${status}`);
-      }
-    });
-
+  let channel = null;
   let cleaned = false;
+  let retryTimer = null;
+  let attempt = 0;
+
+  const connect = () => {
+    if (cleaned) return;
+    channel = supabase
+      .channel(uniqueChannelName(profileId))
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const item = payload.new || payload.old;
+          if (!item) return;
+
+          const appliesToUser = !item.recipient_id || item.recipient_id === profileId;
+          if (!appliesToUser) return;
+
+          if (payload.eventType === 'INSERT') handlers.onInsert?.(payload.new);
+          if (payload.eventType === 'UPDATE') handlers.onUpdate?.(payload.new);
+          if (payload.eventType === 'DELETE') handlers.onDelete?.(payload.old);
+          handlers.onChange?.(payload);
+        },
+      )
+      .subscribe((status) => {
+        if (cleaned) return;
+        if (status === 'SUBSCRIBED') {
+          if (attempt > 0) handlers.onChange?.({ eventType: 'RECONNECTED' });
+          attempt = 0;
+          return;
+        }
+        if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && !retryTimer) {
+          console.log(`Notification live updates interrupted (${status}); reconnecting…`);
+          const failed = channel;
+          channel = null;
+          if (failed) void supabase.removeChannel(failed);
+          const delay = Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS);
+          attempt += 1;
+          retryTimer = setTimeout(() => {
+            retryTimer = null;
+            connect();
+          }, delay);
+        }
+      });
+  };
+
+  connect();
+
   return () => {
     if (cleaned) return;
     cleaned = true;
-    void supabase.removeChannel(channel);
+    clearTimeout(retryTimer);
+    if (channel) void supabase.removeChannel(channel);
   };
 }
 

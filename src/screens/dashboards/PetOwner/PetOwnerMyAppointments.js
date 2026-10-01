@@ -4,8 +4,9 @@ import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,7 +15,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { cancelAppointment, formatTime, getOwnerAppointments, todayLocal } from '../../../api/mobileAppointmentService';
+import { cancelAppointment, formatTime, getCancellationBlockReason, getOwnerAppointments, todayLocal } from '../../../api/mobileAppointmentService';
 import { getQueue, subscribeToQueue } from '../../../api/queueService';
 import { supabase } from '../../../config/supabaseClient';
 
@@ -42,6 +43,8 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
   const [expandedAppointmentId, setExpandedAppointmentId] = useState(null);
   const [message, setMessage] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!message || !message.toLowerCase().includes('successfully')) return undefined;
@@ -117,23 +120,29 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
     navigation.navigate('PetOwnerAppointment', { user, rescheduleAppointment: appointment });
   };
 
-  const confirmCancel = (appointment) => {
-    Alert.alert('Cancel Appointment', `Cancel ${appointment.pet?.pet_name || 'this appointment'} on ${formatDate(appointment.appointment_date)}?`, [
-      { text: 'Keep Appointment', style: 'cancel' },
-      {
-        text: 'Cancel Appointment',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await cancelAppointment(appointment.id, ownerId);
-            setAppointments(await getOwnerAppointments(ownerId));
-            setMessage('Appointment cancelled successfully.');
-          } catch (error) {
-            setMessage(error.message);
-          }
-        },
-      },
-    ]);
+  // Alert.alert does nothing on web, so the confirmation uses the in-app modal.
+  const requestCancel = (appointment, blockReason) => {
+    if (blockReason) {
+      setMessage(blockReason);
+      return;
+    }
+    setCancelTarget(appointment);
+  };
+
+  const confirmCancel = async () => {
+    const appointment = cancelTarget;
+    if (!appointment || cancelling) return;
+    try {
+      setCancelling(true);
+      await cancelAppointment(appointment.id, ownerId);
+      setAppointments(await getOwnerAppointments(ownerId));
+      setMessage('Appointment cancelled successfully.');
+    } catch (error) {
+      setMessage(error.message || 'Unable to cancel the appointment.');
+    } finally {
+      setCancelling(false);
+      setCancelTarget(null);
+    }
   };
 
   if (loading) {
@@ -199,6 +208,7 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
               const isExpanded = expandedAppointmentId === item.id;
               const canViewQueue = queueEntries.some((entry) => String(entry.appointment_id) === String(item.id));
               const canManage = item.status === 'Confirmed' && item.appointment_date >= todayLocal();
+              const cancelBlockReason = canManage ? getCancellationBlockReason(item, { checkedIn: canViewQueue }) : null;
               return (
                 <View key={item.id} style={styles.appointmentCard}>
                   <View style={styles.compactAppointmentRow}>
@@ -249,10 +259,19 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
                       <SummaryRow label="Created Date" value={formatTimestamp(item.created_at)} />
                       <SummaryRow label="Updated Date" value={formatTimestamp(item.updated_at)} />
                       {canManage && (
-                        <View style={styles.actionRow}>
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => startReschedule(item)}><Text style={styles.secondaryText}>Reschedule</Text></TouchableOpacity>
-                          <TouchableOpacity style={styles.cancelButton} onPress={() => confirmCancel(item)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-                        </View>
+                        <>
+                          <View style={styles.actionRow}>
+                            <TouchableOpacity style={styles.secondaryButton} onPress={() => startReschedule(item)}><Text style={styles.secondaryText}>Reschedule</Text></TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.cancelButton, cancelBlockReason && styles.cancelButtonDisabled]}
+                              onPress={() => requestCancel(item, cancelBlockReason)}
+                              accessibilityState={{ disabled: Boolean(cancelBlockReason) }}
+                            >
+                              <Text style={[styles.cancelText, cancelBlockReason && styles.cancelTextDisabled]}>Cancel</Text>
+                            </TouchableOpacity>
+                          </View>
+                          {cancelBlockReason ? <Text style={styles.cancelNote}>{cancelBlockReason}</Text> : null}
+                        </>
                       )}
                     </View>
                   )}
@@ -261,6 +280,45 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
             })}
           </View>
         </ScrollView>
+
+        <Modal transparent animationType="fade" visible={Boolean(cancelTarget)} onRequestClose={() => { if (!cancelling) setCancelTarget(null); }}>
+          <View style={styles.cancelOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => { if (!cancelling) setCancelTarget(null); }} />
+            {cancelTarget ? (
+              <View style={styles.cancelCard}>
+                <View style={styles.cancelIconWrap}>
+                  <Text style={styles.cancelIconText}>!</Text>
+                </View>
+                <Text style={styles.cancelTitle}>Cancel this appointment?</Text>
+                <Text style={styles.cancelSubtitle}>The time slot will be released and this can't be undone.</Text>
+
+                <View style={styles.cancelSummary}>
+                  <View style={styles.cancelSummaryRow}>
+                    <Text style={styles.cancelSummaryLabel}>Pet</Text>
+                    <Text style={styles.cancelSummaryValue} numberOfLines={1}>{cancelTarget.pet?.pet_name || 'Pet'}</Text>
+                  </View>
+                  <View style={styles.cancelSummaryRow}>
+                    <Text style={styles.cancelSummaryLabel}>Date</Text>
+                    <Text style={styles.cancelSummaryValue} numberOfLines={1}>{formatDate(cancelTarget.appointment_date)}</Text>
+                  </View>
+                  <View style={[styles.cancelSummaryRow, styles.cancelSummaryRowLast]}>
+                    <Text style={styles.cancelSummaryLabel}>Time</Text>
+                    <Text style={styles.cancelSummaryValue} numberOfLines={1}>{formatTime(cancelTarget.start_time)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.modalButtonRow}>
+                  <TouchableOpacity style={styles.modalKeepButton} onPress={() => setCancelTarget(null)} disabled={cancelling} activeOpacity={0.9}>
+                    <Text style={styles.modalKeepText} numberOfLines={1}>Keep It</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalCancelButton, cancelling && styles.modalButtonBusy]} onPress={confirmCancel} disabled={cancelling} activeOpacity={0.9}>
+                    <Text style={styles.modalCancelText} numberOfLines={1}>{cancelling ? 'Cancelling…' : 'Yes, Cancel'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </Modal>
 
         <PetOwnerBottomNav navigation={navigation} user={user} activeKey="myAppointments" />
       </SafeAreaView>
@@ -355,6 +413,29 @@ const styles = StyleSheet.create({
   secondaryText: { color: '#2c6ba3', fontWeight: '900' },
   cancelButton: { flex: 1, borderWidth: 1, borderColor: '#e4a6a6', paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: '#fff8f8' },
   cancelText: { color: '#b54b4b', fontWeight: '800' },
+  cancelButtonDisabled: { borderColor: '#e3e8ec', backgroundColor: '#f4f6f8' },
+  cancelTextDisabled: { color: '#9aa8b2' },
+  cancelNote: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#9d6817', lineHeight: 17 },
+  cancelOverlay: { flex: 1, backgroundColor: 'rgba(10, 30, 45, 0.45)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  cancelCard: {
+    width: '100%', maxWidth: 360, backgroundColor: '#ffffff', borderRadius: 26, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20,
+    alignItems: 'center', shadowColor: '#0a1e2d', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 16,
+  },
+  cancelIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#fde8e8', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  cancelIconText: { color: '#b54b4b', fontSize: 26, fontWeight: '900', lineHeight: 30 },
+  cancelTitle: { fontSize: 19, fontWeight: '900', color: '#123a5e', textAlign: 'center' },
+  cancelSubtitle: { marginTop: 6, fontSize: 13, fontWeight: '600', color: '#5f7f94', textAlign: 'center', lineHeight: 19 },
+  cancelSummary: { width: '100%', marginTop: 18, marginBottom: 20, borderRadius: 18, backgroundColor: '#f4fbff', borderWidth: 1, borderColor: '#d7edf9', paddingHorizontal: 14 },
+  cancelSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#e3f1f8' },
+  cancelSummaryRowLast: { borderBottomWidth: 0 },
+  cancelSummaryLabel: { fontSize: 13, fontWeight: '700', color: '#6a8aa0' },
+  cancelSummaryValue: { flexShrink: 1, marginLeft: 12, fontSize: 14, fontWeight: '900', color: '#123a5e', textAlign: 'right' },
+  modalButtonRow: { flexDirection: 'row', gap: 10, width: '100%' },
+  modalKeepButton: { flex: 1, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#edf6f8', borderWidth: 1, borderColor: '#c6e5ed' },
+  modalKeepText: { color: '#2c6ba3', fontSize: 15, fontWeight: '900' },
+  modalCancelButton: { flex: 1, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#c0504d' },
+  modalCancelText: { color: '#ffffff', fontSize: 15, fontWeight: '900' },
+  modalButtonBusy: { opacity: 0.7 },
   empty: { color: '#758b94', textAlign: 'center', paddingVertical: 24 },
   appointmentCard: { marginTop: 10, borderWidth: 1, borderColor: '#dceef8', borderRadius: 20, padding: 12, backgroundColor: '#fcfeff' },
   compactAppointmentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

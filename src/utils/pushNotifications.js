@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import Notifications from './notificationsModule';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { supabase } from '../config/supabaseClient';
@@ -8,7 +8,7 @@ import { supabase } from '../config/supabaseClient';
 // covers the foreground case instantly, so suppress the system banner to
 // avoid a duplicate alert. This has no effect while backgrounded/killed —
 // the OS shows the push regardless of this handler.
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: false,
     shouldShowList: false,
@@ -20,7 +20,7 @@ Notifications.setNotificationHandler({
 let lastRegisteredToken = null;
 
 export async function registerForPushNotificationsAsync(profileId) {
-  if (!profileId) return null;
+  if (!profileId || Platform.OS === 'web' || !Notifications) return null;
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {

@@ -2,7 +2,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { registerUser } from "../api/authService";
-import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from "../utils/contactValidation";
+import {
+  CONTACT_FORMAT_ERROR,
+  CONTACT_REQUIRED_ERROR,
+  CONTACT_TAKEN_ERROR,
+  isValidRegisterContact,
+} from "../utils/contactValidation";
 
 import {
   Image,
@@ -38,6 +43,8 @@ const RegisterScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  // Values the server reported as already registered; each stays flagged until that field changes.
+  const [taken, setTaken] = useState({});
 
   const [modal, setModal] = useState({
     visible: false,
@@ -47,7 +54,7 @@ const RegisterScreen = ({ navigation }) => {
   const handleChange = (name, value) => {
     let nextValue = value;
     if (name === "middleName") nextValue = value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g, "");
-    else if (name === "contact") nextValue = value.replace(/[^0-9+]/g, "").replace(/(?!^)\+/g, "");
+    else if (name === "contact") nextValue = value.replace(/\D/g, "").slice(0, 11);
     const nextForm = { ...formData, [name]: nextValue };
     setFormData(nextForm);
 
@@ -64,6 +71,8 @@ const RegisterScreen = ({ navigation }) => {
     special: /[^A-Za-z0-9]/.test(password),
   });
 
+  const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
   const validateForm = (data) => {
     const nextErrors = {};
 
@@ -73,14 +82,17 @@ const RegisterScreen = ({ navigation }) => {
     if (!data.lastName.trim()) nextErrors.lastName = "Last name is required.";
     else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$/.test(data.lastName.trim())) nextErrors.lastName = "Enter a valid last name.";
 
-    if (!data.contact.trim()) nextErrors.contact = "Contact number is required.";
-    else if (!isValidPhMobile(data.contact)) nextErrors.contact = PH_MOBILE_FORMAT_ERROR;
+    if (!data.contact.trim()) nextErrors.contact = CONTACT_REQUIRED_ERROR;
+    else if (!isValidRegisterContact(data.contact)) nextErrors.contact = CONTACT_FORMAT_ERROR;
+    else if (taken.contact && data.contact === taken.contact.value) nextErrors.contact = taken.contact.message;
 
     if (!data.username.trim()) nextErrors.username = "Username is required.";
     else if (!/^[A-Za-z0-9_.-]{3,30}$/.test(data.username.trim())) nextErrors.username = "Use 3–30 letters, numbers, dots, dashes, or underscores.";
+    else if (taken.username && sameText(data.username, taken.username.value)) nextErrors.username = taken.username.message;
 
     if (!data.email.trim()) nextErrors.email = "Email is required.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) nextErrors.email = "Enter a valid email address.";
+    else if (taken.email && sameText(data.email, taken.email.value)) nextErrors.email = taken.email.message;
 
     if (!data.password) nextErrors.password = "Password is required.";
     else if (Object.values(passwordChecks(data.password)).some((passed) => !passed)) nextErrors.password = "Password does not meet all requirements.";
@@ -113,6 +125,18 @@ const RegisterScreen = ({ navigation }) => {
         navigation.navigate("otp", { email: result.email, purpose: "register" });
       }
     } catch (err) {
+      const fieldErrors = err.fieldErrors || (err.message === CONTACT_TAKEN_ERROR ? { contact: CONTACT_TAKEN_ERROR } : null);
+      if (fieldErrors) {
+        setTaken((current) => {
+          const next = { ...current };
+          Object.entries(fieldErrors).forEach(([field, message]) => {
+            next[field] = { value: formData[field], message };
+          });
+          return next;
+        });
+        setErrors((current) => ({ ...current, ...fieldErrors }));
+        return;
+      }
       setModal({
         visible: true,
         message: err.message || "Registration failed"
@@ -212,13 +236,13 @@ const RegisterScreen = ({ navigation }) => {
               <Text style={styles.label}>Contact Number</Text>
               <TextInput
                 style={[styles.input, errors.contact && styles.inputError]}
-                placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                placeholder="09XXXXXXXXX"
                 placeholderTextColor="#8d98a5"
                 value={formData.contact}
                 onChangeText={(v) => handleChange("contact", v)}
                 onBlur={() => handleBlur("contact")}
-                keyboardType="phone-pad"
-                maxLength={13}
+                keyboardType="number-pad"
+                maxLength={11}
               />
               {errors.contact ? <Text style={styles.errorText}>{errors.contact}</Text> : null}
 

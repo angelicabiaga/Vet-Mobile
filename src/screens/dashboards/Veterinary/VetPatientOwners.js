@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -14,61 +14,54 @@ import { useFocusEffect } from '@react-navigation/native';
 import VetShell, { getVetUser } from './VetShell';
 import { useLowerHeaderMotion } from './useLowerHeaderMotion';
 import { supabase } from '../../../config/supabaseClient';
-import { getPetOwnersDirectory } from '../../../api/petService';
+import { toUiPet } from '../../../api/petService';
+import { formatAge, getPetPhotoSource } from '../PetOwner/PetOwnerMyPetsInfo';
 
-async function loadPetCountsByOwner() {
+// Veterinarian → Animal Patients: every clinic-registered pet, whoever the owner
+// is (not filtered by the logged-in vet). The route keeps its original name,
+// "VetPatientOwners", so the bottom tab and existing links still land here.
+
+const PATIENT_FIELDS =
+  'id,owner_id,pet_name,species,breed,sex,date_of_birth,weight,photo_url,is_archived,created_at,owner:profiles!pets_owner_id_fkey(id,full_name,username)';
+
+async function loadAllPatients() {
   const { data, error } = await supabase
     .from('pets')
-    .select('owner_id')
-    .eq('is_archived', false);
+    .select(PATIENT_FIELDS)
+    .eq('is_archived', false)
+    .order('pet_name', { ascending: true });
   if (error) {
-    console.warn('Vet Patient Owners pet-count query skipped:', error.code, error.message);
-    return {};
+    console.warn('Vet Animal Patients query failed:', error.message);
+    throw new Error('Unable to load animal patients. Please try again.');
   }
-  return (data || []).reduce((counts, row) => {
-    const id = String(row.owner_id || '');
-    if (!id) return counts;
-    counts[id] = (counts[id] || 0) + 1;
-    return counts;
-  }, {});
+  return data || [];
 }
 
-function subscribeOwnersAndPets(onChange) {
-  const specs = [
-    { table: 'profiles', filter: 'role=eq.pet_owner' },
-    { table: 'pets' },
-  ];
-
-  return specs.map(({ table, filter }) =>
+function subscribePatients(onChange) {
+  return ['pets', 'profiles'].map((table) =>
     supabase
-      .channel(`pawcruz-mobile-vet-owners-${table}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) }, onChange)
+      .channel(`pawcruz-mobile-vet-all-patients-${table}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table }, onChange)
       .subscribe()
   );
 }
 
-const DEFAULT_AVATAR = require('../../assets/Profile.png');
+const ownerNameOf = (pet) => pet.owner?.full_name || pet.owner?.username || 'Owner not listed';
 
 const VetPatientOwners = ({ navigation, route }) => {
   const currentUser = getVetUser(route);
   const { scrollViewRef, lowerHeaderAnimation, handleScroll } = useLowerHeaderMotion();
   const [search, setSearch] = useState('');
-  const [owners, setOwners] = useState([]);
-  const [petCounts, setPetCounts] = useState({});
+  const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadOwners = useCallback(async () => {
+  const loadPatients = useCallback(async () => {
     try {
-      const [ownerRows, counts] = await Promise.all([
-        getPetOwnersDirectory(),
-        loadPetCountsByOwner(),
-      ]);
-      setOwners(ownerRows);
-      setPetCounts(counts);
+      setPatients(await loadAllPatients());
       setError('');
     } catch (loadError) {
-      setError(loadError?.message || 'Unable to load pet owners.');
+      setError(loadError?.message || 'Unable to load animal patients. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -76,38 +69,34 @@ const VetPatientOwners = ({ navigation, route }) => {
 
   useFocusEffect(
     useCallback(() => {
-      loadOwners();
-      const channels = subscribeOwnersAndPets(loadOwners);
-      const fallbackTimer = setInterval(loadOwners, 20000);
+      loadPatients();
+      const channels = subscribePatients(loadPatients);
+      const fallbackTimer = setInterval(loadPatients, 20000);
       return () => {
         clearInterval(fallbackTimer);
         channels.forEach((channel) => { if (channel) supabase.removeChannel(channel); });
       };
-    }, [loadOwners])
+    }, [loadPatients])
   );
 
   const query = search.trim().toLowerCase();
-  const visibleOwners = owners.filter((owner) => {
+  const visiblePatients = patients.filter((pet) => {
     if (!query) return true;
-    return [owner.full_name, owner.username, owner.phone, owner.email].some((value) =>
+    const uiPet = toUiPet(pet);
+    return [pet.pet_name, ownerNameOf(pet), uiPet.referenceCode, pet.id].some((value) =>
       String(value || '').toLowerCase().includes(query)
     );
   });
 
-  const openOwnerPatients = (owner) =>
-    navigation.navigate(
-      'VetPatients',
-      currentUser
-        ? { user: currentUser, ownerId: owner.id, ownerName: owner.full_name || owner.username }
-        : { ownerId: owner.id, ownerName: owner.full_name || owner.username }
-    );
+  const openPatientProfile = (pet) =>
+    navigation.navigate('VetPatientProfile', { user: currentUser, petId: pet.id });
 
   return (
     <VetShell
       navigation={navigation}
       route={route}
       subtitle="Animal Patients"
-      caption="Browse pet owners"
+      caption="All registered animal patients"
       lowerHeaderAnimation={lowerHeaderAnimation}
     >
       <ScrollView
@@ -116,79 +105,103 @@ const VetPatientOwners = ({ navigation, route }) => {
         contentContainerStyle={styles.scrollContent}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadOwners} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadPatients} />}
       >
         <View style={styles.searchCard}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search owner name, contact number, or email"
+            placeholder="Search pet name, owner name, or patient ID"
             placeholderTextColor="#8aa2b4"
             value={search}
             onChangeText={setSearch}
+            autoCapitalize="none"
           />
         </View>
 
-        {loading && !owners.length ? (
+        {!loading && !error && patients.length ? (
+          <Text style={styles.countText}>
+            {visiblePatients.length} of {patients.length} animal patient{patients.length === 1 ? '' : 's'}
+          </Text>
+        ) : null}
+
+        {loading && !patients.length ? (
           <View style={styles.emptyCard}>
             <ActivityIndicator size="large" color="#2c6ba3" />
-            <Text style={styles.emptyText}>Loading pet owners...</Text>
+            <Text style={styles.emptyText}>Loading animal patients...</Text>
           </View>
         ) : null}
 
         {!loading && error ? (
           <View style={styles.emptyCard}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={loadOwners} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.retryButton} onPress={loadPatients} activeOpacity={0.9}>
               <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {!error &&
-          visibleOwners.map((owner) => {
-            const patientCount = petCounts[String(owner.id)] || 0;
+          visiblePatients.map((pet) => {
+            const uiPet = toUiPet(pet);
+            const petPhoto = getPetPhotoSource(uiPet);
             return (
               <TouchableOpacity
-                key={owner.id}
-                style={styles.ownerCard}
-                onPress={() => openOwnerPatients(owner)}
+                key={pet.id}
+                style={styles.patientCard}
+                onPress={() => openPatientProfile(pet)}
                 activeOpacity={0.9}
                 accessibilityRole="button"
-                accessibilityLabel={`Open ${owner.full_name || 'owner'}'s animal patients`}
+                accessibilityLabel={`Open ${pet.pet_name || 'pet'}'s animal patient profile`}
               >
-                <View style={styles.ownerTopRow}>
-                  <Image
-                    source={owner.avatar_url ? { uri: owner.avatar_url } : DEFAULT_AVATAR}
-                    style={styles.ownerAvatar}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.ownerInfo}>
-                    <Text style={styles.ownerName}>{owner.full_name || owner.username || 'Pet Owner'}</Text>
-                    {owner.phone ? <Text style={styles.ownerDetail}>{owner.phone}</Text> : null}
-                    {owner.email ? <Text style={styles.ownerDetail}>{owner.email}</Text> : null}
-                    {owner.address ? <Text style={styles.ownerDetail}>{owner.address}</Text> : null}
+                <View style={styles.patientTopRow}>
+                  {petPhoto.source ? (
+                    <Image source={petPhoto.source} style={styles.petPhoto} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.avatarCircle}>
+                      <Text style={styles.avatarText}>{(pet.pet_name || 'P').charAt(0).toUpperCase()}</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.patientInfo}>
+                    <Text style={styles.patientName} numberOfLines={1}>{pet.pet_name || 'Pet'}</Text>
+                    <Text style={styles.patientBreed} numberOfLines={1}>
+                      {[pet.species, pet.breed].filter(Boolean).join(' • ') || 'Species not recorded'}
+                    </Text>
+                    <Text style={styles.patientIdText}>Patient ID: {uiPet.referenceCode}</Text>
                   </View>
                 </View>
 
-                <View style={styles.ownerFooterRow}>
-                  <Text style={styles.patientCountText}>
-                    {patientCount} animal patient{patientCount === 1 ? '' : 's'} registered
-                  </Text>
-                  <View style={styles.viewOwnerChip}>
-                    <Text style={styles.viewOwnerChipText}>View Animal Patients</Text>
+                <View style={styles.infoGrid}>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Sex</Text>
+                    <Text style={styles.infoValue}>{pet.sex || 'Unknown'}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Age</Text>
+                    <Text style={styles.infoValue}>{formatAge(uiPet)}</Text>
+                  </View>
+                  <View style={[styles.infoItem, styles.infoItemWide]}>
+                    <Text style={styles.infoLabel}>Pet Owner</Text>
+                    <Text style={styles.infoValue} numberOfLines={1}>{ownerNameOf(pet)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.patientFooterRow}>
+                  <View style={styles.viewProfileChip}>
+                    <Text style={styles.viewProfileChipText}>View Profile & Records</Text>
                   </View>
                 </View>
               </TouchableOpacity>
             );
           })}
 
-        {!loading && !error && !visibleOwners.length ? (
+        {!loading && !error && !visiblePatients.length ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>{owners.length ? 'No owners found' : 'No pet owners yet'}</Text>
+            <Text style={styles.emptyTitle}>{patients.length ? 'No animal patients found' : 'No animal patients yet'}</Text>
             <Text style={styles.emptyText}>
-              {owners.length
-                ? 'Try another name, contact number, or email.'
-                : 'Pet owners registered on the web will appear here automatically.'}
+              {patients.length
+                ? 'Try another pet name, owner name, or patient ID.'
+                : 'Pets registered by pet owners or the clinic will appear here automatically.'}
             </Text>
           </View>
         ) : null}
@@ -200,48 +213,31 @@ const VetPatientOwners = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 120 },
   searchCard: {
-    minHeight: 54,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#d7edf9',
-    backgroundColor: '#fcfeff',
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-    marginBottom: 14,
+    minHeight: 54, borderRadius: 18, borderWidth: 1, borderColor: '#d7edf9', backgroundColor: '#fcfeff',
+    paddingHorizontal: 14, justifyContent: 'center', marginBottom: 10,
   },
   searchInput: { fontSize: 14, fontWeight: '700', color: '#123a5e' },
-  ownerCard: {
-    backgroundColor: '#fcfeff',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#dceef8',
-    padding: 16,
-    marginBottom: 12,
+  countText: { fontSize: 12, fontWeight: '800', color: '#5f7f94', marginBottom: 10, marginLeft: 4 },
+  patientCard: { backgroundColor: '#fcfeff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 16, marginBottom: 12 },
+  patientTopRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarCircle: { width: 58, height: 58, borderRadius: 20, backgroundColor: '#e7f6f8', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  avatarText: { fontSize: 21, fontWeight: '900', color: '#123a5e' },
+  petPhoto: { width: 58, height: 58, borderRadius: 20, marginRight: 12, backgroundColor: '#e7f6f8' },
+  patientInfo: { flex: 1 },
+  patientName: { fontSize: 17, fontWeight: '900', color: '#123a5e' },
+  patientBreed: { marginTop: 4, fontSize: 12, fontWeight: '800', color: '#2c6ba3' },
+  patientIdText: { marginTop: 4, fontSize: 11.5, fontWeight: '700', color: '#5f7f94' },
+  infoGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+    marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#edf4f8',
   },
-  ownerTopRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  ownerAvatar: { width: 58, height: 58, borderRadius: 20, marginRight: 12, backgroundColor: '#e7f6f8' },
-  ownerInfo: { flex: 1 },
-  ownerName: { fontSize: 16.5, fontWeight: '900', color: '#123a5e' },
-  ownerDetail: { marginTop: 3, fontSize: 12, fontWeight: '600', color: '#5d7b91' },
-  ownerFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#edf4f8',
-  },
-  patientCountText: { flex: 1, fontSize: 12, fontWeight: '800', color: '#2c6ba3', marginRight: 10 },
-  viewOwnerChip: {
-    minHeight: 44,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: '#2c6ba3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewOwnerChipText: { fontSize: 12, fontWeight: '900', color: '#ffffff' },
+  infoItem: { width: '48%', marginBottom: 9 },
+  infoItemWide: { width: '100%' },
+  infoLabel: { fontSize: 10, fontWeight: '900', color: '#7892a0', textTransform: 'uppercase' },
+  infoValue: { marginTop: 3, fontSize: 12, fontWeight: '800', color: '#123a5e' },
+  patientFooterRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 },
+  viewProfileChip: { minHeight: 44, paddingHorizontal: 16, borderRadius: 14, backgroundColor: '#2c6ba3', alignItems: 'center', justifyContent: 'center' },
+  viewProfileChipText: { fontSize: 12, fontWeight: '900', color: '#ffffff' },
   emptyCard: { backgroundColor: '#fcfeff', borderRadius: 22, borderWidth: 1, borderColor: '#dceef8', padding: 18, alignItems: 'center' },
   emptyTitle: { fontSize: 16, fontWeight: '900', color: '#123a5e' },
   emptyText: { marginTop: 8, fontSize: 13, lineHeight: 19, textAlign: 'center', fontWeight: '600', color: '#5d7b91' },

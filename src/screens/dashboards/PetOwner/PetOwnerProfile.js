@@ -23,6 +23,7 @@ import {
   useProfilePhotoPicker,
 } from '../../../components/ProfileParts';
 import { getProfile, subscribeProfile, updateProfile, updateProfileAvatar, uploadProfileAvatar } from '../../../api/profileService';
+import { logoutAndResetToLogin } from '../../../api/authService';
 import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../../../utils/contactValidation';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
@@ -318,7 +319,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
                 style={styles.confirmBtn}
                 onPress={() => {
                   setShowLogoutModal(false);
-                  navigation.replace('login');
+                  logoutAndResetToLogin(navigation);
                 }}
                 activeOpacity={0.9}
               >

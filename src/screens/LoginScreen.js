@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useRef, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
-import { attemptLogin as loginUser, sendUnlockEmail } from "../api/authService";
+import { attemptLogin as loginUser, resetToDashboard, sendUnlockEmail } from "../api/authService";
 import {
   Animated,
   Easing,
@@ -25,6 +25,7 @@ export default function LoginScreen({ navigation, route }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [authError, setAuthError] = useState("");
   const [alertModal, setAlertModal] = useState({
     show: false,
     message: "",
@@ -88,17 +89,7 @@ export default function LoginScreen({ navigation, route }) {
   };
 
 const handleOtpSuccess = (user) => {
-  const role = user?.role;
-
-  if (role === "veterinarian") {
-    navigation.replace("vet-screen", {
-      user,
-    });
-  } else if (role === "pet_owner") {
-    navigation.replace("petowner-screen", {
-      user,
-    });
-  } else {
+  if (!resetToDashboard(navigation, user)) {
     setAlertModal({
       show: true,
       message: "This app is available for Veterinarian and Pet Owner accounts only. Please sign in at the PawCruz web system.",
@@ -113,6 +104,7 @@ const handleLogin = async () => {
   if (!password) errors.password = "Password is required.";
 
   setFieldErrors(errors);
+  setAuthError("");
   if (Object.keys(errors).length > 0) return;
 
   try {
@@ -127,10 +119,7 @@ const handleLogin = async () => {
     }
   } catch (error) {
     if (/invalid username\/email or password/i.test(error.message || "")) {
-      setFieldErrors({
-        username: "Check your username or email.",
-        password: "Incorrect username/email or password.",
-      });
+      setAuthError("Invalid credentials.");
       return;
     }
 
@@ -206,6 +195,12 @@ const handleLogin = async () => {
                     </Text>
                   </View>
 
+                  {authError ? (
+                    <View style={styles.authErrorBox}>
+                      <Text style={styles.authErrorText}>{authError}</Text>
+                    </View>
+                  ) : null}
+
                   <View style={styles.inputContainer}>
                     <Text style={styles.label}>Username</Text>
                     <View style={[styles.inputWrapper, fieldErrors.username && styles.inputWrapperError]}>
@@ -214,6 +209,7 @@ const handleLogin = async () => {
                         value={username}
                         onChangeText={(value) => {
                           setUsername(value);
+                          if (authError) setAuthError("");
                           if (fieldErrors.username) {
                             setFieldErrors((current) => ({ ...current, username: undefined }));
                           }
@@ -241,6 +237,7 @@ const handleLogin = async () => {
                         value={password}
                         onChangeText={(value) => {
                           setPassword(value);
+                          if (authError) setAuthError("");
                           if (fieldErrors.password) {
                             setFieldErrors((current) => ({ ...current, password: undefined }));
                           }
@@ -483,6 +480,24 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#EF4444",
     borderRadius: 18,
+  },
+
+  authErrorBox: {
+    width: "100%",
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#F5B5B5",
+    backgroundColor: "#FDECEC",
+  },
+
+  authErrorText: {
+    color: "#D32F2F",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
   },
 
   errorText: {

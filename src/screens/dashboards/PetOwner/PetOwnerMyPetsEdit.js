@@ -40,6 +40,7 @@ const TODAY = new Date();
 const CURRENT_MONTH_INDEX = TODAY.getMonth();
 const CURRENT_YEAR = TODAY.getFullYear();
 const CURRENT_DAY = TODAY.getDate();
+const YEAR_ROW_HEIGHT = 56; // calendarYearCell height (46) + vertical margin (10)
 
 const getBirthdayDateFromPet = (pet) => {
   const monthIndex = Math.max(MONTHS.indexOf(pet?.birthMonth), 0);
@@ -102,6 +103,8 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   const [showBirthdayCalendar, setShowBirthdayCalendar] = useState(false);
   const [calendarMonthDate, setCalendarMonthDate] = useState(() => getBirthdayDateFromPet(initialPet));
   const [pendingBirthdayDate, setPendingBirthdayDate] = useState(null);
+  const [showYearGrid, setShowYearGrid] = useState(false);
+  const yearGridRef = useRef(null);
 
   const activePhoto = getPetPhotoSource(draftPet);
   const breedOptions = useMemo(() => getBreedOptionsForSpecies(draftPet.species), [draftPet.species]);
@@ -201,7 +204,15 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   const openBirthdayCalendar = () => {
     setCalendarMonthDate(getBirthdayDateFromPet(draftPet));
     setPendingBirthdayDate(null);
+    setShowYearGrid(false);
     setShowBirthdayCalendar(true);
+  };
+
+  // Year grid rows are 3 chips wide; open it scrolled to the selected year.
+  const scrollYearGridToSelected = () => {
+    const index = yearOptions.findIndex((option) => Number(option.value) === calendarMonthDate.getFullYear());
+    const row = Math.floor(Math.max(index, 0) / 3);
+    yearGridRef.current?.scrollTo({ y: Math.max(0, (row - 1) * YEAR_ROW_HEIGHT), animated: false });
   };
 
   const handleBirthdaySelect = (day) => {
@@ -762,23 +773,14 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                 </TouchableOpacity>
                 <View style={styles.calendarTitleWrap}>
                   <Text style={styles.calendarActiveMonth}>{MONTHS[calendarMonthDate.getMonth()]}</Text>
-                  <View style={styles.calendarPickerWrapYear}>
-                    <Dropdown
-                      style={styles.calendarPickerDropdown}
-                      containerStyle={styles.searchableDropdownContainer}
-                      placeholderStyle={styles.dropdownPlaceholder}
-                      selectedTextStyle={styles.dropdownSelectedText}
-                      itemTextStyle={styles.dropdownItemText}
-                      iconStyle={styles.dropdownIcon}
-                      activeColor="#edf7fd"
-                      data={yearOptions}
-                      labelField="label"
-                      valueField="value"
-                      placeholder="Year"
-                      value={String(calendarMonthDate.getFullYear())}
-                      onChange={handleCalendarYearChange}
-                    />
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.calendarPickerWrapYear, styles.calendarYearToggle]}
+                    onPress={() => setShowYearGrid((open) => !open)}
+                    activeOpacity={0.88}
+                  >
+                    <Text style={styles.dropdownSelectedText}>{calendarMonthDate.getFullYear()}</Text>
+                    <Text style={styles.calendarYearChevron}>{showYearGrid ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
                 </View>
                 <TouchableOpacity
                   style={[
@@ -798,6 +800,35 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                 </TouchableOpacity>
               </View>
 
+              {showYearGrid ? (
+                <ScrollView
+                  ref={yearGridRef}
+                  style={styles.calendarYearGridScroll}
+                  contentContainerStyle={styles.calendarYearGrid}
+                  showsVerticalScrollIndicator={false}
+                  onLayout={scrollYearGridToSelected}
+                >
+                  {yearOptions.map((option) => {
+                    const isSelectedYear = Number(option.value) === calendarMonthDate.getFullYear();
+                    return (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[styles.calendarYearCell, isSelectedYear && styles.calendarDayCellSelected]}
+                        onPress={() => {
+                          handleCalendarYearChange(option);
+                          setShowYearGrid(false);
+                        }}
+                        activeOpacity={0.88}
+                      >
+                        <Text style={[styles.calendarDayText, isSelectedYear && styles.calendarDayTextSelected]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : (
+              <>
               <View style={styles.calendarWeekHeader}>
                 {CALENDAR_DAY_LABELS.map((label) => (
                   <Text key={label} style={styles.calendarWeekLabel}>{label}</Text>
@@ -851,6 +882,8 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                   );
                 })}
               </View>
+              </>
+              )}
 
               <View style={styles.modalButtonRow}>
                 <TouchableOpacity

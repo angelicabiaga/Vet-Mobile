@@ -292,14 +292,106 @@ export async function getOwnerAppointments(ownerId) {
   return rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null }));
 }
 
+// Pet owner cancellation policy: the appointment must still be Confirmed, not
+// checked in at the clinic yet, and at least CANCEL_CUTOFF_MINUTES before it starts.
+export const CANCEL_CUTOFF_MINUTES = 60;
+
+const appointmentStart = (appointment) => {
+  const date = appointment?.appointment_date;
+  const time = normalizeTime(appointment?.start_time);
+  if (!date || !time) return null;
+  const start = new Date(`${date}T${time}:00`);
+  return Number.isNaN(start.getTime()) ? null : start;
+};
+
+// Returns null when the appointment can be cancelled, otherwise the reason it can't.
+export function getCancellationBlockReason(appointment, { checkedIn = false, now = new Date() } = {}) {
+  if (!appointment || appointment.status !== 'Confirmed') {
+    return 'Only confirmed appointments can be cancelled.';
+  }
+  if (checkedIn) {
+    return "You're already checked in at the clinic. Please ask the clinic staff if you need to cancel.";
+  }
+  const start = appointmentStart(appointment);
+  if (!start || start.getTime() <= now.getTime()) {
+    return 'This appointment has already started or passed, so it can no longer be cancelled.';
+  }
+  if (start.getTime() - now.getTime() < CANCEL_CUTOFF_MINUTES * 60 * 1000) {
+    return 'Appointments can only be cancelled at least 1 hour before the start time.';
+  }
+  return null;
+}
+
 export async function cancelAppointment(id, ownerId) {
-  const { error } = await supabase
+  // Re-check the policy against the latest data, not what the screen last loaded.
+  const [{ data: appointment, error: loadError }, { data: queueRows }] = await Promise.all([
+    supabase.from('appointments').select('id,status,appointment_date,start_time').eq('id', id).eq('owner_id', ownerId).maybeSingle(),
+    supabase.from('queue_entries').select('id').eq('appointment_id', id).limit(1),
+  ]);
+  if (loadError) throw new Error('Unable to cancel the appointment.');
+  if (!appointment) throw new Error("This appointment can't be found. Refresh and try again.");
+  const blockReason = getCancellationBlockReason(appointment, { checkedIn: Boolean(queueRows?.length) });
+  if (blockReason) throw new Error(blockReason);
+
+  const { data: cancelled, error } = await supabase
     .from('appointments')
     .update({ status: 'Cancelled' })
     .eq('id', id)
     .eq('owner_id', ownerId)
-    .eq('status', 'Confirmed');
+    .eq('status', 'Confirmed')
+    .select('id');
   if (error) throw new Error('Unable to cancel the appointment.');
+  if (!cancelled?.length) throw new Error('This appointment is no longer active. Refresh and try again.');
+}
+
+// Whether Staff has checked this appointment in (it has a queue entry).
+export async function isAppointmentCheckedIn(id) {
+  if (!id) return false;
+  const { data } = await supabase.from('queue_entries').select('id').eq('appointment_id', id).limit(1);
+  return Boolean(data?.length);
+}
+
+// Veterinarian cancels one of their own assigned appointments. Same policy as
+// the pet owner: Confirmed, not checked in, and at least 1 hour before it starts.
+export async function veterinarianCancelAppointment(id, veterinarianId) {
+  const [{ data: appointment, error: loadError }, checkedIn] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select('id,owner_id,status,appointment_date,start_time')
+      .eq('id', id)
+      .eq('veterinarian_id', veterinarianId)
+      .maybeSingle(),
+    isAppointmentCheckedIn(id),
+  ]);
+  if (loadError) throw new Error('Unable to cancel the appointment.');
+  if (!appointment) throw new Error("This appointment can't be found. Refresh and try again.");
+  const blockReason = getCancellationBlockReason(appointment, { checkedIn });
+  if (blockReason) {
+    // Same rule, worded for the veterinarian.
+    throw new Error(checkedIn
+      ? 'The pet owner is already checked in at the clinic, so this appointment can no longer be cancelled.'
+      : blockReason);
+  }
+
+  const { data: cancelled, error } = await supabase
+    .from('appointments')
+    .update({ status: 'Cancelled' })
+    .eq('id', id)
+    .eq('veterinarian_id', veterinarianId)
+    .eq('status', 'Confirmed')
+    .select('id');
+  if (error) throw new Error('Unable to cancel the appointment.');
+  if (!cancelled?.length) throw new Error('This appointment is no longer active. Refresh and try again.');
+
+  createNotification({
+    recipientId: appointment.owner_id,
+    type: 'Appointment',
+    title: 'Appointment Cancelled',
+    message: `Your appointment on ${formatFullDate(appointment.appointment_date)} at ${formatTime(appointment.start_time)} was cancelled by the veterinarian.`,
+    relatedModule: 'Appointments',
+    relatedRecord: id,
+    createdBy: veterinarianId,
+  }).catch(() => {});
 }
 
 // Rebooking keeps the same pet and owner, so only what changes is checked

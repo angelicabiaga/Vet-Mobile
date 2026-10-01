@@ -176,10 +176,6 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
         </LinearGradient>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.sectionHeaderWrap}>
-            <Text style={styles.sectionTitle}>Animal Patient Profile</Text>
-            <Text style={styles.sectionSubtitle}>Medical history and AI predictive health in one place</Text>
-          </View>
 
           <View style={styles.detailCard}>
             <View style={styles.detailTopRow}>

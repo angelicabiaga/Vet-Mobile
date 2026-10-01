@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStorage";
 
 function userKey(userId) {
   return String(userId || "guest").replace(/[^a-zA-Z0-9_-]/g, "_");

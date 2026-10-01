@@ -36,7 +36,8 @@ export async function getMessageContacts(profile) {
     .neq("id", profile.id)
     .order("full_name");
   if (!error) {
-    return (data || []).filter((item) => String(item.account_status || "").toLowerCase() === "active");
+    // An empty status counts as active (same rule as login and the database triggers).
+    return (data || []).filter((item) => String(item.account_status ?? "active").trim().toLowerCase() === "active");
   }
   return rpcArray("pawcruz_get_message_contacts", { p_profile_id: profile.id }, "Unable to load messaging contacts");
 }

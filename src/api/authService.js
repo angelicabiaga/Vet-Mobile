@@ -1,7 +1,15 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStorage";
 import { supabase } from "../config/supabaseClient";
-import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from "../utils/contactValidation";
+import {
+  CONTACT_FORMAT_ERROR,
+  CONTACT_REQUIRED_ERROR,
+  CONTACT_TAKEN_ERROR,
+  isDuplicatePhoneError,
+  isValidRegisterContact,
+  phoneVariants,
+} from "../utils/contactValidation";
 import { clearPushTokenForThisDevice } from "../utils/pushNotifications";
+import { setSessionUser } from "../session/sessionStore";
 
 const SESSION_KEY = "pawcruz_session";
 const OTP_KEY = "pawcruz_pending_otp";
@@ -13,6 +21,27 @@ export const OTP_MAX_ATTEMPTS = 5;
 export const TRUSTED_DEVICE_DAYS = 30;
 
 const normalizeIdentifier = (value) => String(value || "").trim().toLowerCase();
+// Exact, case-insensitive match for ilike: "Sharica@Gmail.com" in the database
+// must still match "sharica@gmail.com" typed at login. % and _ are escaped so
+// they can't act as wildcards.
+const exactIlike = (value) => String(value).replace(/[\\%_]/g, "\\$&");
+
+// Profiles whose email/username equals the identifier, ignoring letter case and
+// stray spaces saved around the value (e.g. "name@gmail.com " from a manual edit).
+// Returns { rows, error }.
+async function findProfilesByIdentifier(identifier, columns = "*") {
+  const normalized = normalizeIdentifier(identifier);
+  const field = normalized.includes("@") ? "email" : "username";
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(columns)
+    .ilike(field, `%${exactIlike(normalized)}%`)
+    .limit(10);
+  if (error) return { rows: [], error };
+  return { rows: (data || []).filter((row) => normalizeIdentifier(row[field]) === normalized), error: null };
+}
+export const USERNAME_TAKEN_ERROR = "Username is already registered.";
+export const EMAIL_TAKEN_ERROR = "Email address is already registered.";
 
 function publicProfile(profile) {
   if (!profile) return null;
@@ -46,6 +75,7 @@ async function saveSession(profile) {
     createdAt: new Date().toISOString(),
   };
   await writeJson(SESSION_KEY, session);
+  setSessionUser(session.profile);
   return session;
 }
 
@@ -105,8 +135,34 @@ export async function getStoredSession() {
 }
 
 export async function logoutUser() {
+  setSessionUser(null);
   await clearPushTokenForThisDevice();
   await SecureStore.deleteItemAsync(SESSION_KEY);
+  await SecureStore.deleteItemAsync(OTP_KEY);
+  await SecureStore.deleteItemAsync(RESET_KEY);
+}
+
+const DASHBOARD_BY_ROLE = { veterinarian: "vet-screen", pet_owner: "petowner-screen" };
+
+// Opens the logged-in user's dashboard as a brand-new navigation history, so no
+// screen from a previous account (and its `user` params) is left underneath.
+// Returns false for roles the mobile app doesn't support.
+export function resetToDashboard(navigation, user) {
+  const routeName = DASHBOARD_BY_ROLE[user?.role];
+  if (!routeName) return false;
+  navigation.reset({ index: 0, routes: [{ name: routeName, params: { user } }] });
+  return true;
+}
+
+// Only logout ends a session: clears the stored session and wipes the whole
+// navigation history so the next account starts clean.
+export async function logoutAndResetToLogin(navigation) {
+  try {
+    await logoutUser();
+  } catch (error) {
+    console.warn("Logout cleanup incomplete:", error?.message || error);
+  }
+  navigation.reset({ index: 0, routes: [{ name: "login" }] });
 }
 
 export async function createAndSendOtp(email, purpose, payload = {}) {
@@ -179,14 +235,20 @@ export async function attemptLogin({ username, password }) {
   const normalized = normalizeIdentifier(username);
   const enteredPassword = String(password || "");
   if (!normalized || !enteredPassword) throw new Error("Enter your username/email and password.");
-  const field = normalized.includes("@") ? "email" : "username";
-  const { data: profile, error } = await supabase.from("profiles").select("*").eq(field, normalized).limit(1).maybeSingle();
+  const { rows: matches, error } = await findProfilesByIdentifier(normalized);
   if (error) throw new Error("Unable to validate your account.");
-  if (!profile || String(profile.password) !== enteredPassword) {
-    await writeActivity(profile, "Failed login", `Failed login attempt for ${normalized}.`);
+  // Stored passwords edited by hand can carry a stray space/line break, and an
+  // email can exist on more than one row: use the row whose password matches.
+  const passwordMatches = (row) => String(row?.password ?? "").trim() === enteredPassword.trim();
+  const profile = (matches || []).find(passwordMatches) || null;
+  if (!profile) {
+    await writeActivity(matches?.[0] || null, "Failed login", `Failed login attempt for ${normalized}.`);
     throw new Error("Invalid username/email or password.");
   }
-  if (profile.account_status !== "active") throw new Error("Your account is inactive. Contact the administrator.");
+  // Same rule as the database triggers: an empty status counts as active.
+  if (String(profile.account_status ?? "active").trim().toLowerCase() !== "active") {
+    throw new Error("Your account is inactive. Contact the administrator.");
+  }
   if (await isLoginTrustedOnDevice(profile)) {
     const now = new Date().toISOString();
     await supabase.from("profiles").update({ last_login_at: now }).eq("id", profile.id);
@@ -228,10 +290,21 @@ export async function registerUser(values) {
   if (!/^[a-z0-9_.-]{3,30}$/.test(username)) throw new Error("Username must be 3–30 characters and may use letters, numbers, dots, dashes, or underscores.");
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Please enter a valid email address.");
   if (!password) throw new Error("Password is required.");
-  if (!isValidPhMobile(phone)) throw new Error(PH_MOBILE_FORMAT_ERROR);
-  const { data: existing, error } = await supabase.from("profiles").select("id").or(`username.eq.${username},email.eq.${email}`).limit(1);
+  if (!phone) throw new Error(CONTACT_REQUIRED_ERROR);
+  if (!isValidRegisterContact(phone)) throw new Error(CONTACT_FORMAT_ERROR);
+  const { data: existing, error } = await supabase.from("profiles").select("username,email").or(`username.eq.${username},email.eq.${email}`);
   if (error) throw new Error("Unable to check the account details.");
-  if (existing?.length) throw new Error("That username or email is already registered.");
+  const { data: phoneOwner, error: phoneError } = await supabase.from("profiles").select("id").in("phone", phoneVariants(phone)).limit(1);
+  if (phoneError) throw new Error("Unable to check the account details.");
+  const takenFields = {};
+  if (existing?.some((row) => normalizeIdentifier(row.username) === username)) takenFields.username = USERNAME_TAKEN_ERROR;
+  if (existing?.some((row) => normalizeIdentifier(row.email) === email)) takenFields.email = EMAIL_TAKEN_ERROR;
+  if (phoneOwner?.length) takenFields.contact = CONTACT_TAKEN_ERROR;
+  if (Object.keys(takenFields).length) {
+    const takenError = new Error(Object.values(takenFields)[0]);
+    takenError.fieldErrors = takenFields;
+    throw takenError;
+  }
   await createAndSendOtp(email, "register", { fullName, username, email, password, phone, role: values.role || "pet_owner" });
   return { requiresOtp: true, email, purpose: "register" };
 }
@@ -248,6 +321,7 @@ export async function completeRegistrationOtp(code) {
     role: values.role || "pet_owner",
     account_status: "active",
   }).select("*").single();
+  if (isDuplicatePhoneError(error)) throw new Error(CONTACT_TAKEN_ERROR);
   if (error) throw new Error("Registration failed. Check your Supabase policies and required columns.");
   await SecureStore.deleteItemAsync(OTP_KEY);
   await writeActivity(profile, "Account creation", `Pet-owner account created for ${values.username}.`);
@@ -257,9 +331,10 @@ export async function completeRegistrationOtp(code) {
 export async function requestPasswordReset(identifier) {
   const normalized = normalizeIdentifier(identifier);
   if (!normalized) throw new Error("Enter your email address or username.");
-  const field = normalized.includes("@") ? "email" : "username";
-  const { data: profile, error } = await supabase.from("profiles").select("id,email").eq(field, normalized).maybeSingle();
-  if (error || !profile) throw new Error("Account not found.");
+  const { rows, error } = await findProfilesByIdentifier(normalized, "id,email,username");
+  if (error) throw new Error("Unable to look up your account right now. Please try again.");
+  const profile = rows[0];
+  if (!profile) throw new Error("Account not found.");
   await createAndSendOtp(profile.email, "forgot_password", { profileId: profile.id });
   return { requiresOtp: true, email: profile.email, purpose: "forgot_password" };
 }

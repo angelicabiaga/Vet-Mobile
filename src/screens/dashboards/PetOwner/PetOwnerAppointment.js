@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CalendarDatePicker from '../../../components/CalendarDatePicker';
+import InlineSelect from '../../../components/InlineSelect';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -382,22 +384,20 @@ export default function PetOwnerAppointment({ navigation, route }) {
             />
 
             <FieldLabel text="Appointment Date" />
-            <Dropdown
-              style={styles.dropdown}
-              data={dateOptions}
-              labelField="label" valueField="value" value={form.appointmentDate}
-              placeholder="Select date"
-              onChange={(item) => setForm((current) => ({ ...current, appointmentDate: item.value }))}
+            <CalendarDatePicker
+              value={form.appointmentDate}
+              minDate={dateOptions[0]?.value}
+              maxDate={dateOptions[dateOptions.length - 1]?.value}
+              onChange={(value) => setForm((current) => ({ ...current, appointmentDate: value }))}
             />
 
             <FieldLabel text="Available Time" />
-            <Dropdown
-              style={styles.dropdown}
-              data={slots.map((slot) => ({ value: slot, label: `${formatTime(slot)} – ${formatTime(addTenMinutes(slot))}` }))}
-              labelField="label" valueField="value" value={form.startTime}
-              placeholder={slotLoading ? 'Loading available times...' : slots.length ? 'Select available time' : scheduleClosed ? 'Schedule not open yet' : 'No available slots'}
-              disable={slotLoading || !form.veterinarianId || !slots.length}
-              onChange={(item) => setForm((current) => ({ ...current, startTime: item.value }))}
+            <InlineSelect
+              options={slots.map((slot) => ({ value: slot, label: formatTime(slot) }))}
+              value={form.startTime}
+              placeholder={slotLoading ? 'Loading available times...' : slots.length ? 'Select time' : scheduleClosed ? 'Schedule not open yet' : 'No available slots'}
+              disabled={slotLoading || !form.veterinarianId || !slots.length}
+              onChange={(value) => setForm((current) => ({ ...current, startTime: value }))}
             />
             {!slotLoading && scheduleClosed ? (
               <Text style={styles.scheduleNote}>The clinic hasn't released this veterinarian's schedule for this date yet. Please choose an earlier date.</Text>

@@ -1,8 +1,9 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from "../utils/secureStorage";
 import { supabase } from '../config/supabaseClient';
 import { createAndSendOtp, verifyProfileOtp } from './authService';
+import { getSessionUser, setSessionUser } from '../session/sessionStore';
 import { validateImageBlob } from '../utils/imageValidation';
-import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../utils/contactValidation';
+import { CONTACT_TAKEN_ERROR, isDuplicatePhoneError, isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../utils/contactValidation';
 
 const SESSION_KEY = 'pawcruz_session';
 
@@ -16,12 +17,16 @@ async function refreshStoredSession(profile) {
   try {
     const raw = await SecureStore.getItemAsync(SESSION_KEY);
     const stored = raw ? JSON.parse(raw) : {};
+    // Never let another account's profile overwrite the logged-in user's session.
+    const sessionId = stored.user?.id || stored.profile?.id;
+    if (!profile?.id || !sessionId || String(sessionId) !== String(profile.id)) return;
     const next = {
       ...stored,
       user: { ...(stored.user || {}), id: profile.id, email: profile.email },
       profile: { ...(stored.profile || {}), ...safeProfile(profile) },
     };
     await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(next));
+    if (String(getSessionUser()?.id) === String(profile.id)) setSessionUser(next.profile);
   } catch (error) {
     console.warn('Unable to refresh mobile profile session:', error?.message || error);
   }
@@ -56,6 +61,7 @@ export async function updateProfile(profileId, values) {
   if (duplicate?.length) throw new Error('The username is already used by another account.');
 
   const { data, error } = await supabase.from('profiles').update(payload).eq('id', profileId).select('*').single();
+  if (isDuplicatePhoneError(error)) throw new Error(CONTACT_TAKEN_ERROR);
   if (error) throw new Error(`Unable to update profile: ${error.message}`);
   await refreshStoredSession(data);
   return data;
@@ -92,6 +98,7 @@ export async function updateVeterinarianProfile(profileId, values) {
   }
 
   const { data, error } = await supabase.from('profiles').update(payload).eq('id', profileId).select('*').single();
+  if (isDuplicatePhoneError(error)) throw new Error(CONTACT_TAKEN_ERROR);
   if (error) throw new Error(`Unable to update profile: ${error.message}`);
   await refreshStoredSession(data);
   return data;

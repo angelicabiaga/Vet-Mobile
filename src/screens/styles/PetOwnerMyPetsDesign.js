@@ -1329,6 +1329,43 @@ export const styles = StyleSheet.create({
     minHeight: 46,
   },
 
+  // Year box: tap to swap the day grid for the year grid.
+  calendarYearToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  calendarYearChevron: {
+    fontSize: 10,
+    color: '#5f7f94',
+    marginLeft: 8,
+  },
+
+  // Year grid: same footprint as the day grid, scrolls inside the calendar card.
+  calendarYearGridScroll: {
+    maxHeight: 300,
+    marginBottom: 18,
+  },
+
+  calendarYearGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+
+  calendarYearCell: {
+    width: '31%',
+    height: 46,
+    marginVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#d7edf9',
+    backgroundColor: '#f4fbff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   calendarWeekHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
