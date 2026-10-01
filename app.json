@@ -7,7 +7,15 @@
     "icon": "./src/screens/assets/paw2.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pawcruz.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "PawCruz uses the camera to take profile and pet photos.",
+        "NSPhotoLibraryUsageDescription": "PawCruz uses your photos to set profile and pet pictures."
+      }
     },
     "android": {
       "adaptiveIcon": {

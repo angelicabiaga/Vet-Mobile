@@ -61,6 +61,36 @@ export async function respondDoctorOffer(offerId, ownerId, action, { date = null
   return data;
 }
 
+// Checked-in tickets whose doctor can't see them now (leave, emergency,
+// outside their hours): { queue: [{ queue_entry_id, problem }], ... }.
+export async function getQueueDoctorAlerts() {
+  const { data, error } = await supabase.rpc('get_queue_doctor_alerts', { p_date: null });
+  if (error) throw toError(error, 'Unable to check the doctor.');
+  return data || { appointments: [], queue: [] };
+}
+
+// My Queue self-service: free times (with every doctor) for rebooking a
+// waiting ticket's visit on a date.
+export async function getQueueVisitRescheduleOptions(queueEntryId, date) {
+  const { data, error } = await supabase.rpc('get_queue_visit_reschedule_options', { p_queue_entry_id: queueEntryId, p_date: date });
+  if (error) throw toError(error, 'Unable to load available times.');
+  return data;
+}
+
+// The owner cancels ('cancel') or rebooks ('reschedule') their own waiting visit.
+export async function ownerChangeQueueVisit({ ownerId, queueEntryId, action, date = null, veterinarianId = null, startTime = null }) {
+  const { data, error } = await supabase.rpc('owner_change_queue_visit', {
+    p_owner_id: ownerId,
+    p_queue_entry_id: queueEntryId,
+    p_action: action,
+    p_new_date: date,
+    p_new_veterinarian_id: veterinarianId,
+    p_new_time: timeOrNull(startTime),
+  });
+  if (error) throw toError(error, action === 'cancel' ? 'Unable to cancel the visit.' : 'Unable to rebook the visit.');
+  return data;
+}
+
 export async function getRescheduleOptions(offerId, date) {
   const { data, error } = await supabase.rpc('get_doctor_offer_reschedule_options', { p_offer_id: offerId, p_date: date });
   if (error) throw toError(error, 'Unable to load available times.');

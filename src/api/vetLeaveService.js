@@ -28,10 +28,13 @@ function toError(error, fallback) {
 
 const timeOrNull = (value) => (value ? String(value).slice(0, 5) : null);
 
-export async function getScheduleOverview(veterinarianId, days = 14) {
+// startDate (optional) loads any week, past weeks included; needs the web
+// project's supabase/VET_SCHEDULE_CALENDAR.sql.
+export async function getScheduleOverview(veterinarianId, days = 14, startDate = null) {
   const { data, error } = await supabase.rpc('get_vet_schedule_overview', {
     p_veterinarian_id: veterinarianId,
     p_days: days,
+    ...(startDate ? { p_start_date: startDate } : {}),
   });
   if (error) throw toError(error, 'Unable to load your schedule.');
   return data;

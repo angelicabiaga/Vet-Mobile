@@ -9,8 +9,11 @@ once in Supabase. Until then the tab keeps its previous read-only view and
 shows a notice.
 
 - `src/api/vetLeaveService.js`: calls the leave RPCs, plus display helpers.
-- `VetSchedule.js`: Today card with Request leave / Emergency leave, next 14
-  days, weekly roster, My Leave Requests (withdraw / cancel).
+- `VetSchedule.js` ("My Schedule", like the web): Today card with Request
+  leave / Emergency leave, week stats, My Weekly Schedule browsed one week at
+  a time (26 weeks back and ahead; needs the web's
+  `supabase/VET_SCHEDULE_CALENDAR.sql`, otherwise it shows the days from
+  today), My Leave Requests (withdraw / cancel).
 - `VetLeaveRequestModal.js`: the request form with a live conflict check.
   Part-day and emergency times stay inside the vet's own shift (Dr. Redmond
   9 AM – 5 PM, Dr. Neil 11 AM – 7 PM).

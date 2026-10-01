@@ -50,6 +50,18 @@ export const styles = StyleSheet.create({
     borderBottomColor: 'rgba(230, 246, 250, 0.24)',
   },
 
+  // Header without the caption + name row (profile screens): the top band
+  // carries the rounded bottom itself.
+  headerBarCompact: {
+    paddingBottom: 0,
+  },
+  headerTopBandCompact: {
+    paddingBottom: 18,
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',

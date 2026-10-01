@@ -3,18 +3,19 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 const statusStyle = (status) => status === 'Serving' ? styles.serving : status === 'Completed' ? styles.completed : styles.waiting;
 
-export default function LiveQueueList({ entries, loading, error, publicMode = false }) {
+// hideVet: the vet's own queue (every ticket is theirs, so no doctor name).
+export default function LiveQueueList({ entries, loading, error, publicMode = false, hideVet = false }) {
   if (loading && !entries.length) return <ActivityIndicator size="large" color="#2c6ba3" style={{ marginTop: 36 }} />;
   if (error && !entries.length) return <View style={styles.empty}><Text style={styles.emptyTitle}>Queue unavailable</Text><Text style={styles.emptyText}>{error}</Text></View>;
   if (!entries.length) return <View style={styles.empty}><Text style={styles.emptyTitle}>No active queue</Text><Text style={styles.emptyText}>Queue entries will appear after Staff checks clients in.</Text></View>;
 
   const serving = entries.find((item) => item.status === 'Serving');
   return <>
-    {serving ? <View style={styles.nowCard}><Text style={styles.nowLabel}>CURRENTLY SERVING</Text><Text style={styles.nowNumber}>{serving.queue_number || serving.queueNumber}</Text><Text style={styles.nowVet}>{serving.veterinarian_name || serving.veterinarian?.full_name || 'Veterinarian assigned at clinic'}</Text></View> : null}
+    {serving ? <View style={styles.nowCard}><Text style={styles.nowLabel}>CURRENTLY SERVING</Text><Text style={styles.nowNumber}>{serving.queue_number || serving.queueNumber}</Text>{hideVet ? null : <Text style={styles.nowVet}>{serving.veterinarian_name || serving.veterinarian?.full_name || 'Veterinarian assigned at clinic'}</Text>}</View> : null}
     {entries.map((item) => <View key={item.id || item.queue_number} style={styles.card}>
       <View><Text style={styles.number}>{item.queue_number || item.queueNumber || '—'}</Text>{!publicMode && (item.pet?.pet_name || item.pet?.name) ? <Text style={styles.secondary}>{item.pet?.pet_name || item.pet?.name}</Text> : null}</View>
       <View style={[styles.badge, statusStyle(item.status)]}><Text style={styles.badgeText}>{item.status}</Text></View>
-      <Text style={styles.vet}>{item.veterinarian_name || item.veterinarian?.full_name || 'Not assigned'}</Text>{!publicMode && Number.isFinite(item.clientsAhead) ? <Text style={styles.eta}>{item.clientsAhead} ahead · ~{item.estimatedWaitMinutes || 0} min</Text> : null}
+      {hideVet ? null : <Text style={styles.vet}>{item.veterinarian_name || item.veterinarian?.full_name || 'Not assigned'}</Text>}{!publicMode && Number.isFinite(item.clientsAhead) ? <Text style={styles.eta}>{item.clientsAhead} ahead · ~{item.estimatedWaitMinutes || 0} min</Text> : null}
     </View>)}
   </>;
 }

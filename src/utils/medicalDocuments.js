@@ -2,6 +2,12 @@ import * as Print from 'expo-print';
 import { formatMedicalDate, formatMedicalTime12h } from '../api/medicalRecordService';
 import { formatMoney, invoiceBalance } from '../api/consultationBillingService';
 
+// full_name may already include "Dr."; add the title exactly once.
+const withDrTitle = (name, fallback = '') => {
+  const bare = String(name || '').trim().replace(/^(?:dr\.\s*|dr\s+)+/i, '').trim();
+  return bare ? `Dr. ${bare}` : fallback;
+};
+
 // Lightweight HTML->native-print-sheet documents, standing in for the web
 // app's jsPDF letterhead documents (final-vet/src/utils/invoicePdf.js).
 // expo-print's OS print dialog already offers "Save as PDF" on both
@@ -42,7 +48,7 @@ export async function printMedicalRecord(record, pet, meta = {}) {
       ['Date', visitDate],
       ['Pet', `${pet?.pet_name || pet?.name || '—'} (${pet?.species || '—'}${pet?.breed ? ` / ${pet.breed}` : ''})`],
       ['Owner', pet?.owner?.full_name || '—'],
-      ['Veterinarian', meta.veterinarianName ? `Dr. ${String(meta.veterinarianName).replace(/^dr\.?\s*/i, '')}` : 'Not recorded'],
+      ['Veterinarian', withDrTitle(meta.veterinarianName, 'Not recorded')],
       ['Status', record.record_status || 'Draft'],
     ])}</table>
     <h2>Consultation</h2>
@@ -95,7 +101,7 @@ export async function printPrescriptionPad(prescriptions, meta = {}) {
     <div class="subtitle">Veterinarian Prescription Pad</div>
     <hr />
     <table>${fieldRows([
-      ['Veterinarian', meta.veterinarianName],
+      ['Veterinarian', withDrTitle(meta.veterinarianName)],
       ['Owner', meta.ownerName],
       ['Pet', `${meta.petName || '—'}${meta.petSpecies ? ` (${meta.petSpecies})` : ''}`],
       ['Date', meta.date],

@@ -302,8 +302,13 @@ export async function cancelAppointment(id, ownerId) {
   if (error) throw new Error('Unable to cancel the appointment.');
 }
 
+// Rebooking keeps the same pet and owner, so only what changes is checked
+// (matches the web app).
 export async function rescheduleAppointment(id, values, ownerId, changedBy) {
-  validatePayload({ ...values, ownerId });
+  if (!id) throw new Error("This appointment can't be found. Refresh and try again.");
+  if (!values.veterinarianId) throw new Error('Select a veterinarian.');
+  if (!values.appointmentDate || values.appointmentDate < todayLocal()) throw new Error('Select today or a future date.');
+  if (!values.startTime) throw new Error('Select an available time.');
 
   const latestSlots = await getAvailableSlots(
     values.veterinarianId,
@@ -314,7 +319,7 @@ export async function rescheduleAppointment(id, values, ownerId, changedBy) {
     throw new Error('That appointment time is no longer available. Please select another available time.');
   }
 
-  const { error } = await supabase
+  let query = supabase
     .from('appointments')
     .update({
       veterinarian_id: values.veterinarianId,
@@ -325,8 +330,9 @@ export async function rescheduleAppointment(id, values, ownerId, changedBy) {
       created_by: changedBy || ownerId,
     })
     .eq('id', id)
-    .eq('owner_id', ownerId)
     .eq('status', 'Confirmed');
+  if (ownerId) query = query.eq('owner_id', ownerId);
+  const { data: moved, error } = await query.select('id');
   if (error) {
     const message = String(error.message || '').toLowerCase();
     if (
@@ -338,6 +344,7 @@ export async function rescheduleAppointment(id, values, ownerId, changedBy) {
     }
     throw new Error('Unable to reschedule the appointment.');
   }
+  if (!moved?.length) throw new Error('This appointment is no longer active. Refresh and try again.');
 
   createNotification({
     recipientId: ownerId,

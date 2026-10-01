@@ -146,6 +146,9 @@ export function subscribeToQueue(callback, { ownerId, veterinarianId } = {}) {
     .on('postgres_changes', config, () => callback?.())
     .on('postgres_changes', appointmentConfig, () => callback?.())
     .on('postgres_changes', offerConfig, () => callback?.())
+    // A vet's sudden leave/emergency changes who can see a waiting ticket.
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'veterinarian_leave_requests' }, () => callback?.())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'veterinarian_schedule_overrides' }, () => callback?.())
     .subscribe();
 
   return () => {

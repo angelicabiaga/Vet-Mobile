@@ -28,7 +28,9 @@ const getActiveTabKey = (routeName) => {
 export const getVetName = (user) => user?.full_name || user?.fullName || user?.name || user?.username || 'Veterinarian';
 export const getVetUser = (route) => route?.params?.user || route?.params || null;
 
-const VetShell = ({ navigation, route, subtitle, caption, children, showBack = false, lowerHeaderScrollY, lowerHeaderAnimation }) => {
+// showGreeting={false} drops the caption + name row under the header, for
+// screens that already show the vet's name (the profile).
+const VetShell = ({ navigation, route, subtitle, caption, children, showBack = false, showGreeting = true, lowerHeaderScrollY, lowerHeaderAnimation }) => {
   const currentUser = useResolvedSessionUser(getVetUser(route));
   const profileImageUri = currentUser?.avatar_url || currentUser?.profileImageUri || currentUser?.avatar || '';
   const [unreadCount, setUnreadCount] = React.useState(0);
@@ -90,13 +92,13 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
           colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={dashboardStyles.headerBar}
+          style={[dashboardStyles.headerBar, !showGreeting && dashboardStyles.headerBarCompact]}
         >
           <LinearGradient
             colors={['#1e5a8c', '#256297', '#2c6ba3', '#3a7ab8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={dashboardStyles.headerTopBand}
+            style={[dashboardStyles.headerTopBand, !showGreeting && dashboardStyles.headerTopBandCompact]}
           >
             <View style={dashboardStyles.headerTopRow}>
               <TouchableOpacity style={dashboardStyles.brandSection} onPress={() => navigateVet('vet-screen')} activeOpacity={0.85}>
@@ -125,17 +127,19 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
             </View>
           </LinearGradient>
 
-          <Animated.View style={[dashboardStyles.headerBottomRowWrap, lowerHeaderAnimatedStyle]}>
-            <View style={dashboardStyles.headerBottomRow}>
-              {showBack ? (
-                <TouchableOpacity style={dashboardStyles.menuTriggerButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-                  <Image source={require('../../assets/Back_Icon.png')} style={dashboardStyles.menuTriggerIcon} resizeMode="contain" />
-                </TouchableOpacity>
-              ) : null}
-              {/* No divider line beside the back button, same as Quick Assist. */}
-              <PetOwnerHeaderGreeting caption={caption} name={getVetName(currentUser)} accent={!showBack} />
-            </View>
-          </Animated.View>
+          {showGreeting ? (
+            <Animated.View style={[dashboardStyles.headerBottomRowWrap, lowerHeaderAnimatedStyle]}>
+              <View style={dashboardStyles.headerBottomRow}>
+                {showBack ? (
+                  <TouchableOpacity style={dashboardStyles.menuTriggerButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+                    <Image source={require('../../assets/Back_Icon.png')} style={dashboardStyles.menuTriggerIcon} resizeMode="contain" />
+                  </TouchableOpacity>
+                ) : null}
+                {/* No divider line beside the back button, same as Quick Assist. */}
+                <PetOwnerHeaderGreeting caption={caption} name={getVetName(currentUser)} accent={!showBack} />
+              </View>
+            </Animated.View>
+          ) : null}
         </LinearGradient>
 
         {/* Fills the space between header and bar so the bar stays at the bottom

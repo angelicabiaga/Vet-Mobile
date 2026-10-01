@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import AiAssistFab from '../../../components/AiAssistFab';
 import BottomTabBar from '../../../components/BottomTabBar';
 
 // Pet Owner mobile navigation. Replaces the old hamburger/side drawer with a
@@ -22,17 +23,7 @@ export const PET_OWNER_TAB_ROUTES = PET_OWNER_NAV_ITEMS.map((item) => item.route
 
 export default function PetOwnerBottomNav({ navigation, user, activeKey, showQuickAssist = true }) {
   const quickAssist = showQuickAssist ? (
-    <TouchableOpacity
-      style={styles.quickAssist}
-      onPress={() => navigation.navigate('PetOwnerQuickAssist', { user })}
-      activeOpacity={0.88}
-      accessibilityRole="button"
-      accessibilityLabel="Open Quick Assist"
-    >
-      <View style={styles.quickAssistInner}>
-        <Image source={require('../../assets/support.png')} style={styles.quickAssistIcon} resizeMode="contain" />
-      </View>
-    </TouchableOpacity>
+    <AiAssistFab style={styles.quickAssist} onPress={() => navigation.navigate('PetOwnerQuickAssist', { user })} />
   ) : null;
 
   return (
@@ -48,32 +39,11 @@ export default function PetOwnerBottomNav({ navigation, user, activeKey, showQui
 }
 
 const styles = StyleSheet.create({
+  // Sits above the bar's right edge; the web's launcher is bottom-right too.
   quickAssist: {
     position: 'absolute',
-    right: 20,
-    top: -64,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#2c6ba3',
-    borderWidth: 2,
-    borderColor: '#d7eef3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#123a5e',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 12,
+    right: 18,
+    top: -76,
     zIndex: 10,
   },
-  quickAssistInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#e7f6f8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickAssistIcon: { width: 22, height: 22, tintColor: '#123a5e' },
 });

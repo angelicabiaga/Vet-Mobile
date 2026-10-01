@@ -8,7 +8,9 @@ import { Dropdown } from 'react-native-element-dropdown';
 import { styles } from '../../styles/PetOwnerAppointmentDesign';
 import { getQueue, subscribeToQueue } from '../../../api/queueService';
 import { formatTime, todayLocal } from '../../../api/mobileAppointmentService';
-import { getMyDoctorOffers, getRescheduleOptions, respondDoctorOffer } from '../../../api/doctorOfferService';
+import {
+  getMyDoctorOffers, getQueueDoctorAlerts, getQueueVisitRescheduleOptions, getRescheduleOptions, ownerChangeQueueVisit, respondDoctorOffer,
+} from '../../../api/doctorOfferService';
 import { formatDayLabel } from '../../../api/vetLeaveService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
@@ -191,6 +193,114 @@ function DoctorOfferCard({ offer, ownerId, onDone }) {
   );
 }
 
+// Rebook / Cancel for the owner's own waiting ticket (e.g. after their doctor
+// had a sudden leave). Rebook is for booked visits; a walk-in can only cancel.
+function QueueSelfService({ entry, ownerId, petNames, onDone }) {
+  const [rebooking, setRebooking] = useState(false);
+  const [date, setDate] = useState(todayLocal());
+  const [slots, setSlots] = useState(null);
+  const [choice, setChoice] = useState(null);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const days = useMemo(() => dayOptions(14), []);
+  const booked = Boolean(entry.appointment_id || (entry.pets || []).some((pet) => pet.appointmentId));
+
+  useEffect(() => {
+    if (!rebooking || !date) return undefined;
+    let active = true;
+    setSlots(null);
+    setChoice(null);
+    getQueueVisitRescheduleOptions(entry.id, date)
+      .then((result) => { if (active) setSlots(result?.vets || []); })
+      .catch((err) => { if (active) { setSlots([]); setError(err.message); } });
+    return () => { active = false; };
+  }, [rebooking, date, entry.id]);
+
+  const choices = useMemo(() => (slots || []).flatMap((vet) => (vet.starts || []).map((time) => ({
+    value: `${vet.veterinarian_id}|${String(time).slice(0, 5)}`,
+    label: `${formatTime(time)} · ${drName(vet.full_name)}`,
+    time: String(time).slice(0, 5),
+    veterinarianId: vet.veterinarian_id,
+    vetName: vet.full_name,
+  }))).sort((a, b) => a.time.localeCompare(b.time)), [slots]);
+
+  const run = async (action, extra, success) => {
+    try {
+      setBusy(action);
+      setError('');
+      await ownerChangeQueueVisit({ ownerId, queueEntryId: entry.id, action, ...extra });
+      // A rebook to today keeps this ticket on screen: back to the buttons.
+      setRebooking(false);
+      setBusy('');
+      onDone?.(success);
+    } catch (err) {
+      setError(err.message);
+      setBusy('');
+    }
+  };
+
+  const askCancel = () => Alert.alert(
+    'Cancel this visit?',
+    `${petNames || 'Your pet'}'s visit will be cancelled and removed from the clinic queue.`,
+    [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Yes, cancel visit', style: 'destructive', onPress: () => run('cancel', {}, 'Your visit was cancelled.') },
+    ],
+  );
+
+  return (
+    <View style={selfStyles.wrap}>
+      {error ? <Text style={offerStyles.error}>{error}</Text> : null}
+      {!rebooking ? (
+        <View style={[offerStyles.actions, selfStyles.actions]}>
+          {booked ? (
+            <TouchableOpacity style={[offerStyles.button, offerStyles.confirm, Boolean(busy) && offerStyles.disabled]} disabled={Boolean(busy)} onPress={() => setRebooking(true)} activeOpacity={0.85}>
+              <Text style={offerStyles.confirmText}>Rebook</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity style={[offerStyles.button, offerStyles.cancel, Boolean(busy) && offerStyles.disabled]} disabled={Boolean(busy)} onPress={askCancel} activeOpacity={0.85}>
+            {busy === 'cancel' ? <ActivityIndicator color="#b34848" /> : <Text style={offerStyles.cancelText}>Cancel visit</Text>}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View>
+          <Text style={offerStyles.label}>Date</Text>
+          <Dropdown style={offerStyles.dropdown} data={days} labelField="label" valueField="value" value={date} placeholder="Select date" onChange={(item) => setDate(item.value)} />
+          <Text style={offerStyles.label}>Time and doctor</Text>
+          {!slots ? (
+            <ActivityIndicator style={offerStyles.loader} color="#2c6ba3" />
+          ) : (
+            <Dropdown
+              style={offerStyles.dropdown}
+              data={choices}
+              labelField="label"
+              valueField="value"
+              value={choice?.value || null}
+              placeholder={choices.length ? 'Choose a time' : 'No free times that day'}
+              disable={!choices.length}
+              onChange={(item) => setChoice(item)}
+            />
+          )}
+          <View style={[offerStyles.actions, selfStyles.actions]}>
+            <TouchableOpacity
+              style={[offerStyles.button, offerStyles.confirm, (!choice || Boolean(busy)) && offerStyles.disabled]}
+              disabled={!choice || Boolean(busy)}
+              onPress={() => run('reschedule', { date, veterinarianId: choice.veterinarianId, startTime: choice.time },
+                `Rebooked: ${petNames || 'your visit'} with ${drName(choice.vetName)} at ${formatTime(choice.time)}${date === todayLocal() ? ' today' : ` on ${formatDayLabel(date)}`}.`)}
+              activeOpacity={0.85}
+            >
+              {busy === 'reschedule' ? <ActivityIndicator color="#ffffff" /> : <Text style={offerStyles.confirmText}>Confirm rebook</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={[offerStyles.button, offerStyles.secondary, Boolean(busy) && offerStyles.disabled]} disabled={Boolean(busy)} onPress={() => setRebooking(false)} activeOpacity={0.85}>
+              <Text style={offerStyles.secondaryText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function PetOwnerQueue({ navigation, route }) {
   const user = route?.params?.user;
   const profileImageUri = user?.profileImageUri || user?.avatar || '';
@@ -198,6 +308,8 @@ export default function PetOwnerQueue({ navigation, route }) {
   const ownerId = user?.id || user?.user_id || user?.profile_id;
   const [entry, setEntry] = useState(null);
   const [offers, setOffers] = useState([]);
+  // The doctor on this ticket went on sudden leave / emergency.
+  const [doctorAway, setDoctorAway] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -213,14 +325,23 @@ export default function PetOwnerQueue({ navigation, route }) {
 
   const load = useCallback(async () => {
     try {
-      const [data, pendingOffers] = ownerId
-        ? await Promise.all([getQueue({ ownerId }), getMyDoctorOffers(ownerId).catch(() => [])])
-        : [[], []];
+      const [data, pendingOffers, alerts] = ownerId
+        ? await Promise.all([
+          getQueue({ ownerId }),
+          getMyDoctorOffers(ownerId).catch(() => []),
+          getQueueDoctorAlerts().catch(() => ({ queue: [] })),
+        ])
+        : [[], [], { queue: [] }];
       // Pet owners never receive the clinic's live queue list. They only see
       // their own Staff-assigned queue number, if they have checked in. A
       // ticket on hold for a doctor change shows as the offer card instead.
-      setEntry((data || []).find((row) => !row.doctor_offer_id) || null);
+      const nextEntry = (data || []).find((row) => !row.doctor_offer_id) || null;
+      setEntry(nextEntry);
       setOffers(pendingOffers || []);
+      const alert = nextEntry && nextEntry.status === 'Waiting'
+        ? (alerts?.queue || []).find((item) => item.queue_entry_id === nextEntry.id && /leave/i.test(String(item.problem || '')))
+        : null;
+      setDoctorAway(alert ? alert.problem : '');
       setError('');
     } catch (e) {
       setEntry(null);
@@ -275,11 +396,15 @@ export default function PetOwnerQueue({ navigation, route }) {
 
   const toggleHeaderMenu = () => isHeaderMenuVisible ? closeHeaderMenu() : openHeaderMenu();
   const goTo = (screen) => closeHeaderMenu(() => navigation.navigate(screen, { user }));
-  const queueNumber = entry?.queue_number || entry?.queueNumber || null;
-  const queueStatus = entry?.status || 'Not checked in';
+  // Sudden leave: the number is on hold until the clinic offers another doctor.
+  const away = Boolean(entry && doctorAway);
+  const queueNumber = away ? null : entry?.queue_number || entry?.queueNumber || null;
+  const queueStatus = away ? 'Waiting for a new doctor' : entry?.status || 'Not checked in';
   const pets = entry?.pets?.length ? entry.pets : (entry?.pet ? [entry.pet] : []);
   const petName = pets.length ? pets.map((p) => p.pet_name).join(', ') : 'Not assigned';
-  const veterinarianName = entry?.veterinarian?.full_name || 'Not assigned';
+  const veterinarianName = entry?.veterinarian?.full_name
+    ? (away ? `${drName(entry.veterinarian.full_name)} · unavailable` : entry.veterinarian.full_name)
+    : 'Not assigned';
   const booking = entry ? bookingInfo(entry) : null;
 
   return (
@@ -336,7 +461,7 @@ export default function PetOwnerQueue({ navigation, route }) {
               <Text style={personalStyles.summaryTitle}>Queue Summary</Text>
             </View>
 
-            <View style={personalStyles.queueNumberBlock}>
+            <View style={[personalStyles.queueNumberBlock, away && personalStyles.queueNumberBlockAway]}>
               <Text style={personalStyles.queueNumberLabel}>QUEUE NO.</Text>
               <Text style={personalStyles.queueNumberValue}>{loading ? '...' : queueNumber || '—'}</Text>
             </View>
@@ -356,6 +481,13 @@ export default function PetOwnerQueue({ navigation, route }) {
               </>
             ) : (
               <>
+                {away ? (
+                  <View style={personalStyles.awayBanner}>
+                    <Text style={personalStyles.awayTitle}>{drName(entry.veterinarian?.full_name)} had a sudden leave and can't see {petName} as planned.</Text>
+                    <Text style={personalStyles.awayText}>Your queue number is on hold. The clinic will offer you another doctor here shortly, or you can rebook or cancel below yourself.</Text>
+                  </View>
+                ) : null}
+
                 {entry.late_arrival ? (
                   <View style={personalStyles.warnBanner}>
                     <Text style={personalStyles.warnText}>Late arrival recorded. Your place follows the active queue order.</Text>
@@ -379,7 +511,11 @@ export default function PetOwnerQueue({ navigation, route }) {
                   </View>
                 </View>
 
-                <Text style={personalStyles.helper}>Keep your queue number ready while waiting at the clinic.</Text>
+                {entry.status === 'Waiting' ? (
+                  <QueueSelfService key={entry.id} entry={entry} ownerId={ownerId} petNames={petName} onDone={handleOfferDone} />
+                ) : null}
+
+                <Text style={personalStyles.helper}>{away ? "You'll get a notification as soon as another doctor is offered." : 'Keep your queue number ready while waiting at the clinic.'}</Text>
               </>
             )}
           </View>
@@ -424,6 +560,10 @@ const personalStyles = StyleSheet.create({
     marginVertical: 18,
     backgroundColor: '#2c6ba3',
   },
+  queueNumberBlockAway: { backgroundColor: '#9aa6ac' },
+  awayBanner: { backgroundColor: '#fff4e2', borderWidth: 1, borderColor: '#f1dfb0', borderRadius: 14, padding: 13, marginTop: 16, marginBottom: 4 },
+  awayTitle: { color: '#7a4f0d', fontSize: 13.5, fontWeight: '900', lineHeight: 19 },
+  awayText: { color: '#865e12', fontSize: 12.5, fontWeight: '600', lineHeight: 18, marginTop: 4 },
   queueNumberLabel: { color: '#dff2f7', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   queueNumberValue: { color: '#ffffff', fontSize: 48, lineHeight: 56, fontWeight: '900', marginTop: 4, textAlign: 'center' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2ecef' },
@@ -498,6 +638,12 @@ const personalStyles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 330,
   },
+});
+
+const selfStyles = StyleSheet.create({
+  wrap: { marginTop: 14 },
+  // Centred under the ticket, like the rest of the card.
+  actions: { justifyContent: 'center' },
 });
 
 const offerStyles = StyleSheet.create({

@@ -48,6 +48,18 @@ export const styles = StyleSheet.create({
     borderBottomColor: 'rgba(230, 246, 250, 0.24)',
   },
 
+  // Header without the caption + name row (profile screens): the top band
+  // carries the rounded bottom itself.
+  headerBarCompact: {
+    paddingBottom: 0,
+  },
+  headerTopBandCompact: {
+    paddingBottom: 18,
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -168,70 +180,6 @@ export const styles = StyleSheet.create({
     height: '100%',
   },
 
-  notificationToast: {
-    position: 'absolute',
-    top: 72,
-    right: 22,
-    width: 210,
-    backgroundColor: '#f8fcff',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#cfe6eb',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#2c6ba3',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.16,
-        shadowRadius: 18,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
-  },
-
-  notificationPointer: {
-    position: 'absolute',
-    top: -8,
-    right: 16,
-    width: 16,
-    height: 16,
-    backgroundColor: '#f8fcff',
-    borderLeftWidth: 1,
-    borderTopWidth: 1,
-    borderColor: '#cfe6eb',
-    transform: [{ rotate: '45deg' }],
-  },
-
-  notificationToastTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#123a5e',
-    marginBottom: 4,
-  },
-
-  notificationToastText: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#5d7b91',
-    fontWeight: '600',
-  },
-
-  headerBottomRow: {
-    marginTop: 14,
-    paddingTop: 0,
-    borderTopWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  headerBottomRowWrap: {
-    overflow: 'hidden',
-  },
-
   ownerSummary: {
     flex: 1,
     alignItems: 'flex-end',
@@ -284,50 +232,6 @@ export const styles = StyleSheet.create({
     width: 30,
     height: 30,
     tintColor: '#ffffff',
-  },
-
-  headerMenuPanel: {
-    marginTop: 14,
-    width: '100%',
-    padding: 14,
-    borderRadius: 28,
-    backgroundColor: 'rgba(44, 107, 163, 0.98)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    alignSelf: 'stretch',
-  },
-
-  headerMenuItem: {
-    minHeight: 58,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    marginBottom: 12,
-  },
-
-  headerMenuItemIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: 'rgba(44, 107, 163, 0.42)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-
-  headerMenuItemIcon: {
-    width: 20,
-    height: 20,
-    tintColor: '#ffffff',
-  },
-
-  headerMenuItemLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#ffffff',
   },
 
   heroCard: {
@@ -409,119 +313,6 @@ export const styles = StyleSheet.create({
     }),
   },
 
-  profileTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-
-  avatarSection: {
-    marginRight: 14,
-    position: 'relative',
-    width: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  avatarWrap: {
-    width: 94,
-    height: 94,
-    borderRadius: 28,
-    backgroundColor: '#d7ebf8',
-    borderWidth: 2,
-    borderColor: '#edf7fd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#9cc6de',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 14,
-      },
-      android: {
-        elevation: 7,
-      },
-    }),
-  },
-
-  avatar: {
-    width: 50,
-    height: 50,
-    tintColor: '#123a5e',
-  },
-
-  avatarCustom: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 28,
-  },
-
-  avatarPlusButton: {
-    position: 'absolute',
-    right: 2,
-    bottom: 2,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#2c6ba3',
-    borderWidth: 3,
-    borderColor: '#fcfeff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#2c6ba3',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-
-  avatarPlusText: {
-    fontSize: 24,
-    lineHeight: 26,
-    fontWeight: '900',
-    color: '#ffffff',
-  },
-
-  profileTopContent: {
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 94,
-    paddingTop: 1,
-  },
-
-  profileTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#e7f6f8',
-    borderWidth: 1,
-    borderColor: '#d2e9f6',
-    marginBottom: 10,
-  },
-
-  profileTagText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#245f8e',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
-  profileName: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#123a5e',
-  },
-
   profileMeta: {
     fontSize: 13,
     fontWeight: '700',
@@ -535,54 +326,6 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#245f8e',
     marginTop: 8,
-  },
-
-  infoGrid: {
-    flexDirection: 'column',
-  },
-
-  infoItem: {
-    width: '100%',
-    backgroundColor: '#f7fbfc',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#d7edf9',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-
-  infoLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#6a8aa0',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#123a5e',
-  },
-
-  formCard: {
-    backgroundColor: '#f8fcff',
-    borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e3f2fb',
-  },
-
-  formLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#6a8aa0',
-    marginBottom: 8,
-    marginTop: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
 
   requiredMark: {
@@ -601,44 +344,9 @@ export const styles = StyleSheet.create({
     color: '#123a5e',
   },
 
-  disabledInputField: {
-    backgroundColor: '#eef3f7',
-    borderColor: '#d8e3ec',
-    color: '#6c8293',
-  },
-
   inputFieldError: {
     borderColor: '#dc2626',
     borderWidth: 1.5,
-  },
-
-  fieldErrorText: {
-    color: '#dc2626',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: -4,
-    marginBottom: 10,
-    marginLeft: 2,
-  },
-
-  actionCard: {
-    backgroundColor: '#fcfeff',
-    borderRadius: 28,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#edf7fd',
-    marginBottom: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#b7e6ff',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.18,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 7,
-      },
-    }),
   },
 
   editButton: {
@@ -654,36 +362,6 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     color: '#ffffff',
-  },
-
-  cancelEditButton: {
-    minHeight: 52,
-    borderRadius: 18,
-    backgroundColor: '#e7edf2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  cancelEditButtonText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#4f6a7b',
-  },
-
-  logoutButton: {
-    minHeight: 52,
-    borderRadius: 18,
-    backgroundColor: '#fff1f1',
-    borderWidth: 1,
-    borderColor: '#ffd7d7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  logoutButtonText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#c24a4a',
   },
 
   bottomNav: {
@@ -913,77 +591,27 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  modalPrimaryButtonFull: {
-    width: '100%',
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#2c6ba3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 18,
-  },
-
   modalPrimaryText: {
     fontSize: 13,
     fontWeight: '800',
     color: '#ffffff',
   },
 
+  // Wraps instead of pushing the badge outside the card on narrow phones.
   verificationTopRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 12,
   },
 
-  verificationBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-
-  verificationBadgeUnverified: {
-    backgroundColor: '#eef1f4',
-    borderColor: '#dde5ea',
-  },
-
-  verificationBadgePending: {
-    backgroundColor: '#fff4e0',
-    borderColor: '#f4dfb0',
-  },
-
-  verificationBadgeVerified: {
-    backgroundColor: '#e7f7ec',
-    borderColor: '#bfe8cc',
-  },
-
-  verificationBadgeRejected: {
-    backgroundColor: '#fff1f1',
-    borderColor: '#ffd7d7',
-  },
-
-  verificationBadgeText: {
-    fontSize: 11,
+  verificationTitle: {
+    flexShrink: 1,
+    fontSize: 18,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
-  verificationBadgeTextUnverified: {
-    color: '#5f7f8a',
-  },
-
-  verificationBadgeTextPending: {
-    color: '#a9750c',
-  },
-
-  verificationBadgeTextVerified: {
-    color: '#1f9d55',
-  },
-
-  verificationBadgeTextRejected: {
-    color: '#c24a4a',
+    color: '#123a5e',
   },
 
   verificationHint: {

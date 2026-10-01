@@ -603,22 +603,18 @@ const PetOwnerDashboard = ({ navigation, route }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.menuCard, styles.menuCardWide]}
+              style={[styles.menuCard, styles.menuCardLastAlone]}
               onPress={() => navigation.navigate('PetOwnerQueue', { user: currentUser })}
               activeOpacity={0.9}
             >
-              <View style={[styles.iconCircle, styles.iconCircleWide]}>
+              <View style={styles.iconCircle}>
                 <Image
                   source={require('../../assets/List.png')}
                   style={styles.iconImage}
                   resizeMode="contain"
                 />
               </View>
-              <View style={styles.menuWideTextWrap}>
-                <Text style={[styles.menuLabel, styles.menuLabelWide]}>Queue</Text>
-                <Text style={styles.menuWideSubtitle}>Your check-in number and status</Text>
-              </View>
-              <Text style={styles.menuWideChevron}>›</Text>
+              <Text style={styles.menuLabel}>Queue</Text>
             </TouchableOpacity>
 
           </View>

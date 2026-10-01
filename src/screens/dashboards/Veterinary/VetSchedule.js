@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import VetShell, { getVetUser } from './VetShell';
 import VetLeaveRequestModal from './VetLeaveRequestModal';
 import { useLowerHeaderMotion } from './useLowerHeaderMotion';
-import { formatTime, getVeterinarianScheduleOverrides, getVeterinarianWeeklySchedule, todayLocal } from '../../../api/mobileAppointmentService';
+import { formatTime, getVeterinarianScheduleOverrides, todayLocal } from '../../../api/mobileAppointmentService';
 import {
   cancelLeaveRequest,
   formatDayLabel,
@@ -16,7 +16,46 @@ import {
   subscribeToVetSchedule,
 } from '../../../api/vetLeaveService';
 
-const WEEK_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Days loaded from today for the Today card and the leave form's shift
+// lookups. The week list is loaded one week at a time, like the web's
+// My Schedule: back for history, forward for planning.
+const OVERVIEW_DAYS = 60;
+const PAST_WEEKS = 26;
+const WEEKS_AHEAD = 26;
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad = (value) => String(value).padStart(2, '0');
+const parseDate = (date) => {
+  const [y, m, d] = String(date).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+const formatISO = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const addDays = (date, count) => {
+  const next = parseDate(date);
+  next.setDate(next.getDate() + count);
+  return formatISO(next);
+};
+// Sunday of the week a date falls in.
+const weekStartOf = (date) => addDays(date, -parseDate(date).getDay());
+// "Oct 1"
+const shortDate = (date) => {
+  const day = parseDate(date);
+  return `${MONTHS[day.getMonth()]} ${day.getDate()}`;
+};
+
+const minutesBetween = (start, end) => {
+  const toMin = (value) => {
+    const [h, m] = String(value).slice(0, 5).split(':').map(Number);
+    return h * 60 + m;
+  };
+  return Math.max(toMin(end) - toMin(start), 0);
+};
+
+// The vet's own words, unless they only repeat the leave type.
+const leaveReason = (request) => {
+  const reason = String(request?.reason || '').trim();
+  return reason && reason.toLowerCase() !== String(request?.leave_type || '').trim().toLowerCase() ? reason : '';
+};
 
 function formatOverrideDate(value) {
   if (!value) return '';
@@ -25,12 +64,13 @@ function formatOverrideDate(value) {
   return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-// How one of the next 14 days reads in the list.
+// How one day of the selected week reads in the list.
 function describeDay(day) {
   const pending = day.request?.status === 'Pending';
-  if (day.source === 'leave' && !day.working) return { kind: 'leave', hours: 'On leave', tag: day.request?.leave_type || 'Approved leave' };
-  if (day.source === 'leave') return { kind: 'short', hours: formatHours(day.start_time, day.end_time), tag: `Short day · ${day.request?.leave_type || 'leave'}` };
-  if (day.source === 'none') return { kind: 'off', hours: 'No schedule yet', tag: 'Not open for booking' };
+  const reason = day.request?.status === 'Approved' ? leaveReason(day.request) : '';
+  if (day.source === 'leave' && !day.working) return { kind: 'leave', hours: 'On leave', tag: day.request?.leave_type || 'Approved leave', reason };
+  if (day.source === 'leave') return { kind: 'short', hours: formatHours(day.start_time, day.end_time), tag: `Short day · ${day.request?.leave_type || 'leave'}`, reason };
+  if (day.source === 'none') return { kind: 'off', hours: day.is_past ? 'No schedule' : 'No schedule yet', tag: day.is_past ? '' : 'Not open for booking' };
   if (!day.working) return { kind: 'off', hours: 'Day off', tag: pending ? 'Leave pending' : '' };
   if (pending) return { kind: 'pending', hours: formatHours(day.start_time, day.end_time), tag: 'Leave pending' };
   if (day.source === 'adjusted') return { kind: 'adjusted', hours: formatHours(day.start_time, day.end_time), tag: 'Adjusted hours' };
@@ -54,12 +94,17 @@ export default function VetSchedule({ navigation, route }) {
   const [modal, setModal] = useState(null);
   const [tab, setTab] = useState('active');
   const [cancellingId, setCancellingId] = useState(null);
+  const [weekOffset, setWeekOffset] = useState(0);
+  // The week shown in the list: { start, days }, or { start, fallback: true }
+  // on a database without week browsing (VET_SCHEDULE_CALENDAR.sql).
+  const [weekView, setWeekView] = useState(null);
+  const weekRequestRef = useRef(null);
 
   const loadSchedule = useCallback(async () => {
     if (!vetId) return;
     try {
       const [nextOverview, nextRequests] = await Promise.all([
-        getScheduleOverview(vetId, 14),
+        getScheduleOverview(vetId, OVERVIEW_DAYS),
         getMyLeaveRequests(vetId),
       ]);
       setOverview(nextOverview);
@@ -70,11 +115,8 @@ export default function VetSchedule({ navigation, route }) {
     } catch (loadError) {
       if (loadError?.setupMissing) {
         try {
-          const [weeklyRows, overrideRows] = await Promise.all([
-            getVeterinarianWeeklySchedule(vetId),
-            getVeterinarianScheduleOverrides(vetId),
-          ]);
-          setLegacy({ weekly: weeklyRows, overrides: overrideRows });
+          const overrideRows = await getVeterinarianScheduleOverrides(vetId);
+          setLegacy({ overrides: overrideRows });
           setOverview(null);
           setSetupNotice(loadError.message);
           setError('');
@@ -89,29 +131,77 @@ export default function VetSchedule({ navigation, route }) {
     }
   }, [vetId]);
 
+  const today = overview?.today || todayLocal();
+  const days = useMemo(() => overview?.days || [], [overview]);
+  const todayInfo = days[0] || null;
+  const nowTime = String(overview?.now || '').slice(0, 5);
+
+  // Weeks run Sunday to Saturday, like the web's week pager.
+  const offset = Math.max(-PAST_WEEKS, Math.min(weekOffset, WEEKS_AHEAD));
+  const weekStart = addDays(weekStartOf(today), offset * 7);
+  const weekDates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+  const weekLabel = offset === 0 ? 'This week' : offset === 1 ? 'Next week' : offset === -1 ? 'Last week' : `Week of ${shortDate(weekStart)}`;
+  const weekCaption = offset === 0 ? 'this week' : offset === 1 ? 'next week' : offset === -1 ? 'last week' : `week of ${shortDate(weekStart)}`;
+
+  const loadWeek = useCallback(async () => {
+    if (!vetId) return;
+    weekRequestRef.current = weekStart;
+    let next;
+    try {
+      const result = await getScheduleOverview(vetId, 7, weekStart);
+      next = { start: weekStart, days: result?.days || [] };
+    } catch {
+      // Older database without week browsing: fall back to the days from today.
+      next = { start: weekStart, fallback: true };
+    }
+    // Drop answers for a week the vet already paged away from.
+    if (weekRequestRef.current === weekStart) setWeekView(next);
+  }, [vetId, weekStart]);
+
+  useEffect(() => { loadWeek(); }, [loadWeek]);
+
+  // Realtime, the timer and pull-to-refresh reload both the overview and the
+  // shown week, without resubscribing each time the vet pages weeks.
+  const refreshRef = useRef(null);
+  refreshRef.current = () => {
+    loadSchedule();
+    loadWeek();
+  };
+  const refresh = useCallback(() => refreshRef.current?.(), []);
+
   useFocusEffect(
     useCallback(() => {
-      loadSchedule();
-      const unsubscribe = subscribeToVetSchedule(vetId, loadSchedule);
-      const timer = setInterval(loadSchedule, 60000);
+      refresh();
+      const unsubscribe = subscribeToVetSchedule(vetId, refresh);
+      const timer = setInterval(refresh, 60000);
       return () => {
         unsubscribe();
         clearInterval(timer);
       };
-    }, [loadSchedule, vetId])
+    }, [refresh, vetId])
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!notice) return undefined;
     const timer = setTimeout(() => setNotice(''), 7000);
     return () => clearTimeout(timer);
   }, [notice]);
 
-  const today = overview?.today || todayLocal();
-  const days = useMemo(() => overview?.days || [], [overview]);
-  const todayInfo = days[0] || null;
-  const nowTime = String(overview?.now || '').slice(0, 5);
-  const weekly = overview?.weekly || legacy?.weekly || [];
+  const weekDays = weekView?.start === weekStart ? (weekView.fallback ? days : weekView.days) : null;
+  const dayByDate = useMemo(() => new Map((weekDays || []).map((day) => [day.date, day])), [weekDays]);
+
+  const stats = useMemo(() => {
+    const week = weekDates.map((date) => dayByDate.get(date)).filter(Boolean);
+    const working = week.filter((day) => day.working);
+    const minutes = working.reduce((sum, day) => sum + minutesBetween(day.start_time, day.end_time), 0);
+    return {
+      workingDays: working.length,
+      hours: Math.round(minutes / 6) / 10,
+      leaveDays: week.filter((day) => day.source === 'leave').length,
+      pending: requests.filter((request) => request.status === 'Pending').length,
+      booked: week.reduce((sum, day) => sum + (day.appointments || 0), 0),
+    };
+  }, [weekDates, dayByDate, requests]);
 
   const activeTodayRequest = useMemo(() => requests.find((request) =>
     ['Pending', 'Approved'].includes(request.status) && request.start_date <= today && request.end_date >= today
@@ -149,7 +239,7 @@ export default function VetSchedule({ navigation, route }) {
     setNotice(result?.request?.request_type === 'Emergency'
       ? 'Emergency leave applied. New bookings are blocked, and staff were alerted to offer your booked patients another doctor.'
       : "Leave request sent. You'll be notified when staff approve or decline it.");
-    loadSchedule();
+    refresh();
   };
 
   const doCancel = async (request) => {
@@ -157,7 +247,7 @@ export default function VetSchedule({ navigation, route }) {
       setCancellingId(request.id);
       await cancelLeaveRequest(request.id, vetId);
       setNotice(request.status === 'Pending' ? 'Leave request withdrawn.' : 'Leave cancelled. Your regular hours are back and staff were notified.');
-      await loadSchedule();
+      await Promise.all([loadSchedule(), loadWeek()]);
     } catch (cancelError) {
       Alert.alert('Unable to cancel', cancelError?.message || 'Please try again.');
     } finally {
@@ -183,7 +273,7 @@ export default function VetSchedule({ navigation, route }) {
     <VetShell
       navigation={navigation}
       route={route}
-      subtitle="Schedule"
+      subtitle="My Schedule"
       caption="Hours & leave"
       lowerHeaderAnimation={lowerHeaderAnimation}
     >
@@ -193,7 +283,7 @@ export default function VetSchedule({ navigation, route }) {
         contentContainerStyle={styles.scrollContent}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={loadSchedule} />}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
         {loading && !overview && !legacy ? (
           <View style={styles.emptyCard}>
@@ -248,18 +338,91 @@ export default function VetSchedule({ navigation, route }) {
 
         {overview ? (
           <>
+            <View style={styles.statsGrid}>
+              <View style={styles.statTile}>
+                <Text style={styles.statLabel}>Working days</Text>
+                <Text style={styles.statValue}>{stats.workingDays}</Text>
+                <Text style={styles.statCaption}>{stats.hours} hours · {weekCaption}</Text>
+              </View>
+              <View style={styles.statTile}>
+                <Text style={styles.statLabel}>Leave days</Text>
+                <Text style={styles.statValue}>{stats.leaveDays}</Text>
+                <Text style={styles.statCaption}>{weekCaption}</Text>
+              </View>
+              <View style={styles.statTile}>
+                <Text style={styles.statLabel}>Pending requests</Text>
+                <Text style={styles.statValue}>{stats.pending}</Text>
+                <Text style={styles.statCaption}>waiting for staff review</Text>
+              </View>
+              <View style={styles.statTile}>
+                <Text style={styles.statLabel}>Booked</Text>
+                <Text style={styles.statValue}>{stats.booked}</Text>
+                <Text style={styles.statCaption}>{weekCaption}</Text>
+              </View>
+            </View>
+
             <View style={styles.sectionHeaderWrap}>
-              <Text style={styles.sectionTitle}>Next 14 Days</Text>
-              <Text style={styles.sectionSubtitle}>Your hours as pet owners see them. Tap a future working day to request leave.</Text>
+              <Text style={styles.sectionTitle}>My Weekly Schedule</Text>
+              <Text style={styles.sectionSubtitle}>Your hours as pet owners see them. Tap a future working day to request leave, or go back to see past weeks.</Text>
             </View>
             <View style={styles.card}>
-              {days.map((day, index) => {
+              <View style={styles.pager}>
+                <TouchableOpacity
+                  style={[styles.pagerArrow, offset <= -PAST_WEEKS && styles.buttonDisabled]}
+                  onPress={() => setWeekOffset(offset - 1)}
+                  disabled={offset <= -PAST_WEEKS}
+                  accessibilityLabel="Previous week"
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.pagerArrowText}>‹</Text>
+                </TouchableOpacity>
+                <View style={styles.pagerLabel}>
+                  <Text style={styles.pagerTitle}>{weekLabel}</Text>
+                  <Text style={styles.pagerRange}>{shortDate(weekStart)} – {shortDate(addDays(weekStart, 6))}</Text>
+                  {offset !== 0 ? (
+                    <TouchableOpacity onPress={() => setWeekOffset(0)} activeOpacity={0.8}>
+                      <Text style={styles.pagerNow}>Back to this week</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                <TouchableOpacity
+                  style={[styles.pagerArrow, offset >= WEEKS_AHEAD && styles.buttonDisabled]}
+                  onPress={() => setWeekOffset(offset + 1)}
+                  disabled={offset >= WEEKS_AHEAD}
+                  accessibilityLabel="Next week"
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.pagerArrowText}>›</Text>
+                </TouchableOpacity>
+              </View>
+
+              {!weekDays ? (
+                <ActivityIndicator style={styles.weekLoading} color="#2c6ba3" />
+              ) : weekDates.map((date, index) => {
+                const day = dayByDate.get(date);
+                const rowStyle = [styles.dayRow, index === weekDates.length - 1 && styles.lastRow];
+                if (!day || day.is_past) {
+                  // Past days: greyed out, still showing the shift and any leave.
+                  const info = day ? describeDay(day) : null;
+                  return (
+                    <View key={date} style={[rowStyle, styles.dayRowPast]}>
+                      <View style={styles.dayDateWrap}>
+                        <Text style={[styles.dayLabel, styles.pastText]}>{formatDayLabel(date)}</Text>
+                        {info?.tag ? <Text style={[styles.dayTag, styles.pastText]}>{info.tag}</Text> : null}
+                        {info?.reason ? <Text style={[styles.dayReason, styles.pastText]} numberOfLines={1}>“{info.reason}”</Text> : null}
+                      </View>
+                      <View style={[styles.dayBadge, styles.badge_off]}>
+                        <Text style={[styles.dayBadgeText, styles.pastText]}>{info ? info.hours : date < today ? 'Past' : '—'}</Text>
+                      </View>
+                    </View>
+                  );
+                }
                 const info = describeDay(day);
                 const canRequest = day.date > today && day.working && !day.request;
                 return (
                   <TouchableOpacity
-                    key={day.date}
-                    style={[styles.dayRow, index === days.length - 1 && styles.lastRow]}
+                    key={date}
+                    style={rowStyle}
                     disabled={!canRequest}
                     onPress={() => setModal({ mode: 'Leave', date: day.date })}
                     activeOpacity={0.85}
@@ -267,6 +430,7 @@ export default function VetSchedule({ navigation, route }) {
                     <View style={styles.dayDateWrap}>
                       <Text style={[styles.dayLabel, day.is_today && styles.dayToday]}>{day.is_today ? 'Today' : formatDayLabel(day.date)}</Text>
                       {info.tag ? <Text style={[styles.dayTag, info.kind === 'leave' && styles.dayTagLeave]}>{info.tag}</Text> : null}
+                      {info.reason ? <Text style={styles.dayReason} numberOfLines={1}>“{info.reason}”</Text> : null}
                     </View>
                     <View style={styles.dayRight}>
                       <View style={[styles.dayBadge, styles[`badge_${info.kind}`]]}>
@@ -277,35 +441,6 @@ export default function VetSchedule({ navigation, route }) {
                   </TouchableOpacity>
                 );
               })}
-            </View>
-          </>
-        ) : null}
-
-        {(overview || legacy) && !error ? (
-          <>
-            <View style={styles.sectionHeaderWrap}>
-              <Text style={styles.sectionTitle}>Weekly Availability</Text>
-              <Text style={styles.sectionSubtitle}>Your standard clinic hours, set by clinic staff</Text>
-            </View>
-
-            <View style={styles.card}>
-              {WEEK_LABELS.map((label, dayIndex) => {
-                const entry = weekly.find((row) => row.day_of_week === dayIndex) || null;
-                const available = Boolean(entry?.is_available && entry?.start_time && entry?.end_time);
-                return (
-                  <View key={label} style={[styles.dayRow, dayIndex === WEEK_LABELS.length - 1 && styles.lastRow]}>
-                    <Text style={styles.dayLabel}>{label}</Text>
-                    <View style={[styles.dayBadge, available ? styles.dayBadgeOpen : styles.dayBadgeClosed]}>
-                      <Text style={[styles.dayBadgeText, available ? styles.dayBadgeTextOpen : styles.dayBadgeTextClosed]}>
-                        {available ? `${formatTime(entry.start_time)} - ${formatTime(entry.end_time)}` : 'Not available'}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-              {!weekly.length ? (
-                <Text style={styles.mutedText}>No weekly schedule has been set up for you yet.</Text>
-              ) : null}
             </View>
           </>
         ) : null}
@@ -363,9 +498,7 @@ export default function VetSchedule({ navigation, route }) {
                   </View>
                   <Text style={styles.requestTitle}>{request.leave_type}</Text>
                   <Text style={styles.requestPeriod}>{formatLeavePeriod(request, today)}</Text>
-                  {request.reason && String(request.reason).trim().toLowerCase() !== String(request.leave_type || '').trim().toLowerCase() ? (
-                    <Text style={styles.requestReason}>“{request.reason}”</Text>
-                  ) : null}
+                  {leaveReason(request) ? <Text style={styles.requestReason}>“{leaveReason(request)}”</Text> : null}
                   {request.review_note && request.status !== 'Pending' ? <Text style={styles.requestNote}>Staff note: {request.review_note}</Text> : null}
                   {request.cancel_note ? <Text style={styles.requestNote}>Note: {request.cancel_note}</Text> : null}
                   <View style={styles.requestFoot}>
@@ -414,7 +547,23 @@ const styles = StyleSheet.create({
   dayToday: { color: '#2c6ba3' },
   dayTag: { marginTop: 2, fontSize: 11, fontWeight: '800', color: '#9d6817' },
   dayTagLeave: { color: '#b0392b' },
+  dayReason: { marginTop: 2, fontSize: 11, fontStyle: 'italic', color: '#8a4a40' },
+  dayRowPast: { opacity: 0.75 },
+  pastText: { color: '#9aa6ac' },
   dayRight: { alignItems: 'flex-end' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 8 },
+  statTile: { width: '48.5%', backgroundColor: '#fcfeff', borderRadius: 18, borderWidth: 1, borderColor: '#dceef8', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10 },
+  statLabel: { fontSize: 11.5, fontWeight: '700', color: '#6f7f88' },
+  statValue: { marginTop: 2, fontSize: 22, fontWeight: '900', color: '#123a5e' },
+  statCaption: { marginTop: 1, fontSize: 11, fontWeight: '600', color: '#7a8d96' },
+  pager: { flexDirection: 'row', alignItems: 'center', paddingBottom: 10, marginBottom: 2, borderBottomWidth: 1, borderBottomColor: '#edf4f8' },
+  pagerArrow: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: '#d9e9ef', backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' },
+  pagerArrowText: { fontSize: 26, lineHeight: 28, fontWeight: '700', color: '#2c6ba3' },
+  pagerLabel: { flex: 1, alignItems: 'center' },
+  pagerTitle: { fontSize: 14.5, fontWeight: '900', color: '#123a5e' },
+  pagerRange: { marginTop: 1, fontSize: 12, fontWeight: '700', color: '#6f8591' },
+  pagerNow: { marginTop: 4, fontSize: 11.5, fontWeight: '900', color: '#2c6ba3' },
+  weekLoading: { paddingVertical: 28 },
   bookedText: { marginTop: 3, fontSize: 11, fontWeight: '800', color: '#2c6ba3' },
   dayBadge: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
   dayBadgeOpen: { backgroundColor: '#e5f4ea' },

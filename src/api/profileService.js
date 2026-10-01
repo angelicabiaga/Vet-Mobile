@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../config/supabaseClient';
 import { createAndSendOtp, verifyProfileOtp } from './authService';
 import { validateImageBlob } from '../utils/imageValidation';
+import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../utils/contactValidation';
 
 const SESSION_KEY = 'pawcruz_session';
 
@@ -56,6 +57,57 @@ export async function updateProfile(profileId, values) {
 
   const { data, error } = await supabase.from('profiles').update(payload).eq('id', profileId).select('*').single();
   if (error) throw new Error(`Unable to update profile: ${error.message}`);
+  await refreshStoredSession(data);
+  return data;
+}
+
+// A veterinarian's own profile, Background in Veterinary Medicine included
+// (same rules as the web's updateVeterinarianProfile). Username, email and
+// license number never change here.
+export async function updateVeterinarianProfile(profileId, values) {
+  if (!profileId) throw new Error('Profile is unavailable.');
+  const text = (value) => String(value ?? '').trim();
+  const years = text(values.years_experience);
+  const payload = {
+    full_name: text(values.full_name),
+    phone: text(values.phone),
+    address: text(values.address),
+    specialization: text(values.specialization),
+    education: text(values.education) || null,
+    years_experience: years === '' ? null : Number(years),
+    certifications_training: text(values.certifications_training) || null,
+    previous_practice: text(values.previous_practice) || null,
+    professional_interests: text(values.professional_interests) || null,
+    biography: text(values.biography) || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (payload.full_name.split(/\s+/).filter(Boolean).length < 2) throw new Error('First name and last name are both required.');
+  if (!payload.phone) throw new Error('Contact number is required.');
+  if (!isValidPhMobile(payload.phone)) throw new Error(PH_MOBILE_FORMAT_ERROR);
+  if (!payload.address) throw new Error('Address is required.');
+  if (!payload.specialization) throw new Error('Specialization is required.');
+  if (payload.years_experience !== null && (!Number.isInteger(payload.years_experience) || payload.years_experience < 0)) {
+    throw new Error('Years of experience must be a whole number, 0 or more.');
+  }
+
+  const { data, error } = await supabase.from('profiles').update(payload).eq('id', profileId).select('*').single();
+  if (error) throw new Error(`Unable to update profile: ${error.message}`);
+  await refreshStoredSession(data);
+  return data;
+}
+
+// Only the photo (null removes it), so a new photo never depends on the
+// rest of the profile passing validation.
+export async function updateProfileAvatar(profileId, avatarUrl) {
+  if (!profileId) throw new Error('Profile is unavailable.');
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: avatarUrl || null, updated_at: new Date().toISOString() })
+    .eq('id', profileId)
+    .select('*')
+    .single();
+  if (error) throw new Error(`Unable to update profile photo: ${error.message}`);
   await refreshStoredSession(data);
   return data;
 }
