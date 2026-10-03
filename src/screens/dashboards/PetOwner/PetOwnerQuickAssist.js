@@ -60,7 +60,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
             {
               id: 'welcome',
               role: 'assistant',
-              text: `Hi ${displayName}, welcome to PawCruz Quick Assist! How can I help you and your pet today?`,
+              text: `Hi ${displayName}, welcome to PawCruz Pet Care Assistant! How can I help you and your pet today?`,
               time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase(),
             },
           ]);
@@ -197,7 +197,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
 
                 <View style={styles.brandBlock}>
                   <Text style={styles.headerTitle}>PawCruz</Text>
-                  <Text style={styles.headerSubtitle}>Quick Assist</Text>
+                  <Text style={styles.headerSubtitle}>Pet Care Assistant</Text>
                 </View>
               </TouchableOpacity>
 
@@ -309,12 +309,14 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
             <View style={styles.aiWelcomeCard}>
               <View style={styles.aiWelcomeTop}>
                 <View style={styles.aiAvatarWrap}>
-                  <Image source={require('../../assets/support.png')} style={styles.aiAvatarImage} resizeMode="contain" />
+                  <Image source={require('../../assets/chatbot.png')} style={styles.aiAvatarImage} resizeMode="contain" />
                 </View>
                 <View style={styles.aiWelcomeTextWrap}>
-                  <Text style={styles.aiWelcomeEyebrow}>PAWCRUZ QUICK ASSIST</Text>
-                  <Text style={styles.aiWelcomeTitle}>Ask PawCruz AI</Text>
-                  <Text style={styles.aiWelcomeBody}>Get quick, general pet-care guidance and help understanding PawCruz records.</Text>
+                  <Text style={styles.aiWelcomeTitle}>PawCruz Pet Care Assistant</Text>
+                  <View style={styles.aiStatusRow}>
+                    <View style={styles.aiStatusDot} />
+                    <Text style={styles.aiStatusText}>Online · Responses may take a moment</Text>
+                  </View>
                 </View>
               </View>
               <View style={styles.aiSafetyChip}>
@@ -756,37 +758,43 @@ const styles = StyleSheet.create({
   },
   aiWelcomeTop: { flexDirection: 'row', alignItems: 'center' },
   aiAvatarWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    backgroundColor: '#e8f6f8',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#d5eaf1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 11,
+    marginRight: 12,
   },
   aiAvatarImage: {
-    width: 34,
-    height: 34,
+    width: 38,
+    height: 38,
   },
   aiWelcomeTextWrap: { flex: 1 },
-  aiWelcomeEyebrow: {
-    color: '#2b94bd',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
   aiWelcomeTitle: {
-    marginTop: 2,
     color: '#123a5e',
-    fontSize: 17,
+    fontSize: 16,
     lineHeight: 21,
     fontWeight: '900',
   },
-  aiWelcomeBody: {
+  aiStatusRow: {
     marginTop: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22c55e',
+    marginRight: 5,
+  },
+  aiStatusText: {
+    flexShrink: 1,
     color: '#668697',
     fontSize: 11,
-    lineHeight: 16,
     fontWeight: '600',
   },
   aiSafetyChip: {

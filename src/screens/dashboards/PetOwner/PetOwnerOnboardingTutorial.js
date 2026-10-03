@@ -31,7 +31,6 @@ const STEPS = [
   {
     key: 'welcome',
     icon: require('../../assets/paw1.png'),
-    tint: false,
     title: 'Welcome to PawCruz',
     description: "Here's a quick look at how to get around your Pet Owner dashboard.",
   },
@@ -67,9 +66,10 @@ const STEPS = [
   },
   {
     key: 'assist',
-    icon: require('../../assets/support.png'),
+    icon: require('../../assets/chatbot.png'),
+    tint: false,
     title: 'Need quick help?',
-    description: 'The support button at the bottom of the screen opens Quick Assist for fast answers.',
+    description: 'The support button at the bottom of the screen opens PawCruz Pet Care Assistant for fast answers.',
   },
 ];
 
