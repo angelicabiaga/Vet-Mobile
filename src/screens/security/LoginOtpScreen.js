@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   ImageBackground,
+  Keyboard,
   } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -37,6 +38,10 @@ const LoginOtpScreen = () => {
   const [rememberDevice, setRememberDevice] = useState(false);
 
   const inputsRef = useRef([]);
+  // Guards against duplicate verify requests (auto-submit + button tap, double taps).
+  const isVerifyingRef = useRef(false);
+  // The code last auto-submitted, so a rejected code is not resubmitted on its own.
+  const lastAutoSubmittedRef = useRef("");
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -45,15 +50,46 @@ const LoginOtpScreen = () => {
   }, [cooldown]);
 
   const handleChange = (value, index) => {
-    if (!/^\d?$/.test(value)) return;
+    if (isVerifyingRef.current) return;
+    const digits = String(value).replace(/\D/g, "");
+    if (value && !digits) return;
     setError("");
     setMessage("");
     const newOtp = [...otp];
-    newOtp[index] = value;
+    let focusIndex = index;
+
+    if (digits.length <= 1) {
+      newOtp[index] = digits;
+      if (digits && index < OTP_LENGTH - 1) focusIndex = index + 1;
+    } else if (digits.length === 2 && otp[index]) {
+      // Typed over a filled box: keep the new digit, not the old one.
+      newOtp[index] = digits[0] === otp[index] ? digits[1] : digits[0];
+      if (index < OTP_LENGTH - 1) focusIndex = index + 1;
+    } else {
+      // Pasted code: spread digits across the boxes starting here.
+      const start = digits.length >= OTP_LENGTH ? 0 : index;
+      digits.slice(0, OTP_LENGTH - start).split("").forEach((d, offset) => {
+        newOtp[start + offset] = d;
+      });
+      focusIndex = Math.min(start + digits.length, OTP_LENGTH - 1);
+    }
+
     setOtp(newOtp);
 
-    if (value && index < OTP_LENGTH - 1) {
-      inputsRef.current[index + 1]?.focus();
+    const code = newOtp.join("");
+    if (code.length !== OTP_LENGTH) {
+      // A box was cleared; allow the next complete code to auto-verify again.
+      lastAutoSubmittedRef.current = "";
+      if (focusIndex !== index) inputsRef.current[focusIndex]?.focus();
+      return;
+    }
+
+    if (code !== lastAutoSubmittedRef.current) {
+      lastAutoSubmittedRef.current = code;
+      Keyboard.dismiss();
+      handleVerify(code);
+    } else if (focusIndex !== index) {
+      inputsRef.current[focusIndex]?.focus();
     }
   };
 
@@ -63,16 +99,21 @@ const LoginOtpScreen = () => {
     }
   };
 
-  const handleVerify = async () => {
+  // Shared by the "Verify & Log In" button and auto-submit on the 6th digit.
+  // `code` is passed by auto-submit because the `otp` state update is not applied yet.
+  const handleVerify = async (code) => {
+    if (isVerifyingRef.current) return;
     setError("");
     setMessage("");
-    const otpValue = otp.join("");
+    const otpValue = typeof code === "string" ? code : otp.join("");
 
     if (otpValue.length !== OTP_LENGTH) {
       setError("Please enter the complete 6-digit code.");
       return;
     }
 
+    isVerifyingRef.current = true;
+    Keyboard.dismiss();
     setLoading(true);
     try {
       if (purpose === "register") {
@@ -94,6 +135,7 @@ const LoginOtpScreen = () => {
     } catch (err) {
       setError(err.message || "Invalid OTP code.");
     } finally {
+      isVerifyingRef.current = false;
       setLoading(false);
     }
   };
@@ -106,6 +148,7 @@ const LoginOtpScreen = () => {
       setMessage("");
       await resendAuthOtp(purpose);
       setOtp(Array(OTP_LENGTH).fill(""));
+      lastAutoSubmittedRef.current = "";
       setMessage("A new code has been sent.");
       setCooldown(60);
     } catch (err) {
@@ -158,9 +201,12 @@ const LoginOtpScreen = () => {
                     value={digit}
                     onChangeText={(val) => handleChange(val, i)}
                     keyboardType="number-pad"
-                    maxLength={1}
+                    // Above 1 so a pasted 6-digit code reaches handleChange intact.
+                    maxLength={OTP_LENGTH}
                     onKeyPress={(e) => handleKeyPress(e, i)}
                     autoFocus={i === 0}
+                    editable={!loading}
+                    selectTextOnFocus
                   />
                 ))}
               </View>
@@ -185,7 +231,7 @@ const LoginOtpScreen = () => {
 
               <TouchableOpacity
                 style={[styles.button, (loading || !otpComplete) && styles.disabledButton]}
-                onPress={handleVerify}
+                onPress={() => handleVerify()}
                 disabled={loading || !otpComplete}
                 activeOpacity={0.9}
               >
