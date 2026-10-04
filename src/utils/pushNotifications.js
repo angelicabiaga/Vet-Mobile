@@ -45,19 +45,27 @@ export async function registerForPushNotificationsAsync(profileId) {
     );
     if (!token) return null;
 
-    lastRegisteredToken = token;
-    const now = new Date().toISOString();
-    await supabase.from('push_tokens').upsert(
+    // Saved where the shared send-push Edge Function looks, so this phone gets
+    // the same pushes as the web (appointments, messages, admin broadcasts).
+    // One row per phone; logging in as someone else re-points it to them.
+    const { error } = await supabase.from('push_subscriptions').upsert(
       {
         profile_id: profileId,
-        expo_push_token: token,
-        platform: Platform.OS,
-        device_name: Device.deviceName || null,
-        updated_at: now,
-        last_seen_at: now,
+        kind: 'expo',
+        token,
+        keys: null,
+        user_agent: `${Platform.OS} ${Device.modelName || ''}`.trim().slice(0, 250),
+        updated_at: new Date().toISOString(),
       },
-      { onConflict: 'expo_push_token' },
+      { onConflict: 'token' },
     );
+    if (error) throw error;
+
+    // Drop this phone from the old push_tokens table so the older
+    // send-push-notification webhook (if still enabled) can't push it twice.
+    await supabase.from('push_tokens').delete().eq('expo_push_token', token);
+
+    lastRegisteredToken = token;
     return token;
   } catch (error) {
     console.warn('Unable to register for push notifications:', error?.message);
@@ -70,7 +78,7 @@ export async function clearPushTokenForThisDevice() {
   const token = lastRegisteredToken;
   lastRegisteredToken = null;
   try {
-    await supabase.from('push_tokens').delete().eq('expo_push_token', token);
+    await supabase.from('push_subscriptions').delete().eq('token', token);
   } catch {
     // best-effort cleanup; a stale token is harmless (edge function prunes it on send)
   }

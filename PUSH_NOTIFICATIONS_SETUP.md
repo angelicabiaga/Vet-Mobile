@@ -15,7 +15,10 @@ no workaround for testing remote push inside Expo Go itself.
 ## What changed in the app
 
 - `src/utils/pushNotifications.js` — registers the device for an Expo push
-  token after login and stores it in Supabase; clears it on logout.
+  token after login and stores it in `push_subscriptions` (kind `expo`), the
+  same table the web's `send-push` Edge Function reads; clears it on logout.
+  It also removes the token from the older `push_tokens` table so the old
+  webhook can't send a duplicate.
 - `src/providers/NotificationProvider.js` — registers the push token
   alongside the existing realtime subscription, and now also handles taps on
   a push notification (including cold-starting the app from a killed state)
@@ -24,7 +27,15 @@ no workaround for testing remote push inside Expo Go itself.
   signed-out phone stops receiving that account's notifications.
 - `app.json` — added the `expo-notifications` config plugin.
 
-## One-time Supabase setup (do this once)
+## Supabase setup — current (shared with web)
+
+The backend now lives in the web project (`final-vet`):
+`supabase/functions/send-push` plus `supabase/PUSH_NOTIFICATIONS_SETUP.sql`
+(creates `push_subscriptions` and the `trg_pawcruz_queue_push` trigger).
+Once that is deployed, delete the old `send-push-notification` webhook
+(Database → Webhooks) so nothing is pushed twice.
+
+## Old Supabase setup (superseded, kept for reference)
 
 1. **Create the `push_tokens` table.** Paste `SUPABASE_PUSH_NOTIFICATIONS_SETUP.sql`
    into the Supabase SQL editor and run it.

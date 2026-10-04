@@ -155,7 +155,7 @@ const PetOwnerNotif = ({ navigation, route }) => {
             <View style={styles.headerTopRow}>
               <TouchableOpacity style={styles.brandSection} onPress={() => navigate('petowner-screen')} activeOpacity={0.85}>
                 <View style={styles.logoWrap}><Image source={require('../../assets/paw1.png')} style={styles.headerLogo} resizeMode="contain" /></View>
-                <View style={styles.brandBlock}><Text style={styles.headerTitle}>PawCruz</Text><Text style={styles.headerSubtitle}>Notifications Center</Text></View>
+                <View style={styles.brandBlock}><Text style={styles.headerTitle}>PawCruz</Text><Text style={styles.headerSubtitle}>Notifications</Text></View>
               </TouchableOpacity>
               <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.notifButton} onPress={() => scrollViewRef.current?.scrollTo({ y: 0, animated: true })} activeOpacity={0.85}>
@@ -195,10 +195,7 @@ const PetOwnerNotif = ({ navigation, route }) => {
         >
           <View style={styles.sectionHeaderWrap}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={styles.sectionTitle}>Latest Notifications</Text>
-                <Text style={styles.sectionSubtitle}>Synced with PawCruz web in real time</Text>
-              </View>
+              <View style={{ flex: 1, paddingRight: 12 }} />
               <TouchableOpacity
                 disabled={unreadCount === 0}
                 onPress={handleReadAll}
