@@ -196,12 +196,11 @@ export async function getPendingOtp() {
 async function verifyOtpCode(purpose, code) {
   const pending = await readJson(OTP_KEY);
   if (!pending || pending.purpose !== purpose) throw new Error("No active OTP request was found. Please request a new code.");
+  // Expired or locked requests are kept (not deleted) so resendAuthOtp can still issue a new code.
   if (Date.now() > Number(pending.expiresAt || 0)) {
-    await SecureStore.deleteItemAsync(OTP_KEY);
     throw new Error("This OTP has expired. Please resend a new code.");
   }
   if (Number(pending.attempts || 0) >= OTP_MAX_ATTEMPTS) {
-    await SecureStore.deleteItemAsync(OTP_KEY);
     throw new Error("Too many incorrect attempts. Please request a new OTP.");
   }
   if (String(code || "").trim() !== String(pending.code || "")) {
@@ -209,7 +208,6 @@ async function verifyOtpCode(purpose, code) {
     await writeJson(OTP_KEY, { ...pending, attempts });
     const remaining = OTP_MAX_ATTEMPTS - attempts;
     if (remaining <= 0) {
-      await SecureStore.deleteItemAsync(OTP_KEY);
       throw new Error("Too many incorrect attempts. Please request a new OTP.");
     }
     throw new Error(`Invalid OTP code. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
@@ -225,7 +223,7 @@ export async function verifyProfileOtp(purpose, code) {
 
 export async function resendAuthOtp(purpose) {
   const pending = await readJson(OTP_KEY);
-  if (!pending || pending.purpose !== purpose) throw new Error("No OTP request is available to resend.");
+  if (!pending || pending.purpose !== purpose) throw new Error("This code request has ended. Please go back and start again.");
   const waitMs = Number(pending.resendAvailableAt || 0) - Date.now();
   if (waitMs > 0) throw new Error(`Please wait ${Math.ceil(waitMs / 1000)} seconds before resending.`);
   return createAndSendOtp(pending.email, pending.purpose, pending.payload || {});
