@@ -24,6 +24,19 @@ import {
 } from '../../../api/vetLeaveService';
 
 const REASON_LIMIT = 500;
+
+// Keeps the option list a short, scrollable card under the field instead of
+// a full-screen sheet.
+const dropdownListProps = {
+  maxHeight: 260,
+  dropdownPosition: 'auto',
+  containerStyle: { borderRadius: 14, borderWidth: 1, borderColor: '#d7e8f0', marginTop: 4, overflow: 'hidden' },
+  itemContainerStyle: { borderBottomWidth: 1, borderBottomColor: '#f0f6f9' },
+  itemTextStyle: { fontSize: 14, fontWeight: '600', color: '#123a5e' },
+  activeColor: '#e8f3fb',
+  placeholderStyle: { fontSize: 14, fontWeight: '600', color: '#8aa2b4' },
+  selectedTextStyle: { fontSize: 14, fontWeight: '700', color: '#123a5e' },
+};
 const pad = (value) => String(value).padStart(2, '0');
 
 function addDays(date, count) {
@@ -188,7 +201,8 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
   // Fresh form every time it opens.
   React.useEffect(() => {
     if (!visible || !today) return;
-    const first = initialDate && initialDate > today ? initialDate : addDays(today, 1);
+    // Only prefill when opened from a specific day; otherwise the vet picks.
+    const first = initialDate && initialDate > today ? initialDate : null;
     setLeaveType(isEmergency ? EMERGENCY_TYPES[0] : LEAVE_TYPES[0]);
     setStartDate(first);
     setEndDate(first);
@@ -337,6 +351,7 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
                 {emergencyMode === 'from' ? (
                   <Dropdown
                     style={styles.dropdown}
+                    {...dropdownListProps}
                     data={emergencyOptions}
                     labelField="label"
                     valueField="value"
@@ -352,6 +367,7 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
                 <Text style={styles.label}>First day</Text>
                 <Dropdown
                   style={styles.dropdown}
+                  {...dropdownListProps}
                   data={firstDayOptions}
                   labelField="label"
                   valueField="value"
@@ -368,11 +384,13 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
                 <Text style={styles.label}>Last day</Text>
                 <Dropdown
                   style={styles.dropdown}
+                  {...dropdownListProps}
                   data={lastDayOptions}
                   labelField="label"
                   valueField="value"
                   value={endDate}
-                  placeholder="Select date"
+                  placeholder={startDate ? 'Select date' : 'Select the first day first'}
+                  disable={!startDate}
                   onChange={(item) => {
                     setEndDate(item.value);
                     if (item.value !== startDate) setDuration('full');
@@ -389,6 +407,7 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
                     <Text style={styles.hint}>{duration === 'late' ? 'You will start at:' : 'You will leave at:'}</Text>
                     <Dropdown
                       style={styles.dropdown}
+                      {...dropdownListProps}
                       data={partialOptions}
                       labelField="label"
                       valueField="value"
@@ -405,7 +424,9 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
             )}
 
             <Text style={styles.sectionTitle}>Impact on your schedule</Text>
-            <ImpactPreview impact={impact} loading={checking} error={checkError} />
+            {!isEmergency && !startDate
+              ? <Text style={styles.hint}>Select your leave dates to see the impact.</Text>
+              : <ImpactPreview impact={impact} loading={checking} error={checkError} />}
           </ScrollView>
 
           <View style={styles.footer}>
