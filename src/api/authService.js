@@ -196,12 +196,11 @@ export async function getPendingOtp() {
 async function verifyOtpCode(purpose, code) {
   const pending = await readJson(OTP_KEY);
   if (!pending || pending.purpose !== purpose) throw new Error("No active OTP request was found. Please request a new code.");
+  // Expired or locked requests are kept (not deleted) so resendAuthOtp can still issue a new code.
   if (Date.now() > Number(pending.expiresAt || 0)) {
-    await SecureStore.deleteItemAsync(OTP_KEY);
     throw new Error("This OTP has expired. Please resend a new code.");
   }
   if (Number(pending.attempts || 0) >= OTP_MAX_ATTEMPTS) {
-    await SecureStore.deleteItemAsync(OTP_KEY);
     throw new Error("Too many incorrect attempts. Please request a new OTP.");
   }
   if (String(code || "").trim() !== String(pending.code || "")) {
@@ -209,7 +208,6 @@ async function verifyOtpCode(purpose, code) {
     await writeJson(OTP_KEY, { ...pending, attempts });
     const remaining = OTP_MAX_ATTEMPTS - attempts;
     if (remaining <= 0) {
-      await SecureStore.deleteItemAsync(OTP_KEY);
       throw new Error("Too many incorrect attempts. Please request a new OTP.");
     }
     throw new Error(`Invalid OTP code. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
@@ -225,7 +223,7 @@ export async function verifyProfileOtp(purpose, code) {
 
 export async function resendAuthOtp(purpose) {
   const pending = await readJson(OTP_KEY);
-  if (!pending || pending.purpose !== purpose) throw new Error("No OTP request is available to resend.");
+  if (!pending || pending.purpose !== purpose) throw new Error("This code request has ended. Please go back and start again.");
   const waitMs = Number(pending.resendAvailableAt || 0) - Date.now();
   if (waitMs > 0) throw new Error(`Please wait ${Math.ceil(waitMs / 1000)} seconds before resending.`);
   return createAndSendOtp(pending.email, pending.purpose, pending.payload || {});
@@ -284,6 +282,7 @@ export async function registerUser(values) {
   const email = normalizeIdentifier(values.email);
   const password = String(values.password || "");
   const phone = String(values.contact ?? values.phone ?? "").trim();
+  const address = String(values.address || "").trim();
   const fullName = [values.firstName, values.middleName, values.lastName].filter(Boolean).join(" ").trim();
   if (!String(values.firstName || "").trim() || !String(values.lastName || "").trim()) throw new Error("First name and last name are required.");
   if (fullName.length < 2) throw new Error("Please enter your complete name.");
@@ -292,6 +291,7 @@ export async function registerUser(values) {
   if (!password) throw new Error("Password is required.");
   if (!phone) throw new Error(CONTACT_REQUIRED_ERROR);
   if (!isValidRegisterContact(phone)) throw new Error(CONTACT_FORMAT_ERROR);
+  if (!address) throw new Error("Address is required.");
   const { data: existing, error } = await supabase.from("profiles").select("username,email").or(`username.eq.${username},email.eq.${email}`);
   if (error) throw new Error("Unable to check the account details.");
   const { data: phoneOwner, error: phoneError } = await supabase.from("profiles").select("id").in("phone", phoneVariants(phone)).limit(1);
@@ -305,7 +305,7 @@ export async function registerUser(values) {
     takenError.fieldErrors = takenFields;
     throw takenError;
   }
-  await createAndSendOtp(email, "register", { fullName, username, email, password, phone, role: values.role || "pet_owner" });
+  await createAndSendOtp(email, "register", { fullName, username, email, password, phone, address, role: values.role || "pet_owner" });
   return { requiresOtp: true, email, purpose: "register" };
 }
 
@@ -318,11 +318,15 @@ export async function completeRegistrationOtp(code) {
     email: values.email,
     password: values.password,
     phone: values.phone || null,
+    address: values.address || null,
     role: values.role || "pet_owner",
     account_status: "active",
   }).select("*").single();
   if (isDuplicatePhoneError(error)) throw new Error(CONTACT_TAKEN_ERROR);
-  if (error) throw new Error("Registration failed. Check your Supabase policies and required columns.");
+  if (error) {
+    console.log("Registration error:", error);
+    throw new Error(error.message || "Registration failed. Check your Supabase policies and required columns.");
+  }
   await SecureStore.deleteItemAsync(OTP_KEY);
   await writeActivity(profile, "Account creation", `Pet-owner account created for ${values.username}.`);
   return { success: true, user: publicProfile(profile) };

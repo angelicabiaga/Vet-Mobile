@@ -32,6 +32,7 @@ const RegisterScreen = ({ navigation }) => {
     middleName: "",
     lastName: "",
     contact: "",
+    address: "",
     username: "",
     email: "",
     password: "",
@@ -85,6 +86,8 @@ const RegisterScreen = ({ navigation }) => {
     if (!data.contact.trim()) nextErrors.contact = CONTACT_REQUIRED_ERROR;
     else if (!isValidRegisterContact(data.contact)) nextErrors.contact = CONTACT_FORMAT_ERROR;
     else if (taken.contact && data.contact === taken.contact.value) nextErrors.contact = taken.contact.message;
+
+    if (!data.address.trim()) nextErrors.address = "Address is required.";
 
     if (!data.username.trim()) nextErrors.username = "Username is required.";
     else if (!/^[A-Za-z0-9_.-]{3,30}$/.test(data.username.trim())) nextErrors.username = "Use 3–30 letters, numbers, dots, dashes, or underscores.";
@@ -245,6 +248,17 @@ const RegisterScreen = ({ navigation }) => {
                 maxLength={11}
               />
               {errors.contact ? <Text style={styles.errorText}>{errors.contact}</Text> : null}
+
+              <Text style={styles.label}>Address</Text>
+              <TextInput
+                style={[styles.input, errors.address && styles.inputError]}
+                placeholder="House no., street, barangay, city"
+                placeholderTextColor="#8d98a5"
+                value={formData.address}
+                onChangeText={(v) => handleChange("address", v)}
+                onBlur={() => handleBlur("address")}
+              />
+              {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
               <Text style={styles.label}>Username</Text>
               <TextInput

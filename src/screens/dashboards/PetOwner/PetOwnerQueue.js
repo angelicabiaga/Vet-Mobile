@@ -53,6 +53,49 @@ const dayOptions = (count) => Array.from({ length: count }, (_, index) => {
   return { value, label: index === 0 ? 'Today' : index === 1 ? 'Tomorrow' : formatDayLabel(value) };
 });
 
+// Doctor first, then that doctor's free times. `slots` is null while
+// loading; onChange gets { veterinarianId, vetName, time } or null until a
+// time is picked. Give it key={date} so a new date starts over.
+function DoctorTimeDropdowns({ slots, choice, onChange }) {
+  const [vetId, setVetId] = useState(null);
+  const vets = useMemo(() => (slots || [])
+    .filter((vet) => vet.starts?.length)
+    .map((vet) => ({ value: vet.veterinarian_id, label: drName(vet.full_name), vet })), [slots]);
+  const vet = vets.find((item) => item.value === vetId)?.vet;
+  const times = useMemo(() => (vet?.starts || []).map((time) => {
+    const value = String(time).slice(0, 5);
+    return { value, label: formatTime(value) };
+  }), [vet]);
+
+  if (!slots) return <ActivityIndicator style={offerStyles.loader} color="#2c6ba3" />;
+  return (
+    <View>
+      <Text style={offerStyles.label}>Doctor</Text>
+      <Dropdown
+        style={offerStyles.dropdown}
+        data={vets}
+        labelField="label"
+        valueField="value"
+        value={vetId}
+        placeholder={vets.length ? 'Choose a doctor' : 'No free times that day'}
+        disable={!vets.length}
+        onChange={(item) => { setVetId(item.value); onChange(null); }}
+      />
+      <Text style={offerStyles.label}>Time</Text>
+      <Dropdown
+        style={offerStyles.dropdown}
+        data={times}
+        labelField="label"
+        valueField="value"
+        value={choice?.time || null}
+        placeholder={vet ? 'Choose a time' : 'Choose a doctor first'}
+        disable={!vet}
+        onChange={(item) => onChange({ veterinarianId: vet.veterinarian_id, vetName: vet.full_name, time: item.value })}
+      />
+    </View>
+  );
+}
+
 // Shown when the clinic had to change the doctor (leave / emergency). The
 // visit joins the clinic's live queue only after the owner confirms.
 function DoctorOfferCard({ offer, ownerId, onDone }) {
@@ -80,14 +123,6 @@ function DoctorOfferCard({ offer, ownerId, onDone }) {
       .catch((err) => { if (active) { setSlots([]); setError(err.message); } });
     return () => { active = false; };
   }, [rescheduling, date, offer.id]);
-
-  const choices = useMemo(() => (slots || []).flatMap((vet) => (vet.starts || []).map((time) => ({
-    value: `${vet.veterinarian_id}|${String(time).slice(0, 5)}`,
-    label: `${formatTime(time)} · ${drName(vet.full_name)}`,
-    time: String(time).slice(0, 5),
-    veterinarianId: vet.veterinarian_id,
-    vetName: vet.full_name,
-  }))).sort((a, b) => a.time.localeCompare(b.time)), [slots]);
 
   const answer = async (action, extra, success) => {
     try {
@@ -159,21 +194,7 @@ function DoctorOfferCard({ offer, ownerId, onDone }) {
             placeholder="Select date"
             onChange={(item) => setDate(item.value)}
           />
-          <Text style={offerStyles.label}>Time and doctor</Text>
-          {!slots ? (
-            <ActivityIndicator style={offerStyles.loader} color="#2c6ba3" />
-          ) : (
-            <Dropdown
-              style={offerStyles.dropdown}
-              data={choices}
-              labelField="label"
-              valueField="value"
-              value={choice?.value || null}
-              placeholder={choices.length ? 'Choose a time' : 'No free times that day'}
-              disable={!choices.length}
-              onChange={(item) => setChoice(item)}
-            />
-          )}
+          <DoctorTimeDropdowns key={date} slots={slots} choice={choice} onChange={setChoice} />
           <View style={offerStyles.actions}>
             <TouchableOpacity
               style={[offerStyles.button, offerStyles.confirm, (!choice || Boolean(busy)) && offerStyles.disabled]}
@@ -215,14 +236,6 @@ function QueueSelfService({ entry, ownerId, petNames, onDone }) {
       .catch((err) => { if (active) { setSlots([]); setError(err.message); } });
     return () => { active = false; };
   }, [rebooking, date, entry.id]);
-
-  const choices = useMemo(() => (slots || []).flatMap((vet) => (vet.starts || []).map((time) => ({
-    value: `${vet.veterinarian_id}|${String(time).slice(0, 5)}`,
-    label: `${formatTime(time)} · ${drName(vet.full_name)}`,
-    time: String(time).slice(0, 5),
-    veterinarianId: vet.veterinarian_id,
-    vetName: vet.full_name,
-  }))).sort((a, b) => a.time.localeCompare(b.time)), [slots]);
 
   const run = async (action, extra, success) => {
     try {
@@ -266,21 +279,7 @@ function QueueSelfService({ entry, ownerId, petNames, onDone }) {
         <View>
           <Text style={offerStyles.label}>Date</Text>
           <Dropdown style={offerStyles.dropdown} data={days} labelField="label" valueField="value" value={date} placeholder="Select date" onChange={(item) => setDate(item.value)} />
-          <Text style={offerStyles.label}>Time and doctor</Text>
-          {!slots ? (
-            <ActivityIndicator style={offerStyles.loader} color="#2c6ba3" />
-          ) : (
-            <Dropdown
-              style={offerStyles.dropdown}
-              data={choices}
-              labelField="label"
-              valueField="value"
-              value={choice?.value || null}
-              placeholder={choices.length ? 'Choose a time' : 'No free times that day'}
-              disable={!choices.length}
-              onChange={(item) => setChoice(item)}
-            />
-          )}
+          <DoctorTimeDropdowns key={date} slots={slots} choice={choice} onChange={setChoice} />
           <View style={[offerStyles.actions, selfStyles.actions]}>
             <TouchableOpacity
               style={[offerStyles.button, offerStyles.confirm, (!choice || Boolean(busy)) && offerStyles.disabled]}
@@ -511,7 +510,8 @@ export default function PetOwnerQueue({ navigation, route }) {
                   </View>
                 </View>
 
-                {entry.status === 'Waiting' ? (
+                {/* Only when the doctor had a sudden leave after check-in. */}
+                {away && entry.status === 'Waiting' ? (
                   <QueueSelfService key={entry.id} entry={entry} ownerId={ownerId} petNames={petName} onDone={handleOfferDone} />
                 ) : null}
 

@@ -19,6 +19,14 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6818333738",
+        "appleTeamId": "7A4H2D888M",
+        "ascApiKeyPath": "C:\\Users\\ALDWIN ALMADRONES\\apple-keys\\AuthKey_7HT4L373XC.p8",
+        "ascApiKeyIssuerId": "8dc6d611-7f24-42bc-8090-dc486f136a7e",
+        "ascApiKeyId": "7HT4L373XC"
+      }
+    }
   }
 }
