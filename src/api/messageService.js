@@ -47,6 +47,12 @@ export async function createConversation(profile, participantIds, subject) {
   const ids = [...new Set((participantIds || []).filter(Boolean))].filter((id) => id !== profile.id);
   if (!ids.length) throw new Error("Choose at least one recipient.");
 
+  // Reuse the existing chat with exactly these people instead of starting a duplicate.
+  const wanted = [profile.id, ...ids].sort().join("|");
+  const existing = (await getConversations(profile).catch(() => []))
+    .find((row) => [...new Set((row.participants || []).map((p) => p.id))].sort().join("|") === wanted);
+  if (existing) return existing;
+
   const { data: conversation, error: conversationError } = await supabase
     .from("conversations")
     .insert({ created_by: profile.id, subject: subject?.trim() || "New conversation" })
@@ -119,19 +125,49 @@ async function getConversationsNormally(profile) {
   return { data: rows, error: null };
 }
 
+const activityTime = (row) => new Date(row?.latest?.created_at || row?.last_message_at || row?.created_at || 0).getTime();
+
+// One row per set of people: older duplicate threads with the same
+// participants fold into the most recently active one. `conversationIds`
+// keeps every thread so their messages still show together.
+function mergeDuplicateConversations(rows) {
+  const groups = new Map();
+  for (const row of rows || []) {
+    const ids = (row.participants || []).map((p) => p?.id).filter(Boolean);
+    const key = ids.length ? [...new Set(ids)].sort().join("|") : `id:${row.id}`;
+    const group = groups.get(key);
+    if (!group) { groups.set(key, [row]); continue; }
+    group.push(row);
+  }
+  return [...groups.values()].map((group) => {
+    // Threads with messages win over empty duplicates, then the most recent.
+    const sorted = [...group].sort((a, b) => (Boolean(b.latest) - Boolean(a.latest)) || (activityTime(b) - activityTime(a)));
+    const primary = sorted[0];
+    return {
+      ...primary,
+      conversationIds: sorted.map((row) => row.id),
+      unread: sorted.reduce((total, row) => total + (Number(row.unread) || 0), 0),
+    };
+  }).sort((a, b) => activityTime(b) - activityTime(a));
+}
+
+const asIdList = (value) => [...new Set((Array.isArray(value) ? value : [value]).filter(Boolean))];
+
 export async function getConversations(profile) {
   if (!profile?.id) throw new Error("Your login session is incomplete.");
   const normalResult = await getConversationsNormally(profile);
-  if (!normalResult.error) return normalResult.data;
-  return rpcArray("pawcruz_get_conversations", { p_profile_id: profile.id }, "Unable to load conversations");
+  if (!normalResult.error) return mergeDuplicateConversations(normalResult.data);
+  return mergeDuplicateConversations(await rpcArray("pawcruz_get_conversations", { p_profile_id: profile.id }, "Unable to load conversations"));
 }
 
-export async function getMessages(conversationId) {
-  if (!conversationId) return [];
+// Accepts one conversation id or a list (a merged row's `conversationIds`).
+export async function getMessages(conversationIds) {
+  const ids = asIdList(conversationIds);
+  if (!ids.length) return [];
   const { data, error } = await supabase
     .from("messages")
     .select("id,conversation_id,sender_id,body,attachment_url,attachment_name,created_at")
-    .eq("conversation_id", conversationId).order("created_at", { ascending: true });
+    .in("conversation_id", ids).order("created_at", { ascending: true });
   if (!error) {
     const senderIds = [...new Set((data || []).map((item) => item.sender_id))];
     let profiles = [];
@@ -142,16 +178,20 @@ export async function getMessages(conversationId) {
     const profileMap = new Map(profiles.map((item) => [item.id, item]));
     return (data || []).map((item) => ({ ...item, sender: profileMap.get(item.sender_id) || null }));
   }
-  return rpcArray("pawcruz_get_messages", { p_conversation_id: conversationId }, "Unable to load messages");
+  const lists = await Promise.all(ids.map((id) =>
+    rpcArray("pawcruz_get_messages", { p_conversation_id: id }, "Unable to load messages")));
+  return lists.flat().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 }
 
-export async function markConversationRead(conversationId, profileId) {
-  if (!conversationId || !profileId) return;
+export async function markConversationRead(conversationIds, profileId) {
+  const ids = asIdList(conversationIds);
+  if (!ids.length || !profileId) return;
   const { error } = await supabase.from("conversation_participants")
     .update({ last_read_at: new Date().toISOString() })
-    .eq("conversation_id", conversationId).eq("profile_id", profileId);
+    .in("conversation_id", ids).eq("profile_id", profileId);
   if (!error) return;
-  await supabase.rpc("pawcruz_mark_conversation_read", { p_conversation_id: conversationId, p_profile_id: profileId });
+  await Promise.all(ids.map((id) =>
+    supabase.rpc("pawcruz_mark_conversation_read", { p_conversation_id: id, p_profile_id: profileId })));
 }
 
 export async function uploadMessageAttachment(file, profileId) {
@@ -191,9 +231,40 @@ async function notifyOtherParticipants(conversationId, sender, body) {
   })));
 }
 
+export const MESSAGE_MAX_LENGTH = 2000;
+export const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+
+// Returns why a message can't be sent, or null when it is valid. Runs before
+// anything is uploaded or stored, so an invalid message leaves no trace.
+export function validateMessage(body, file) {
+  const text = typeof body === "string" ? body.trim() : "";
+  if (body != null && typeof body !== "string") return "Message must be text.";
+  if (!text && !file) return "Type a message or attach a file.";
+  if (text.length > MESSAGE_MAX_LENGTH) return `Message is too long (${text.length}/${MESSAGE_MAX_LENGTH} characters).`;
+  if (file) {
+    if (!file.uri) return "The attached file could not be read.";
+    if (file.size != null && file.size > ATTACHMENT_MAX_BYTES) return "Attachment is larger than 25 MB.";
+    if (file.size === 0) return "The attached file is empty.";
+  }
+  return null;
+}
+
 export async function sendMessage(conversationId, profile, body, file) {
   if (!conversationId) throw new Error("Select a conversation first.");
   if (!profile?.id) throw new Error("Your login session is incomplete.");
+  const invalid = validateMessage(body, file);
+  if (invalid) throw new Error(`Message not sent: ${invalid}`);
+
+  // The sender must belong to the conversation. A failed lookup (e.g. RLS)
+  // falls through to the insert/RPC, which enforce access themselves.
+  const { data: membership, error: membershipError } = await supabase
+    .from("conversation_participants")
+    .select("profile_id")
+    .eq("conversation_id", conversationId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+  if (!membershipError && !membership) throw new Error("Message not sent: you are not part of this conversation.");
+
   let attachment = null;
   if (file) attachment = await uploadMessageAttachment(file, profile.id);
   const payload = {
@@ -201,6 +272,8 @@ export async function sendMessage(conversationId, profile, body, file) {
     attachment_url: attachment?.url || null, attachment_name: attachment?.name || null,
   };
   const { data, error } = await supabase.from("messages").insert(payload).select("*").single();
+  // Rejected by the database validation (SUPABASE_MESSAGES_VALIDATION.sql): no retry.
+  if (error && (error.code === "23514" || error.code === "42501")) throw new Error(error.message);
   if (!error) {
     await markConversationRead(conversationId, profile.id);
     notifyOtherParticipants(conversationId, profile, payload.body).catch(() => {});
@@ -210,18 +283,19 @@ export async function sendMessage(conversationId, profile, body, file) {
     p_conversation_id: conversationId, p_sender_id: profile.id, p_body: payload.body,
     p_attachment_url: payload.attachment_url, p_attachment_name: payload.attachment_name,
   });
-  if (rpcError) throw readableError("Unable to send message", rpcError);
-  notifyOtherParticipants(conversationId, profile, payload.body).catch(() => {});
+  if (rpcError) throw readableError("Unable to send message", rpcError);  notifyOtherParticipants(conversationId, profile, payload.body).catch(() => {});
   return rpcData;
 }
 
-export function subscribeToMessages(conversationId, onChange) {
-  if (!conversationId) return null;
+export function subscribeToMessages(conversationIds, onChange) {
+  const ids = asIdList(conversationIds);
+  if (!ids.length) return null;
+  const filter = ids.length === 1 ? `conversation_id=eq.${ids[0]}` : `conversation_id=in.(${ids.join(",")})`;
   return supabase
-    .channel(`pawcruz-mobile-messages-${conversationId}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    .channel(`pawcruz-mobile-messages-${ids[0]}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+      { event: "*", schema: "public", table: "messages", filter },
       onChange
     )
     .subscribe((status) => {

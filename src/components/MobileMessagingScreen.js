@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   createConversation, getConversations, getMessageContacts, getMessages,
   markConversationRead, sendMessage, subscribeToMessages, subscribeToMessagingOverview,
+  MESSAGE_MAX_LENGTH, ATTACHMENT_MAX_BYTES, validateMessage,
 } from "../api/messageService";
 import { supabase } from "../config/supabaseClient";
 
@@ -31,6 +32,8 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  // Shown above the composer; Alert.alert is a no-op on web, so send failures need on-screen text.
+  const [sendError, setSendError] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
   const [subject, setSubject] = useState("");
@@ -141,29 +144,61 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   }, [profile?.id, loadOverview]);
 
 
+  // Background refreshes (realtime, polling, after sending) stay silent: the
+  // spinner shows only on a conversation's first load, and the list scrolls
+  // only when a new message arrives.
+  // A merged row covers every thread with the same people; send goes to the newest (`id`).
+  const activeKey = (activeConversation?.conversationIds || [activeConversation?.id]).filter(Boolean).join(",");
+  const loadedConversationRef = useRef(null);
+  const lastMessageIdRef = useRef(null);
+  const loadingActiveRef = useRef(false);
+  const activeKeyRef = useRef(activeKey);
   const loadActive = useCallback(async () => {
-    if (!activeConversation?.id || !profile?.id) return;
+    if (!activeKey || !profile?.id || loadingActiveRef.current === activeKey) return;
+    const conversationId = activeKey;
+    const threadIds = activeKey.split(",");
+    const firstLoad = loadedConversationRef.current !== conversationId;
+    loadingActiveRef.current = conversationId;
     try {
-      setMessagesLoading(true);
-      const rows = await getMessages(activeConversation.id);
-      setMessages(rows || []);
-      await markConversationRead(activeConversation.id, profile.id);
-      await loadOverview();
-      requestAnimationFrame(() => listRef.current?.scrollToEnd?.({ animated: true }));
+      if (firstLoad) setMessagesLoading(true);
+      const rows = (await getMessages(threadIds)) || [];
+      // The user switched or closed the chat while this was loading.
+      if (activeKeyRef.current !== conversationId) return;
+      const lastId = `${rows.length}:${rows[rows.length - 1]?.id ?? ''}`;
+      const changed = firstLoad || lastId !== lastMessageIdRef.current;
+      loadedConversationRef.current = conversationId;
+      lastMessageIdRef.current = lastId;
+      if (changed) {
+        setMessages(rows);
+        await markConversationRead(threadIds, profile.id);
+        await loadOverview();
+        requestAnimationFrame(() => listRef.current?.scrollToEnd?.({ animated: !firstLoad }));
+      }
     } catch (error) {
-      Alert.alert("Messages", error.message || "Unable to load the conversation.");
+      if (activeKeyRef.current !== conversationId) return;
+      // Alert once; later polls retry quietly.
+      if (firstLoad) Alert.alert("Messages", error.message || "Unable to load the conversation.");
+      loadedConversationRef.current = conversationId;
     } finally {
-      setMessagesLoading(false);
+      if (loadingActiveRef.current === conversationId) loadingActiveRef.current = false;
+      if (firstLoad && activeKeyRef.current === conversationId) setMessagesLoading(false);
     }
-  }, [activeConversation?.id, profile?.id, loadOverview]);
+  }, [activeKey, profile?.id, loadOverview]);
 
   useEffect(() => {
-    if (!activeConversation?.id) { setMessages([]); return undefined; }
+    // Each open starts fresh, including reopening the same chat.
+    activeKeyRef.current = activeKey;
+    loadedConversationRef.current = null;
+    lastMessageIdRef.current = null;
+    setMessages([]);
+    setMessagesLoading(false);
+    setSendError("");
+    if (!activeKey) return undefined;
 
     let active = true;
     loadActive();
 
-    const channel = subscribeToMessages(activeConversation.id, async () => {
+    const channel = subscribeToMessages(activeKey.split(","), async () => {
       if (active) await loadActive();
     });
     const fallbackTimer = setInterval(async () => {
@@ -175,7 +210,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
       clearInterval(fallbackTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [activeConversation?.id, loadActive]);
+  }, [activeKey, loadActive]);
 
   const otherParticipantsFor = (conversation) =>
     (conversation?.participants || []).filter((p) => p.id !== profile.id);
@@ -205,11 +240,11 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   const previewFor = (conversation) => {
     const latest = conversation?.latest;
     if (!latest) return "No messages yet";
-    const content = latest.body || latest.attachment_name || "Attachment";
-    if (latest.sender_id === profile.id) return `You: ${content}`;
     const sender = (conversation.participants || []).find((p) => p.id === latest.sender_id);
-    const senderName = sender?.full_name || sender?.username || "PawCruz User";
-    return `${senderName}: ${content}`;
+    const senderName = latest.sender_id === profile.id ? "You" : sender?.full_name || sender?.username || "PawCruz User";
+    // A file on its own reads as an action, not a raw file name.
+    if (!latest.body?.trim()) return `${senderName} sent an attachment`;
+    return `${senderName}: ${latest.body}`;
   };
 
   // Clinic team (Admin, Staff) first, then everyone else; each group by name.
@@ -233,7 +268,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
       closeNew(); setSelectedContact(null); setSubject("");
       await loadOverview();
       const refreshed = await getConversations(profile);
-      setActiveConversation((refreshed || []).find((c) => c.id === conversation.id) || conversation);
+      setActiveConversation((refreshed || []).find((c) => c.id === conversation.id || c.conversationIds?.includes(conversation.id)) || conversation);
     } catch (error) {
       Alert.alert("New Conversation", error.message || "Unable to create conversation.");
     }
@@ -242,19 +277,26 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   const pickAttachment = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: false });
-      if (!result.canceled && result.assets?.[0]) setFile(result.assets[0]);
+      const picked = result.assets?.[0];
+      if (result.canceled || !picked) return;
+      if (picked.size != null && picked.size > ATTACHMENT_MAX_BYTES) return setSendError("That file is larger than 25 MB, so it can't be sent.");
+      setSendError("");
+      setFile(picked);
     } catch (error) { Alert.alert("Attachment", "Unable to select that file."); }
   };
 
   const submit = async () => {
-    if (!activeConversation?.id || sending || (!body.trim() && !file)) return;
+    if (!activeConversation?.id || sending) return;
+    const invalid = validateMessage(body, file);
+    if (invalid) return setSendError(`Message not sent: ${invalid}`);
+    setSendError("");
     try {
       setSending(true);
       await sendMessage(activeConversation.id, profile, body, file);
       setBody(""); setFile(null);
       await loadActive();
     } catch (error) {
-      Alert.alert("Send Message", error.message || "Unable to send message.");
+      setSendError(error.message || "Message not sent. Please try again.");
     } finally { setSending(false); }
   };
 
@@ -325,7 +367,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
           </View>
         ) : (
           <View style={styles.messagesToolbar}>
-            <Text style={styles.messagesToolbarTitle}>Conversations</Text>
+            <Text style={styles.messagesToolbarTitle}>Messages</Text>
             <TouchableOpacity onPress={() => setShowNew(true)} style={styles.newConversationButton} activeOpacity={0.85}>
               <Text style={styles.newConversationButtonText}>＋</Text>
             </TouchableOpacity>
@@ -369,6 +411,11 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
               removeClippedSubviews={false}
+              // Render the whole chat so scrolling to the end reaches the newest
+              // message; batch rendering stopped part-way and hid recent ones.
+              initialNumToRender={Math.max(messages.length, 20)}
+              maxToRenderPerBatch={Math.max(messages.length, 20)}
+              windowSize={41}
               renderItem={({ item }) => {
                 const mine = item.sender_id === profile.id;
                 return <View style={[styles.bubble, mine && styles.bubbleMine]}>
@@ -380,6 +427,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
               }}
               ListEmptyComponent={!messagesLoading ? <View style={styles.emptyChat}><Text style={styles.emptyText}>No messages yet. Say hello.</Text></View> : null}
             />
+            {sendError ? <View style={styles.sendErrorBar}><Text style={styles.sendErrorText}>{sendError}</Text></View> : null}
             {file ? <View style={styles.fileBar}><Text style={styles.fileName} numberOfLines={1}>Attached: {file.name}</Text><TouchableOpacity onPress={() => setFile(null)}><Text style={styles.removeFile}>×</Text></TouchableOpacity></View> : null}
             <View style={styles.composer}>
               <TouchableOpacity style={styles.attachButton} onPress={pickAttachment} activeOpacity={0.8}>
@@ -395,8 +443,9 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
                   ref={inputRef}
                   style={styles.input}
                   value={body}
-                  onChangeText={setBody}
+                  onChangeText={(text) => { setBody(text); if (sendError) setSendError(""); }}
                   placeholder="Type a message..."
+                  maxLength={MESSAGE_MAX_LENGTH}
                   placeholderTextColor="#8aa0af"
                   multiline
                   editable={!sending}
@@ -413,7 +462,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
               <TouchableOpacity
                 style={[styles.sendButton, (sending || (!body.trim() && !file)) && styles.sendButtonDisabled]}
                 onPress={submit}
-                disabled={sending || (!body.trim() && !file)}
+                disabled={sending}
                 activeOpacity={0.8}
               >
                 <Text style={styles.sendText}>{sending ? "…" : "Send"}</Text>
@@ -497,7 +546,7 @@ const styles = StyleSheet.create({
   conversationCard:{flexDirection:"row",backgroundColor:"#fcfeff",borderRadius:22,borderWidth:1,borderColor:"#d9eaf1",padding:14,marginBottom:12,shadowColor:"#214f67",shadowOpacity:.05,shadowRadius:10,elevation:2},avatar:{width:50,height:50,borderRadius:18,backgroundColor:"#e2f3f6",alignItems:"center",justifyContent:"center",marginRight:12},avatarText:{fontSize:20,fontWeight:"900",color:"#256297"},conversationBody:{flex:1},row:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},roleText:{fontSize:12,color:"#2c6ba3",fontWeight:"700",marginTop:2,marginBottom:2},conversationTitle:{flex:1,fontSize:15,fontWeight:"900",color:"#244f64",marginRight:8},preview:{fontSize:13,color:"#668092",fontWeight:"600",marginTop:5},time:{fontSize:10,color:"#8da1ad",fontWeight:"700",marginTop:7},badge:{minWidth:24,height:24,borderRadius:12,backgroundColor:"#2c6ba3",alignItems:"center",justifyContent:"center",paddingHorizontal:6},badgeText:{color:"#fff",fontSize:11,fontWeight:"900"},
   empty:{alignItems:"center"},emptyTitle:{fontSize:20,fontWeight:"900",color:"#123a5e"},emptyText:{fontSize:13,color:"#728a99",fontWeight:"600",textAlign:"center",marginTop:7,marginBottom:16},primary:{backgroundColor:"#2c6ba3",paddingVertical:13,paddingHorizontal:20,borderRadius:14,alignItems:"center",justifyContent:"center"},primaryText:{color:"#fff",fontWeight:"900"},
   chatWrap:{flex:1},messagesContent:{padding:16,paddingBottom:20},bubble:{alignSelf:"flex-start",maxWidth:"82%",backgroundColor:"#fcfeff",borderRadius:18,borderTopLeftRadius:5,padding:12,marginBottom:10,borderWidth:1,borderColor:"#dfedf2"},bubbleMine:{alignSelf:"flex-end",backgroundColor:"#dff3f8",borderTopLeftRadius:18,borderTopRightRadius:5,borderColor:"#c6e5ed"},senderMine:{textAlign:"right",color:"#256297"},sender:{fontSize:10,fontWeight:"900",color:"#2c6ba3",marginBottom:4},messageText:{fontSize:14,lineHeight:20,color:"#294b5d",fontWeight:"600"},messageTime:{fontSize:9,color:"#8499a5",marginTop:6},attachment:{fontSize:13,color:"#217ba7",fontWeight:"800",marginTop:4},emptyChat:{paddingTop:80,alignItems:"center"},
-  composer:{flexDirection:"row",alignItems:"flex-end",paddingHorizontal:14,paddingTop:10,paddingBottom:Platform.OS === "ios" ? 10 : 12,borderTopWidth:1,borderColor:"#dbeaf0",backgroundColor:"#fcfeff",gap:8,zIndex:20,elevation:20},attachButton:{width:42,height:42,borderRadius:14,backgroundColor:"#edf6f8",alignItems:"center",justifyContent:"center"},attachText:{fontSize:25,color:"#2c6ba3",fontWeight:"700"},inputTouchArea:{flex:1,minHeight:44,maxHeight:112,borderWidth:1,borderColor:"#cfe1e8",borderRadius:14,backgroundColor:"#fbfdfe",justifyContent:"center"},input:{width:"100%",minHeight:42,maxHeight:110,paddingHorizontal:12,paddingTop:11,paddingBottom:9,color:"#294b5d",fontSize:14,fontWeight:"600",backgroundColor:"transparent"},sendButton:{height:42,paddingHorizontal:15,borderRadius:14,backgroundColor:"#2c6ba3",alignItems:"center",justifyContent:"center"},sendButtonDisabled:{opacity:.45},sendText:{color:"#fff",fontWeight:"900"},fileBar:{flexDirection:"row",alignItems:"center",paddingHorizontal:14,paddingVertical:8,backgroundColor:"#edf6f8"},fileName:{flex:1,fontSize:11,color:"#527489",fontWeight:"700"},removeFile:{fontSize:22,color:"#7b5960",fontWeight:"900",paddingHorizontal:8},
+  composer:{flexDirection:"row",alignItems:"flex-end",paddingHorizontal:14,paddingTop:10,paddingBottom:Platform.OS === "ios" ? 10 : 12,borderTopWidth:1,borderColor:"#dbeaf0",backgroundColor:"#fcfeff",gap:8,zIndex:20,elevation:20},attachButton:{width:42,height:42,borderRadius:14,backgroundColor:"#edf6f8",alignItems:"center",justifyContent:"center"},attachText:{fontSize:25,color:"#2c6ba3",fontWeight:"700"},inputTouchArea:{flex:1,minHeight:44,maxHeight:112,borderWidth:1,borderColor:"#cfe1e8",borderRadius:14,backgroundColor:"#fbfdfe",justifyContent:"center"},input:{width:"100%",minHeight:42,maxHeight:110,paddingHorizontal:12,paddingTop:11,paddingBottom:9,color:"#294b5d",fontSize:14,fontWeight:"600",backgroundColor:"transparent"},sendButton:{height:42,paddingHorizontal:15,borderRadius:14,backgroundColor:"#2c6ba3",alignItems:"center",justifyContent:"center"},sendButtonDisabled:{opacity:.45},sendText:{color:"#fff",fontWeight:"900"},sendErrorBar:{paddingHorizontal:14,paddingVertical:8,backgroundColor:"#fff1f1",borderTopWidth:1,borderColor:"#f4cccc"},sendErrorText:{fontSize:12.5,color:"#a33f3f",fontWeight:"700"},fileBar:{flexDirection:"row",alignItems:"center",paddingHorizontal:14,paddingVertical:8,backgroundColor:"#edf6f8"},fileName:{flex:1,fontSize:11,color:"#527489",fontWeight:"700"},removeFile:{fontSize:22,color:"#7b5960",fontWeight:"900",paddingHorizontal:8},
   modalOverlay:{flex:1,backgroundColor:"#17334499",justifyContent:"center",padding:20},modalCard:{backgroundColor:"#fcfeff",borderRadius:22,padding:18,maxHeight:"78%"},modalTitle:{fontSize:20,fontWeight:"900",color:"#123a5e"},close:{fontSize:30,color:"#587687",fontWeight:"600",paddingHorizontal:6},subjectInput:{borderWidth:1,borderColor:"#cee2e9",borderRadius:12,padding:12,marginTop:14,color:"#294b5d"},recipientLabel:{fontSize:12,fontWeight:"900",color:"#567487",marginTop:15,marginBottom:7,textTransform:"uppercase"},contactsList:{maxHeight:340,marginBottom:14},contactRow:{flexDirection:"row",alignItems:"center",padding:10,borderRadius:14,borderWidth:1,borderColor:"#e1edf1",marginBottom:8},contactSelected:{backgroundColor:"#e8f6fa",borderColor:"#69aec1"},avatarSmall:{width:40,height:40,borderRadius:14,backgroundColor:"#e3f2f5",alignItems:"center",justifyContent:"center",marginRight:10},avatarSmallText:{fontWeight:"900",color:"#2d6b82"},contactName:{fontSize:14,fontWeight:"900",color:"#294f62"},contactRole:{fontSize:10,color:"#78909d",fontWeight:"700",marginTop:3},recipientSearchInput:{borderWidth:1,borderColor:"#cee2e9",borderRadius:12,paddingHorizontal:12,paddingVertical:10,marginBottom:10,color:"#294b5d",backgroundColor:"#ffffff"},
   quickAssistFloat:{position:"absolute",right:18,bottom:18,width:84,height:84,borderRadius:42,backgroundColor:"#2c6ba3",borderWidth:2,borderColor:"#d7eef3",alignItems:"center",justifyContent:"center",padding:10,zIndex:1000,elevation:18,shadowColor:"#123a5e",shadowOffset:{width:0,height:8},shadowOpacity:.18,shadowRadius:16},
   quickAssistTouch:{width:"100%",height:"100%",borderRadius:37,alignItems:"center",justifyContent:"center"},
