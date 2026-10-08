@@ -3,10 +3,13 @@ import { createNotification } from "./notificationService";
 
 const FALLBACK_CODES = new Set(["PGRST200", "PGRST201", "PGRST204", "PGRST205", "42P01", "42703"]);
 
+// Plain words only: users never see database error codes. Messages the
+// database validation writes for people ("Message not sent: ...") pass through.
 function readableError(prefix, error) {
-  const code = error?.code || "unknown";
-  const message = error?.message || "Unknown Supabase error.";
-  return new Error(`${prefix} (${code}): ${message}`);
+  const message = String(error?.message || "");
+  if (/^Message not sent:/i.test(message)) return new Error(message);
+  if (error?.code) console.warn(`${prefix}:`, error.code, message);
+  return new Error(`${prefix}. Please try again.`);
 }
 
 function asArray(value) {

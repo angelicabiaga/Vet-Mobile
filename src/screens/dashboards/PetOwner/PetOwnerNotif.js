@@ -27,6 +27,17 @@ import { getStoredSession } from '../../../api/authService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
+// Where tapping a notification takes the pet owner, by its related module.
+// Modules not listed (announcements, etc.) just mark it read.
+const ROUTE_BY_MODULE = {
+  appointments: 'PetOwnerMyAppointments',
+  queue: 'PetOwnerQueue',
+  'queue management': 'PetOwnerQueue',
+  messages: 'PetOwnerMessages',
+  account: 'PetOwnerProfile',
+};
+const routeForNotification = (item) => ROUTE_BY_MODULE[String(item?.related_module || '').trim().toLowerCase()] || null;
+
 const PetOwnerNotif = ({ navigation, route }) => {
   const routeUser = route?.params?.user || null;
   const [user, setUser] = useState(routeUser);
@@ -107,6 +118,16 @@ const PetOwnerNotif = ({ navigation, route }) => {
   }, [profileId, loadNotifications]);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.is_read).length, [notifications]);
+
+  // Mark read, then open the related screen (a message opens its chat).
+  const handleOpen = (item) => {
+    handleRead(item);
+    const routeName = routeForNotification(item);
+    if (!routeName) return;
+    const params = { ...(user ? { user } : {}) };
+    if (routeName === 'PetOwnerMessages' && item.related_record) params.conversationId = item.related_record;
+    navigation.navigate(routeName, params);
+  };
 
   const handleRead = async (item) => {
     if (!item?.id || item.is_read) return;
@@ -215,7 +236,7 @@ const PetOwnerNotif = ({ navigation, route }) => {
               const accent = notificationAccent(item.notification_type);
               const unread = !item.is_read;
               return (
-                <TouchableOpacity key={item.id} onPress={() => handleRead(item)} activeOpacity={0.9} style={[styles.notifItem, { marginBottom: 12, opacity: unread ? 1 : 0.72, borderWidth: unread ? 1 : 0, borderColor: unread ? '#b8dce7' : 'transparent' }]}>
+                <TouchableOpacity key={item.id} onPress={() => handleOpen(item)} activeOpacity={0.9} style={[styles.notifItem, { marginBottom: 12, opacity: unread ? 1 : 0.72, borderWidth: unread ? 1 : 0, borderColor: unread ? '#b8dce7' : 'transparent' }]}>
                   <View style={[styles.notifAccent, { backgroundColor: accent }]} />
                   <View style={styles.notifContent}>
                     <View style={styles.notifMetaRow}>

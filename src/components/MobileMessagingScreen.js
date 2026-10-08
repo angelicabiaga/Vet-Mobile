@@ -21,6 +21,8 @@ const DEFAULT_PROFILE_IMAGE = require("../screens/assets/Profile.png");
 
 export default function MobileMessagingScreen({ navigation, route, allowedRoles = [], title = "Messages", backRoute }) {
   const profile = route?.params?.user || {};
+  // Set when opened from a message notification: open that chat once loaded.
+  const requestedConversationId = route?.params?.conversationId || null;
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const [conversations, setConversations] = useState([]);
@@ -125,6 +127,15 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   }, [profile?.id, conversationMatches, roleAllowed]);
 
   useEffect(() => { setLoading(true); loadOverview(); }, [loadOverview]);
+
+  const openedRequestRef = useRef(null);
+  useEffect(() => {
+    if (!requestedConversationId || openedRequestRef.current === requestedConversationId) return;
+    const match = conversations.find((c) => c.id === requestedConversationId || c.conversationIds?.includes(requestedConversationId));
+    if (!match) return;
+    openedRequestRef.current = requestedConversationId;
+    setActiveConversation(match);
+  }, [requestedConversationId, conversations]);
 
   useEffect(() => {
     if (!profile?.id) return undefined;

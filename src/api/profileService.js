@@ -39,6 +39,47 @@ export async function getProfile(profileId) {
   return data;
 }
 
+// Username and email rules shared by the Edit Profile form and the save calls.
+export const USERNAME_TAKEN_ERROR = 'Username is already taken.';
+export const EMAIL_TAKEN_ERROR = 'Email address is already registered.';
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// Exact, case-insensitive match for ilike; % and _ can't act as wildcards.
+const exactIlike = (value) => String(value).replace(/[\\%_]/g, '\\$&');
+
+export function validateUsername(value) {
+  const username = String(value ?? '').trim().toLowerCase();
+  if (!username) return 'Username is required.';
+  if (!/^[a-z0-9_.-]{3,30}$/.test(username)) return 'Username must contain 3–30 letters, numbers, dots, dashes, or underscores.';
+  return '';
+}
+
+export function validateEmail(value) {
+  const email = String(value ?? '').trim().toLowerCase();
+  if (!email) return 'Email address is required.';
+  if (!EMAIL_PATTERN.test(email)) return 'Enter a valid email address.';
+  return '';
+}
+
+async function isTakenByAnother(column, value, profileId) {
+  const { data, error } = await supabase.from('profiles').select('id')
+    .ilike(column, exactIlike(value)).neq('id', profileId).limit(1);
+  if (error) throw new Error('Unable to check your details right now. Please try again.');
+  return Boolean(data?.length);
+}
+
+export const isUsernameTaken = (username, profileId) => isTakenByAnother('username', String(username).trim().toLowerCase(), profileId);
+export const isEmailTaken = (email, profileId) => isTakenByAnother('email', String(email).trim().toLowerCase(), profileId);
+
+// Database rejections in plain words (no error codes).
+function profileSaveError(error) {
+  if (isDuplicatePhoneError(error)) return new Error(CONTACT_TAKEN_ERROR);
+  const text = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  if (error?.code === '23505' && text.includes('username')) return new Error(USERNAME_TAKEN_ERROR);
+  if (error?.code === '23505' && text.includes('email')) return new Error(EMAIL_TAKEN_ERROR);
+  console.warn('Profile save failed:', error?.code, error?.message);
+  return new Error('Unable to save your profile. Please try again.');
+}
+
 export async function updateProfile(profileId, values) {
   if (!profileId) throw new Error('Profile is unavailable.');
   const fullName = String(values.full_name ?? values.fullName ?? '').trim();
@@ -54,15 +95,13 @@ export async function updateProfile(profileId, values) {
   };
 
   if (payload.full_name.length < 2) throw new Error('Enter your complete name.');
-  if (!/^[a-z0-9_.-]{3,30}$/.test(payload.username)) throw new Error('Username must contain 3–30 letters, numbers, dots, dashes, or underscores.');
-  const { data: duplicate, error: duplicateError } = await supabase
-    .from('profiles').select('id').eq('username', payload.username).neq('id', profileId).limit(1);
-  if (duplicateError) throw new Error(`Unable to validate profile: ${duplicateError.message}`);
-  if (duplicate?.length) throw new Error('The username is already used by another account.');
+  const usernameError = validateUsername(payload.username);
+  if (usernameError) throw new Error(usernameError);
+  if (await isUsernameTaken(payload.username, profileId)) throw new Error(USERNAME_TAKEN_ERROR);
 
+  // Only this account's row; id, password, role and email are never sent.
   const { data, error } = await supabase.from('profiles').update(payload).eq('id', profileId).select('*').single();
-  if (isDuplicatePhoneError(error)) throw new Error(CONTACT_TAKEN_ERROR);
-  if (error) throw new Error(`Unable to update profile: ${error.message}`);
+  if (error) throw profileSaveError(error);
   await refreshStoredSession(data);
   return data;
 }
@@ -126,24 +165,41 @@ async function verifyCurrentPassword(profileId, currentPassword) {
   return data;
 }
 
-export async function requestEmailChangeOtp(profileId, currentPassword, newEmail) {
-  const email = String(newEmail || '').trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Enter a valid new email address.');
-  if (!currentPassword) throw new Error('Enter your current password to verify the email change.');
-  await verifyCurrentPassword(profileId, currentPassword);
-  const { data: duplicate, error } = await supabase.from('profiles').select('id').eq('email', email).neq('id', profileId).limit(1);
-  if (error) throw new Error(`Unable to validate the email address: ${error.message}`);
-  if (duplicate?.length) throw new Error('The email address is already used by another account.');
-  return createAndSendOtp(email, 'change_email', { profileId, newEmail: email });
+// Email change: the `profile-email-change` Edge Function sends the code to the
+// CURRENT registered email, checks it, and only then saves the new email (and
+// a new username, when one is passed). The code never reaches the app.
+async function callEmailChange(body) {
+  const { data, error } = await supabase.functions.invoke('profile-email-change', { body });
+  if (error) {
+    let message = '';
+    try {
+      const details = await error.context?.json();
+      message = details?.error || '';
+    } catch {}
+    // The function isn't deployed: not the user's connection.
+    if (!message && error.context?.status === 404) message = 'Email change is not available right now. Please try again later.';
+    throw new Error(message || 'Unable to reach the server. Check your connection and try again.');
+  }
+  if (!data?.success) throw new Error(data?.error || 'Something went wrong. Please try again.');
+  return data;
 }
 
-export async function confirmEmailChangeOtp(profileId, code) {
-  const pending = await verifyProfileOtp('change_email', String(code || '').trim());
-  if (pending.profileId !== profileId || !pending.newEmail) throw new Error('The email-change request is invalid. Please request a new code.');
-  const { data: profile, error } = await supabase.from('profiles').update({ email: pending.newEmail, email_verified_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', profileId).select('*').single();
-  if (error) throw new Error(`Unable to change email: ${error.message}`);
+// Returns { challengeId } for confirmEmailChange.
+export async function requestEmailChange(profileId, newEmail, username) {
+  if (!profileId) throw new Error('Your login session is incomplete. Please log in again.');
+  return callEmailChange({ action: 'request', profileId, newEmail, ...(username ? { username } : {}) });
+}
+
+export async function confirmEmailChange(challengeId, code) {
+  const { profile } = await callEmailChange({ action: 'verify', challengeId, code: String(code || '').trim() });
   await refreshStoredSession(profile);
-  return { success: true, profile };
+  return profile;
+}
+
+// Best effort: ends the pending code when the user cancels.
+export function cancelEmailChange(challengeId) {
+  if (!challengeId) return;
+  callEmailChange({ action: 'cancel', challengeId }).catch(() => {});
 }
 
 export async function requestPasswordChangeOtp(profileId, currentPassword) {
