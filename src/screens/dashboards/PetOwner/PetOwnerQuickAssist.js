@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import PetOwnerHeaderGreeting, { getFirstName } from './PetOwnerHeaderGreeting';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -26,11 +26,8 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
   const quickAssistUserId =
     loggedInUser?.id || loggedInUser?.user_id || loggedInUser?.profile_id || loggedInUser?.email || 'pet-owner';
   const profileImageUri = loggedInUser?.profileImageUri || loggedInUser?.avatar || '';
-  const displayName =
-    loggedInUser?.fullName ||
-    loggedInUser?.name ||
-    loggedInUser?.username ||
-    'Pet Owner';
+  // The welcome message greets the owner by first name, like the headers.
+  const displayName = getFirstName(loggedInUser);
   const headerMenuAnimation = React.useRef(new Animated.Value(0)).current;
   const [isHeaderMenuVisible, setIsHeaderMenuVisible] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(() =>

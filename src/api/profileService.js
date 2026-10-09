@@ -2,7 +2,7 @@ import * as SecureStore from "../utils/secureStorage";
 import { supabase } from '../config/supabaseClient';
 import { createAndSendOtp, verifyProfileOtp } from './authService';
 import { getSessionUser, setSessionUser } from '../session/sessionStore';
-import { validateImageBlob } from '../utils/imageValidation';
+import { readImageForUpload } from '../utils/imageValidation';
 import { CONTACT_TAKEN_ERROR, isDuplicatePhoneError, isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../utils/contactValidation';
 
 const SESSION_KEY = 'pawcruz_session';
@@ -221,25 +221,15 @@ export async function confirmPasswordChangeOtp(profileId, code, newPassword) {
   return { success: true, profile };
 }
 
-function extensionFromUri(uri) {
-  const clean = String(uri || '').split('?')[0];
-  const match = clean.match(/\.([a-zA-Z0-9]+)$/);
-  return (match?.[1] || 'jpg').toLowerCase();
-}
-
 export async function uploadProfileAvatar(profileId, uri) {
   if (!profileId || !uri) return null;
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const validationError = validateImageBlob(blob, uri);
-  if (validationError) throw new Error(validationError);
-  const ext = extensionFromUri(uri);
+  const { body, contentType, ext } = await readImageForUpload(uri);
   const path = `${profileId}/avatar-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from('profile-avatars').upload(path, blob, {
-    upsert: true,
-    contentType: blob.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-  });
-  if (error) throw new Error(`Unable to upload profile image: ${error.message}`);
+  const { error } = await supabase.storage.from('profile-avatars').upload(path, body, { upsert: true, contentType });
+  if (error) {
+    console.warn('Profile photo upload failed:', error.message);
+    throw new Error('Unable to upload your profile photo. Please try again with a JPG, PNG or WEBP image.');
+  }
   return supabase.storage.from('profile-avatars').getPublicUrl(path).data.publicUrl;
 }
 
