@@ -1,0 +1,313 @@
+SCREENSHOT CHECKLIST - take one screenshot per row, in this order.
+Screenshot AFTER doing the action, while the expected result is on screen.
+Name files 01.png, 02.png ... OR keep iPhone names and take them in this exact order.
+
+===== PET OWNER  ->  put screenshots in pet-owner/ =====
+[ ] 01  Login Page: Enter valid credentials and tap the "Login" button
+          screenshot shows: Displays the Pet Owner Mobile Dashboard
+[ ] 02  Login Page/Forgot Password: Tap the "Forgot Password?" button
+          screenshot shows: Displays the Forgot Password page
+[ ] 03  Forgot Password/OTP Page: Enter email address and tap the "Send OTP" button
+          screenshot shows: Displays the OTP Verification page
+[ ] 04  OTP Page: Tap "Resend OTP" button
+          screenshot shows: Resends OTP to email address
+[ ] 05  Forgot Password Page: Tap "Verify OTP" button after entering code
+          screenshot shows: Displays Set a New Password page
+[ ] 06  Forgot Password Page/ Login Page: Tap "Update Password" button
+          screenshot shows: Displays Login Page if criteria for password are met
+[ ] 07  Login Page/Register Page: Tap "Register" / "Don't have an account yet?" link
+          screenshot shows: Displays Pet Owner Registration form
+
+
+
+          
+[ ] 08  Register Page/Login Page: Tap the "Login" link on the Create Account form
+          screenshot shows: Redirects back to the Login page
+[ ] 09  Register Page/OTP Page: Tap the "Create Account" button on Registration form
+          screenshot shows: Asks for verification code to verify account
+[ ] 10  OTP Page/Login Page: Verify account via gmail code
+          screenshot shows: Displays the Login Page again after successful registration
+[ ] 11  Dashboard: Swipe the screen down to refresh
+          screenshot shows: Refreshes and displays the updated pet owner dashboard
+[ ] 12  Dashboard: Tap the "Notification Bell" icon on header bar
+          screenshot shows: Displays the Notifications page
+[ ] 13  Dashboard: Tap the "Profile picture” on header bar
+          screenshot shows: Displays the Pet Owner Profile options
+[ ] 14  Dashboard/Services: Tap "Book Appointment" tile under Services
+          screenshot shows: Displays the Book Appointment screen
+[ ] 15  Dashboard/Services: Tap "Appointments" tile under Services
+          screenshot shows: Displays the Appointments screen
+[ ] 16  Dashboard/Services: Tap "Animal Patients" tile under Services
+          screenshot shows: Displays the Animal Patients screen
+[ ] 17  Dashboard/Services: Tap "Messages" tile under Services
+          screenshot shows: Displays the Messages screen
+[ ] 18  Dashboard/Services: Tap "Queue" tile under Services
+          screenshot shows: Displays the Queue Summary screen
+[ ] 19  Bottom Navigation Bar: Tap "Home" icon tab
+          screenshot shows: Navigates to Pet Owner Dashboard
+[ ] 20  Bottom Navigation Bar: Tap "Animal Patients" icon tab
+          screenshot shows: Navigates to Animal Patients screen
+[ ] 21  Bottom Navigation Bar: Tap "Book Appointment" icon tab
+          screenshot shows: Navigates to Book Appointment screen
+[ ] 22  Bottom Navigation Bar: Tap "Appointments" icon tab
+          screenshot shows: Navigates to Appointments screen
+[ ] 23  Bottom Navigation Bar: Tap "Queue" icon tab
+          screenshot shows: Navigates to Queue Summary screen
+[ ] 24  Bottom Navigation Bar: Tap "Messages" icon tab
+          screenshot shows: Navigates to Messages screen
+[ ] 25  Bottom Navigation Bar: Tap "PetCare Assistant" floating button
+          screenshot shows: Displays PetCare Assistant AI chat page
+[ ] 26  Notifications: Tap the “Notification bell” icon
+          screenshot shows: Displays the notifications
+[ ] 27  Notifications: Tap the "Mark all read" (check icon)
+          screenshot shows: Marks all unread notifications as read and updates badge count
+[ ] 28  Pet Owner Profile: Tap "Edit profile" button
+          screenshot shows: Expands and displays editable personal information fields
+[ ] 29  Pet Owner Profile: Update personal details and tap "Save changes" button
+          screenshot shows: Saves and updates Pet Owner personal information
+[ ] 30  Pet Owner Profile: Tap the camera icon on profile picture
+          screenshot shows: Opens file selection window to select profile picture
+[ ] 31  Pet Owner Profile: Tap “Change password” button
+          screenshot shows: Displays password update fields with criteria validation
+[ ] 32  Pet Owner Profile: Tap "Show/Hide Password" toggle icon
+          screenshot shows: Displays or hides entered new password text
+[ ] 33  Pet Owner Profile: Update password and tap "Update password" button
+          screenshot shows: Sends OTP to pet owner email to verify password change
+[ ] 34  Pet Owner Profile: Tap "Cancel" button on verification modal
+          screenshot shows: Cancels action and returns to profile view
+[ ] 35  Pet Owner Profile: Tap "Verify Code" button after entering code
+          screenshot shows: Updates password and returns to profile view
+[ ] 36  Pet Owner Profile: Tap "Logout" button
+          screenshot shows: Displays logout confirmation modal with "Cancel" and "Logout"
+[ ] 37  Logout: Tap "Cancel" button in confirmation dialog
+          screenshot shows: Closes dialog and keeps user logged in
+[ ] 38  Logout: Tap "Logout" button in confirmation dialog
+          screenshot shows: Logs out user and redirects to Login page
+[ ] 39  Animal Patients: Tap "+ Add Pet Profile" / "Register Pet" button
+          screenshot shows: Opens Register Animal Patient form
+[ ] 40  Animal Patients: Enter required pet info and tap "Register Pet" button
+          screenshot shows: Registers pet and displays newly added pet in patient list
+[ ] 41  Animal Patients: Tap "View Profile" button on pet card
+          screenshot shows: Displays pet profile details with Medical History and AI Health tab
+[ ] 42  Animal Patients: Tap "Medical History" tab on pet profile
+          screenshot shows: Displays pet's clinical records, billing, and prescriptions
+[ ] 43  Animal Patients: Tap "AI Predictive Health" tab on pet profile
+          screenshot shows: Displays summary of AI-generated health findings
+[ ] 44  Animal Patients: Tap "Download" button in Billing section
+          screenshot shows: Previews file to confirm download
+[ ] 45  Animal Patients: Tap "Download" button on previewed billing file
+          screenshot shows: Downloads file to device as PDF
+[ ] 46  Animal Patients: Tap "View" button under prescription record
+          screenshot shows: Previews file prior to printing
+[ ] 47  Animal Patients: Tap "Print" button on previewed prescription
+          screenshot shows: Redirects to system print menu
+[ ] 48  Animal Patients: Tap "Print Medical Record" button
+          screenshot shows: Previews full medical record file prior to printing
+[ ] 49  Animal Patients: Tap "Print" button on previewed Medical Record
+          screenshot shows: Redirects to system print menu
+[ ] 50  Animal Patients: Tap "Edit" icon/button on pet profile
+          screenshot shows: Displays Edit Pet Record form
+[ ] 51  Animal Patients: Update info and tap "Update Pet" button
+          screenshot shows: Saves changes and updates selected pet record
+[ ] 52  Animal Patients: Tap camera icon on pet photo
+          screenshot shows: Opens file picker to select pet photo
+[ ] 53  Animal Patients: Tap "Archive" button
+          screenshot shows: Displays confirmation modal to archive or cancel
+[ ] 54  Animal Patients: Tap "No" / "Cancel" on archive modal
+          screenshot shows: Cancels action and returns to pet list
+[ ] 55  Animal Patients: Tap "Yes, Archive" on archive modal
+          screenshot shows: Archives pet and removes record from active list
+[ ] 56  Animal Patients: Tap "View Archive" button
+          screenshot shows: Displays list of archived pets
+[ ] 57  Animal Patients: Tap "Restore" icon on archived pet
+          screenshot shows: Restores pet back to active Animal Patients list
+[ ] 58  Animal Patients: Tap "All species" dropdown
+          screenshot shows: Filters and displays species options
+[ ] 59  Book Appointment: Tap "Pet" dropdown and select pet
+          screenshot shows: Displays registered pets and sets chosen pet for booking
+[ ] 60  Book Appointment: Tap "Add Pet" button
+          screenshot shows: Displays Pet Registration form
+[ ] 61  Book Appointment: Tap "Register Pet" under form
+          screenshot shows: Registers new pet and auto-selects it for booking
+[ ] 62  Book Appointment: Tap "Appointment Date" field and pick date
+          screenshot shows: Displays selected date in field
+[ ] 63  Book Appointment: Tap "Select Time" field and pick time slot
+          screenshot shows: Displays selected time slot in field
+[ ] 64  Book Appointment: Tap "Select Veterinarian" dropdown
+          screenshot shows: Displays available veterinarians for selected time
+[ ] 65  Book Appointment: Tap "Book Appointment" button
+          screenshot shows: Creates appointment and displays confirmation toast
+[ ] 66  Appointments: Tap "Cancel" button on eligible appointment
+          screenshot shows: Displays confirmation modal to keep or cancel appointment
+[ ] 67  Appointments: Tap "Keep It" in confirmation dialog
+          screenshot shows: Closes dialog and maintains appointment status
+[ ] 68  Appointments: Tap "Yes, Cancel" in confirmation dialog
+          screenshot shows: Cancels appointment and updates status list
+[ ] 69  Appointments: Scroll / Tap "Next" button at bottom of list
+          screenshot shows: Displays next paginated appointment history list
+[ ] 70  Appointments: Scroll / Tap "Previous" button at bottom of list
+          screenshot shows: Displays previous paginated appointment history list
+[ ] 71  Queue: Tap "Refresh Queue Number" button
+          screenshot shows: Refreshes and updates queue status
+[ ] 72  Messages: Tap "+" / "Add sign" button
+          screenshot shows: Opens New Conversation dialog
+[ ] 73  Messages: Tap "x" / close button on modal
+          screenshot shows: Closes conversation dialog
+[ ] 74  Messages: Select recipient and tap "Create Conversation"
+          screenshot shows: Opens direct messaging thread with selected user
+[ ] 75  Messages: Tap "attachment paperclip" icon
+          screenshot shows: Opens file selection option to attach image/file
+[ ] 76  Messages: Enter message and tap "Send" icon
+          screenshot shows: Sends message and displays it in chat conversation
+[ ] 77  PetCare Assistant: Tap "Question About" dropdown and select pet
+          screenshot shows: Selects specific pet context for AI inquiry
+[ ] 78  PetCare Assistant: Tap "Book an appointment" under quick actions
+          screenshot shows: Redirects user to Book Appointment screen
+[ ] 79  PetCare Assistant: Tap "View clinic hours" under quick actions
+          screenshot shows: Displays clinic operational hours in chat
+[ ] 80  PetCare Assistant: Tap "Contact the clinic" under answer
+          screenshot shows: Redirects user to Messages screen
+[ ] 81  PetCare Assistant: Tap "Clear" button
+          screenshot shows: Displays confirmation dialog asking to keep or clear chat
+[ ] 82  PetCare Assistant: Tap "Keep Conversation" in confirmation dialog
+          screenshot shows: Closes dialog and preserves current chat
+[ ] 83  PetCare Assistant: Tap "Yes, Clear Conversation" in confirmation dialog
+          screenshot shows: Clears chat window history
+
+===== VETERINARIAN  ->  put screenshots in veterinarian/ =====
+[ ] 01  Login Page: Enter valid credentials and tap the "Login" button
+          screenshot shows: Displays the Veterinarian Mobile Dashboard
+[ ] 02  Login Page/Forgot Password: Tap the "Forgot Password?" button
+          screenshot shows: Displays the Forgot Password page
+[ ] 03  Forgot Password/OTP Page: Enter email address and tap the "Send OTP" button
+          screenshot shows: Displays the OTP Verification page
+[ ] 04  OTP Page: Tap "Resend OTP" button
+          screenshot shows: Resends OTP to email address
+[ ] 05  Forgot Password Page: Tap "Verify OTP" button after entering code
+          screenshot shows: Displays Set a New Password page
+[ ] 06  Forgot Password Page/ Login Page: Tap "Update Password" button
+          screenshot shows: Displays Login Page if criteria for password are met
+[ ] 07  Dashboard: Tap the "Notification Bell" icon on header bar
+          screenshot shows: Displays the Notifications screen
+[ ] 08  Dashboard: Tap the "Profile picture” icon on header bar
+          screenshot shows: Displays the Veterinarian profile options
+[ ] 09  Dashboard: Tap "Appointments" tile under Services
+          screenshot shows: Displays the Appointments screen
+[ ] 10  Dashboard: Tap "Queue" tile under Services
+          screenshot shows: Displays the Queue screen
+[ ] 11  Dashboard: Tap "Animal Patients" tile under Services
+          screenshot shows: Displays the Animal Patients screen
+[ ] 12  Dashboard: Tap "Messages" tile under Services
+          screenshot shows: Displays the Messages screen
+[ ] 13  Bottom Navigation Bar: Tap "Home" icon tab
+          screenshot shows: Navigates to Veterinarian Mobile Dashboard
+[ ] 14  Bottom Navigation Bar: Tap "Appointments" icon tab
+          screenshot shows: Navigates to Appointments screen
+[ ] 15  Bottom Navigation Bar: Tap "Queue" icon tab
+          screenshot shows: Navigates to Queue screen
+[ ] 16  Bottom Navigation Bar: Tap "My Schedule" tab
+          screenshot shows: Navigates to My Schedule screen
+[ ] 17  Bottom Navigation Bar: Tap "Animal Patients" tab
+          screenshot shows: Navigates to Animal Patients screen
+[ ] 18  Bottom Navigation Bar: Tap "Messages" tab
+          screenshot shows: Navigates to Messages screen
+[ ] 19  Notifications: Tap the “Notification bell” icon
+          screenshot shows: Displays the notifications
+[ ] 20  Notifications: Tap the "Mark all read" (check icon)
+          screenshot shows: Marks all unread notifications as read and updates badge count
+[ ] 21  Veterinarian Profile: Tap "Edit profile" button
+          screenshot shows: Expands and displays editable personal information fields
+[ ] 22  Veterinarian Profile: Update personal details and tap "Save changes" button
+          screenshot shows: Saves and updates Veterinarian personal information
+[ ] 23  Veterinarian Profile: Tap the camera icon on profile picture
+          screenshot shows: Opens file selection window to select profile picture
+[ ] 24  Veterinarian Profile: Tap “Change password” button
+          screenshot shows: Displays password update fields with criteria validation
+[ ] 25  Veterinarian Profile: Tap "Show/Hide Password" toggle icon
+          screenshot shows: Displays or hides entered new password text
+[ ] 26  Veterinarian Profile: Update password and tap "Update password" button
+          screenshot shows: Sends OTP to veterinarian email to verify password change
+[ ] 27  Veterinarian Profile: Tap "Cancel" button on verification modal
+          screenshot shows: Cancels action and returns to profile view
+[ ] 28  Veterinarian Profile: Tap "Verify Code" button after entering code
+          screenshot shows: Updates password and returns to profile view
+[ ] 29  Veterinarian Profile/Logout: Tap "Logout" button
+          screenshot shows: Displays logout confirmation modal with "Cancel" and "Logout"
+[ ] 30  Logout: Tap "Cancel" button in confirmation dialog
+          screenshot shows: Closes dialog and keeps Veterinarian logged in
+[ ] 31  Logout: Tap "Logout" button in confirmation dialog
+          screenshot shows: Logs out Veterinarian and redirects to Login page
+[ ] 32  Appointments: Tap "Cancel" button
+          screenshot shows: Displays confirmation dialog to cancel or keep the appointment
+[ ] 33  Appointments: Tap "Rebook" button
+          screenshot shows: Displays the Rebook Appointment form modal
+[ ] 34  Appointments: Tap "Confirm Rebook" button
+          screenshot shows: Saves rebooked schedule successfully and moves appointment to top of list
+[ ] 35  Appointments: Tap "Clear" button
+          screenshot shows: Clears appointment list for current day and views full list
+[ ] 36  Appointments: Tap / Scroll "Next" button
+          screenshot shows: Displays next paginated list of full appointments
+[ ] 37  Appointments: Tap / Scroll "Previous" button
+          screenshot shows: Displays previous paginated list of full appointments
+[ ] 38  My Schedule: Tap "Request leave" button
+          screenshot shows: Opens Request Leave form
+[ ] 39  My Schedule: Tap "Cancel" button under Request Leave form
+          screenshot shows: Cancels request leave action
+[ ] 40  My Schedule: Tap "Send for approval" button
+          screenshot shows: Sends request and waits for notification approval by staff
+[ ] 41  My Schedule: Tap "Emergency Leave" button
+          screenshot shows: Opens Emergency Leave form
+[ ] 42  My Schedule: Tap "Cancel" button under Emergency Leave form
+          screenshot shows: Cancels emergency leave action
+[ ] 43  My Schedule: Tap "Apply emergency leave now" button
+          screenshot shows: Immediately applies emergency leave and updates schedule
+[ ] 44  My Schedule: Tap "I'm available again" button
+          screenshot shows: Displays confirmation dialog asking if coming back early
+[ ] 45  My Schedule: Tap "Keep it" button under confirmation dialog
+          screenshot shows: Keeps emergency leave active for logged duration
+[ ] 46  My Schedule: Tap "Yes, I'm available" button under confirmation dialog
+          screenshot shows: Cancels remaining emergency leave hours and restores regular schedule
+[ ] 47  My Schedule: Tap "Withdraw" button for pending review
+          screenshot shows: Displays confirmation dialog to withdraw request
+[ ] 48  My Schedule: Tap "Keep it" button under withdrawal dialog
+          screenshot shows: Retains leave request in pending approval state
+[ ] 49  My Schedule: Tap "Withdraw" button under withdrawal dialog
+          screenshot shows: Withdraws leave request and removes it from pending list
+[ ] 50  Animal Patients: Tap "View Records" button
+          screenshot shows: Displays selected pet's medical records and AI predictive health
+[ ] 51  Animal Patients: Tap "Download" button in Billing section
+          screenshot shows: Previews file to confirm download
+[ ] 52  Animal Patients: Tap "Download" button on previewed billing file
+          screenshot shows: Downloads file to device and saves as PDF
+[ ] 53  Animal Patients: Tap "View" button under prescription record
+          screenshot shows: Previews prescription file prior to printing
+[ ] 54  Animal Patients: Tap "Print" button on previewed prescription
+          screenshot shows: Redirects to system mobile print menu
+[ ] 55  Animal Patients: Tap "Edit" button on pet record
+          screenshot shows: Displays Edit Pet Record form
+[ ] 56  Animal Patients: Update pet info and tap "Update Pet" button
+          screenshot shows: Saves changes and updates selected pet record
+[ ] 57  Animal Patients: Tap camera icon under edit pet record
+          screenshot shows: Opens device file/gallery picker to select pet photo
+[ ] 58  Animal Patients: Tap "Archive" button
+          screenshot shows: Displays confirmation modal to archive or cancel pet record
+[ ] 59  Animal Patients: Tap "No" button on archive modal
+          screenshot shows: Cancels action and returns to Animal Patients list
+[ ] 60  Animal Patients: Tap "Yes, Archive" button on archive modal
+          screenshot shows: Archives pet and removes record from active list
+[ ] 61  Animal Patients: Tap "View Archive" button
+          screenshot shows: Displays list of archived pets
+[ ] 62  Animal Patients: Tap "Restore" icon button on archived pet
+          screenshot shows: Restores pet and returns it to active Animal Patients list
+[ ] 63  Animal Patients: Tap "All species" dropdown
+          screenshot shows: Filters and views available species types
+[ ] 64  Messages: Tap "+" / "Add sign" button
+          screenshot shows: Opens New Conversation dialog modal
+[ ] 65  Messages: Tap "x" button
+          screenshot shows: Closes conversation dialog modal
+[ ] 66  Messages: Tap "Create Conversation" button after selecting recipient
+          screenshot shows: Creates new chat thread with selected recipient
+[ ] 67  Messages: Tap "attachment paperclip" button
+          screenshot shows: Opens file picker option to attach image/file
+[ ] 68  Messages: Enter message and tap "Send" icon button
+          screenshot shows: Sends message and displays it in chat conversation
