@@ -26,7 +26,6 @@ const getActiveTabKey = (routeName) => {
   return undefined;
 };
 
-export const getVetName = (user) => user?.full_name || user?.fullName || user?.name || user?.username || 'Veterinarian';
 // Only the explicit `user` param is the logged-in account. Never fall back to the
 // raw params: on patient screens they describe the pet owner being viewed.
 export const getVetUser = (route) => route?.params?.user || null;
@@ -139,7 +138,7 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
                   </TouchableOpacity>
                 ) : null}
                 {/* No divider line beside the back button, same as Quick Assist. */}
-                <PetOwnerHeaderGreeting caption={caption} name={getVetName(currentUser)} accent={!showBack} />
+                <PetOwnerHeaderGreeting caption={caption} user={currentUser} fallback="Veterinarian" accent={!showBack} />
               </View>
             </Animated.View>
           ) : null}

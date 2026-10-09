@@ -1,5 +1,5 @@
 import { supabase } from "../config/supabaseClient";
-import { validateImageBlob } from "../utils/imageValidation";
+import { readImageForUpload } from "../utils/imageValidation";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -91,19 +91,17 @@ async function uploadPhotoIfNeeded(uri, ownerId) {
   if (!uri || /^https?:\/\//i.test(uri)) return uri || null;
   if (!ownerId) return null;
 
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const validationError = validateImageBlob(blob, uri);
-  if (validationError) throw new Error(validationError);
-  const extMatch = String(uri).match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
-  const ext = extMatch?.[1] || "jpg";
+  const { body, contentType, ext } = await readImageForUpload(uri);
   const path = `${ownerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   const { error } = await supabase.storage
     .from("pet-photos")
-    .upload(path, blob, { upsert: false, contentType: blob.type || `image/${ext}` });
+    .upload(path, body, { upsert: false, contentType });
 
-  if (error) throw new Error(error.message || "Unable to upload pet photo.");
+  if (error) {
+    console.warn("Pet photo upload failed:", error.message);
+    throw new Error("Unable to upload the pet photo. Please try again with a JPG, PNG or WEBP image.");
+  }
   return supabase.storage.from("pet-photos").getPublicUrl(path).data.publicUrl;
 }
 

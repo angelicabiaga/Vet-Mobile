@@ -27,6 +27,28 @@ export function validatePickedImageAsset(asset) {
   return null;
 }
 
+const MIME_BY_EXTENSION = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+
+// Reads a picked image as raw bytes with an explicit image type, ready for
+// supabase.storage.upload. On a phone, uploading the React Native Blob sends
+// it as text/plain and the image-only buckets reject it; bytes + contentType
+// upload correctly on Android, iOS and web. Throws the user-facing message
+// when the file isn't an allowed image.
+export async function readImageForUpload(uri) {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const validationError = validateImageBlob(blob, uri);
+  if (validationError) throw new Error(validationError);
+  const blobType = String(blob.type || '').toLowerCase();
+  const fromExtension = MIME_BY_EXTENSION[extensionFromUri(uri)];
+  const contentType = blobType === 'image/jpg' ? 'image/jpeg'
+    : ALLOWED_IMAGE_MIME_TYPES.includes(blobType) ? blobType
+    : fromExtension || 'image/jpeg';
+  const ext = Object.keys(MIME_BY_EXTENSION).find((key) => key !== 'jpg' && MIME_BY_EXTENSION[key] === contentType) || 'jpg';
+  const body = await new Response(blob).arrayBuffer();
+  return { body, contentType, ext: ext === 'jpeg' ? 'jpg' : ext };
+}
+
 // Backend/service-layer check, run against the fetched blob right before upload
 // so the limit is enforced even if picker metadata was missing or spoofed.
 export function validateImageBlob(blob, uri) {
