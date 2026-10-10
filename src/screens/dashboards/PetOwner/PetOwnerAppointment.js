@@ -173,6 +173,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
 
   // Pet dropdown (same look as the single-pet picker); tapping a pet in the
   // list adds or removes it, so several pets can still share one visit.
+  // Checklist: tick one or more pets for the visit; tap outside to close.
   const changePets = (petIds) => {
     clearFieldError('pets');
     setForm((current) => ({ ...current, petIds }));
@@ -513,6 +514,18 @@ export default function PetOwnerAppointment({ navigation, route }) {
                 placeholderStyle={selectedPets.length ? styles.petPickerValue : undefined}
                 visibleSelectedItem={false}
                 activeColor="#e8f3fb"
+                // About 5 pets visible; longer lists scroll inside the dropdown.
+                maxHeight={290}
+                dropdownPosition="auto"
+                containerStyle={styles.petListContainer}
+                renderItem={(item, selected) => (
+                  <View style={styles.petCheckRow}>
+                    <View style={[styles.checkbox, selected && styles.checkboxChecked]}>
+                      {selected ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                    </View>
+                    <Text style={styles.petOptionText}>{item.label}</Text>
+                  </View>
+                )}
                 onChange={changePets}
               />
             )}
@@ -799,6 +812,8 @@ const styles = StyleSheet.create({
   petOptionChecked: { borderColor: '#2c6ba3', backgroundColor: '#edf6fb' },
   petPickerValue: { color: '#294b5d', fontSize: 16 },
   petOptionText: { flex: 1, color: '#294b5d', fontSize: 14, fontWeight: '700' },
+  petListContainer: { borderRadius: 14, borderWidth: 1, borderColor: '#cee2e9', overflow: 'hidden', marginTop: 4 },
+  petCheckRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: '#9fc3d6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
   checkboxChecked: { backgroundColor: '#2c6ba3', borderColor: '#2c6ba3' },
   checkboxMark: { color: '#ffffff', fontSize: 14, fontWeight: '900', lineHeight: 16 },

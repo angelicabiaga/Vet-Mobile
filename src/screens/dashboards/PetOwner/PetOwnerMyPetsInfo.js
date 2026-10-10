@@ -3,7 +3,8 @@ import { daysUntil } from '../../../utils/predictiveHealthParsing';
 const PET_PHOTO_OPTIONS = {
   pawBlue: require('../../assets/paw.png'),
   pawWhite: require('../../assets/paw1.png'),
-  petBadge: require('../../assets/Pets_Icon.png'),
+  // Placeholder for pets without a photo: a solid paw (clearer than the outline icon).
+  petBadge: require('../../assets/pet-paw.png'),
 };
 
 const MONTHS = [
