@@ -915,6 +915,11 @@ export const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  optionalMark: {
+    color: '#87a0b1',
+    fontWeight: '600',
+  },
+
   readOnlyField: {
     minHeight: 50,
     borderRadius: 16,
@@ -1585,7 +1590,7 @@ export const styles = StyleSheet.create({
   patientCardFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     marginTop: 14,
   },
   viewProfileChip: {
@@ -1623,6 +1628,121 @@ export const styles = StyleSheet.create({
   statusBadgeWarnText: { color: '#a5680b' },
   statusBadgeRisk: { backgroundColor: '#fbe6e4' },
   statusBadgeRiskText: { color: '#c0392b' },
+  statusBadgeArchived: { backgroundColor: '#eef1f4' },
+  statusBadgeArchivedText: { color: '#64748b' },
+
+  // --- Archive: list toggle, restore chip, edit-screen button ---
+  archiveFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    gap: 10,
+  },
+  speciesFilterShell: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+  },
+  speciesFilterDropdown: {
+    minHeight: 42,
+  },
+  resultSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 10,
+  },
+  clearFiltersText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2563eb',
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  pageButton: {
+    minWidth: 38,
+    height: 38,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d7edf9',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageButtonActive: {
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
+  },
+  pageButtonDisabled: { opacity: 0.4 },
+  pageButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#2c6ba3',
+  },
+  pageButtonTextActive: { color: '#ffffff' },
+  archiveFilterSummary: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6a8aa0',
+  },
+  archiveToggle: {
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d7edf9',
+    backgroundColor: '#f6fbff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archiveToggleActive: {
+    backgroundColor: '#2c6ba3',
+    borderColor: '#2c6ba3',
+  },
+  archiveToggleText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2c6ba3',
+  },
+  archiveToggleTextActive: { color: '#ffffff' },
+  restoreChip: {
+    minHeight: 44,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: '#e5f4ea',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restoreChipText: {
+    fontSize: 12.5,
+    fontWeight: '900',
+    color: '#2f8f5b',
+  },
+  archivePetButton: {
+    minHeight: 50,
+    marginTop: 18,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#f3c4c0',
+    backgroundColor: '#fdf2f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archivePetButtonText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#c0392b',
+  },
 
   // --- Animal Patient Profile header ---
   patientIdText: {

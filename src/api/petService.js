@@ -140,7 +140,7 @@ export async function saveOwnerPet(pet, ownerId) {
     microchip_number: String(pet?.microchipNumber || "").trim() || null,
     allergies: String(pet?.allergies || "").trim() || null,
     existing_conditions: String(pet?.existingConditions || "").trim() || null,
-    notes: String(pet?.notes || pet?.specialMarkings || "").trim() || null,
+    notes: String(pet?.notes ?? pet?.specialMarkings ?? "").trim() || null,
     photo_url: photoUrl,
   };
 
@@ -169,6 +169,25 @@ export async function saveOwnerPet(pet, ownerId) {
     `${saved.name || "Pet"} profile ${pet?.id && !String(pet.id).startsWith("pet-") ? "updated" : "created"} from the mobile app.`
   );
   return saved;
+}
+
+// Archive (or restore, with archived=false) one of the owner's pets -- same
+// is_archived / archived_at columns the web app's archivePet sets.
+export async function archiveOwnerPet(petId, ownerId, archived = true) {
+  if (!petId || !ownerId) throw new Error("Your login session is incomplete.");
+  const { data, error } = await supabase
+    .from("pets")
+    .update({ is_archived: archived, archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", petId)
+    .eq("owner_id", ownerId)
+    .select("id,pet_name")
+    .maybeSingle();
+  if (error || !data) throw new Error("Unable to update archive status.");
+  await writePetActivity(
+    ownerId,
+    archived ? "Pet profile archived" : "Pet profile restored",
+    `${data.pet_name || "Pet"} profile ${archived ? "archived" : "restored"} from the mobile app.`
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -22,10 +22,8 @@ import {
   addTenMinutes,
   createAppointment,
   formatTime,
-  getAvailableSlots,
-  isScheduleOpen,
   getPetsByOwner,
-  getVeterinarians,
+  getVeterinarianAvailability,
   rescheduleAppointment,
   todayLocal,
 } from '../../../api/mobileAppointmentService';
@@ -48,7 +46,11 @@ export default function PetOwnerAppointment({ navigation, route }) {
 
   const [pets, setPets] = useState([]);
   const [vets, setVets] = useState([]);
+  // slots: every time at least one vet is free; slotMap: each vet's free times.
   const [slots, setSlots] = useState([]);
+  const [slotMap, setSlotMap] = useState({});
+  // Bumped after a save so the just-taken slot drops out of the lists.
+  const [availabilityVersion, setAvailabilityVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [slotLoading, setSlotLoading] = useState(false);
   // The clinic hasn't released this vet's schedule for the chosen date yet.
@@ -126,6 +128,10 @@ export default function PetOwnerAppointment({ navigation, route }) {
 
   const selectedPet = pets.find((item) => String(item.id) === String(form.petId));
   const selectedVet = vets.find((item) => String(item.id) === String(form.veterinarianId));
+  const eligibleVets = useMemo(
+    () => vets.filter((vet) => (slotMap[vet.id] || []).includes(form.startTime)),
+    [vets, slotMap, form.startTime],
+  );
 
   const loadData = useCallback(async () => {
     if (!ownerId) {
@@ -135,12 +141,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
     }
     try {
       setLoading(true);
-      const [petRows, vetRows] = await Promise.all([
-        getPetsByOwner(ownerId),
-        getVeterinarians(),
-      ]);
-      setPets(petRows);
-      setVets(vetRows);
+      setPets(await getPetsByOwner(ownerId));
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -161,29 +162,64 @@ export default function PetOwnerAppointment({ navigation, route }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route?.params?.rescheduleAppointment]);
 
+  // Back from "Add New Pet" with the pet that was just created -- select it
+  // for this booking (the focus reload above brings it into the pet list).
+  useEffect(() => {
+    const newPetId = route?.params?.preselectedPetId;
+    if (!newPetId) return;
+    setForm((current) => ({ ...current, petId: newPetId }));
+    setMessage('New pet added successfully and selected for this booking.');
+    navigation.setParams({ preselectedPetId: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route?.params?.preselectedPetId]);
+
+  const addNewPet = () => {
+    navigation.navigate('PetOwnerMyPetsEdit', {
+      user,
+      returnToRoute: 'PetOwnerAppointment',
+      returnToParams: {},
+    });
+  };
+
+  // Same order as the web booking form: date -> available time (any vet) ->
+  // veterinarian, where only the vets free at the chosen time are offered.
   useEffect(() => {
     let active = true;
-    async function loadSlots() {
-      setForm((current) => ({ ...current, startTime: '' }));
+    async function loadAvailability() {
       setScheduleClosed(false);
-      if (!form.veterinarianId || !form.appointmentDate) {
+      if (!form.appointmentDate) {
+        setVets([]);
+        setSlotMap({});
         setSlots([]);
         return;
       }
       try {
         setSlotLoading(true);
-        const rows = await getAvailableSlots(form.veterinarianId, form.appointmentDate, editing?.id || null);
-        if (active) setSlots(rows);
-        if (active && !rows.length) setScheduleClosed(!(await isScheduleOpen(form.veterinarianId, form.appointmentDate)));
+        const result = await getVeterinarianAvailability(form.appointmentDate, editing?.id || null);
+        if (!active) return;
+        setVets(result.vets);
+        setSlotMap(result.slotMap);
+        setSlots(result.times);
+        setScheduleClosed(result.unscheduled);
+        // Keep a time / vet that is still free (e.g. the slot being rescheduled).
+        setForm((current) => {
+          const startTime = result.times.includes(current.startTime) ? current.startTime : '';
+          const veterinarianId = startTime && (result.slotMap[current.veterinarianId] || []).includes(startTime)
+            ? current.veterinarianId
+            : '';
+          return startTime === current.startTime && veterinarianId === current.veterinarianId
+            ? current
+            : { ...current, startTime, veterinarianId };
+        });
       } catch (error) {
         if (active) setMessage(error.message);
       } finally {
         if (active) setSlotLoading(false);
       }
     }
-    loadSlots();
+    loadAvailability();
     return () => { active = false; };
-  }, [form.veterinarianId, form.appointmentDate, editing?.id]);
+  }, [form.appointmentDate, editing?.id, availabilityVersion]);
 
   const resetForm = () => {
     setEditing(null);
@@ -208,6 +244,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
       setMessage(error.message);
     } finally {
       setSaving(false);
+      setAvailabilityVersion((value) => value + 1);
     }
   };
 
@@ -361,7 +398,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
           <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.heroCard}>
             <Text style={styles.eyebrow}>GENERAL CONSULTATION</Text>
             <Text style={styles.title}>{editing ? 'Reschedule Appointment' : 'Book an Appointment'}</Text>
-            <Text style={styles.subtitle}>Choose your registered pet, veterinarian, date, and an available 10-minute slot. Booking hours are 9:00 AM–7:00 PM.</Text>
+            <Text style={styles.subtitle}>Choose your registered pet, a date and an available 10-minute slot, then a veterinarian who is free at that time. Booking hours are 9:00 AM–7:00 PM.</Text>
           </LinearGradient>
 
           <View style={styles.card}>
@@ -373,22 +410,22 @@ export default function PetOwnerAppointment({ navigation, route }) {
               placeholder={pets.length ? 'Select your registered pet' : 'No registered pets found'}
               onChange={(item) => setForm((current) => ({ ...current, petId: item.value }))}
             />
-
-            <FieldLabel text="Veterinarian" />
-            <Dropdown
-              style={styles.dropdown}
-              data={vets.map((vet) => ({ value: vet.id, label: vet.full_name }))}
-              labelField="label" valueField="value" value={form.veterinarianId}
-              placeholder="Select veterinarian"
-              onChange={(item) => setForm((current) => ({ ...current, veterinarianId: item.value }))}
-            />
+            {!editing ? (
+              <TouchableOpacity style={styles.addPetButton} onPress={addNewPet} activeOpacity={0.85} accessibilityRole="button">
+                <Text style={styles.addPetButtonText}>+ Add New Pet</Text>
+              </TouchableOpacity>
+            ) : null}
 
             <FieldLabel text="Appointment Date" />
             <CalendarDatePicker
               value={form.appointmentDate}
               minDate={dateOptions[0]?.value}
               maxDate={dateOptions[dateOptions.length - 1]?.value}
-              onChange={(value) => setForm((current) => ({ ...current, appointmentDate: value }))}
+              onChange={(value) => setForm((current) => (
+                value === current.appointmentDate
+                  ? current
+                  : { ...current, appointmentDate: value, startTime: '', veterinarianId: '' }
+              ))}
             />
 
             <FieldLabel text="Available Time" />
@@ -396,12 +433,27 @@ export default function PetOwnerAppointment({ navigation, route }) {
               options={slots.map((slot) => ({ value: slot, label: formatTime(slot) }))}
               value={form.startTime}
               placeholder={slotLoading ? 'Loading available times...' : slots.length ? 'Select time' : scheduleClosed ? 'Schedule not open yet' : 'No available slots'}
-              disabled={slotLoading || !form.veterinarianId || !slots.length}
-              onChange={(value) => setForm((current) => ({ ...current, startTime: value }))}
+              disabled={slotLoading || !slots.length}
+              onChange={(value) => setForm((current) => ({
+                ...current,
+                startTime: value,
+                // Keep the chosen vet only if they're also free at the new time.
+                veterinarianId: (slotMap[current.veterinarianId] || []).includes(value) ? current.veterinarianId : '',
+              }))}
             />
             {!slotLoading && scheduleClosed ? (
-              <Text style={styles.scheduleNote}>The clinic hasn't released this veterinarian's schedule for this date yet. Please choose an earlier date.</Text>
+              <Text style={styles.scheduleNote}>The clinic hasn't released the veterinarians' schedule for this date yet. Please choose an earlier date.</Text>
             ) : null}
+
+            <FieldLabel text="Veterinarian" />
+            <Dropdown
+              style={[styles.dropdown, (!form.startTime || !eligibleVets.length) && styles.dropdownDisabled]}
+              data={eligibleVets.map((vet) => ({ value: vet.id, label: vet.full_name }))}
+              labelField="label" valueField="value" value={form.veterinarianId}
+              disable={!form.startTime || !eligibleVets.length}
+              placeholder={!form.startTime ? 'Select a time first' : eligibleVets.length ? 'Select veterinarian' : 'No veterinarian available at this time'}
+              onChange={(item) => setForm((current) => ({ ...current, veterinarianId: item.value }))}
+            />
 
             <FieldLabel text="Visit Reason" optional />
             <TextInput style={styles.input} value={form.visitReason} onChangeText={(value) => setForm((current) => ({ ...current, visitReason: value }))} placeholder="Example: Routine checkup" maxLength={200} />
@@ -611,6 +663,9 @@ const styles = StyleSheet.create({
   label: { color: '#123a5e', fontSize: 14, fontWeight: '800', marginBottom: 7, marginTop: 12 },
   optional: { color: '#78909b', fontWeight: '600' },
   dropdown: { minHeight: 52, borderWidth: 1, borderColor: '#cee2e9', borderRadius: 16, paddingHorizontal: 14, backgroundColor: '#fbfdfe' },
+  dropdownDisabled: { backgroundColor: '#f1f5f7', opacity: 0.75 },
+  addPetButton: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: '#c6e5ed', backgroundColor: '#edf6f8' },
+  addPetButtonText: { color: '#2c6ba3', fontSize: 13, fontWeight: '900' },
   input: { minHeight: 52, borderWidth: 1, borderColor: '#cee2e9', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11, color: '#294b5d', backgroundColor: '#fbfdfe', fontWeight: '600', fontSize: 14 },
   notes: { minHeight: 96, textAlignVertical: 'top' },
   sectionTitle: { color: '#123a5e', fontSize: 20, fontWeight: '900', marginBottom: 5 },

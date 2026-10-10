@@ -134,7 +134,6 @@ export default function VetPatientProfile({ navigation, route }) {
                 </View>
               </View>
               <Text style={styles.patientBreed}>{[patient.species, patient.breed].filter(Boolean).join(' • ') || 'Species not recorded'}</Text>
-              <Text style={styles.patientId}>Patient ID: {uiPet.referenceCode}</Text>
             </View>
           </View>
 

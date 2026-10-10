@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
   Image,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -74,6 +75,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
     activityLogs: [],
   });
   const [checkedInQueue, setCheckedInQueue] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const petProfilesCount = dashboardActivity.pets.length;
   const activeAppointments = dashboardActivity.appointments.filter((item) => !["Completed", "Cancelled"].includes(item.status));
@@ -149,6 +151,16 @@ const PetOwnerDashboard = ({ navigation, route }) => {
       console.warn("Unable to sync Pet Owner dashboard:", error);
     }
   }, [currentUser?.id]);
+
+  // Pull-to-refresh on the home page.
+  const pullToRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshDashboard();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshDashboard]);
 
   useFocusEffect(
     useCallback(() => {
@@ -457,6 +469,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={pullToRefresh} colors={['#3a7ab8']} tintColor="#3a7ab8" />}
         >
           {/* Queue card appears only once Staff has checked the visit in and assigned a number. */}
           {queueNumber ? (

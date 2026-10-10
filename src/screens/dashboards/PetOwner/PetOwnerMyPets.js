@@ -1,9 +1,11 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Dropdown } from 'react-native-element-dropdown';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Easing,
   Image,
@@ -17,10 +19,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from '../../styles/PetOwnerMyPetsDesign';
 import { computePatientStatus, formatAge, getPetPhotoSource } from './PetOwnerMyPetsInfo';
-import { getOwnerPets, subscribeToOwnerPets } from '../../../api/petService';
+import { archiveOwnerPet, getOwnerPets, subscribeToOwnerPets } from '../../../api/petService';
 import { getMobileMedicalRecords, subscribeToMedicalRecords, formatMedicalDate } from '../../../api/medicalRecordService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
+
+// Same page size as the web Animal Patients list.
+const PAGE_SIZE = 8;
 
 const PetOwnerMyPets = ({ navigation, route }) => {
   const loggedInUser = route?.params?.user;
@@ -40,13 +45,17 @@ const PetOwnerMyPets = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+  const [speciesFilter, setSpeciesFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   const loadData = useCallback(async () => {
     if (!loggedInUser?.id) return;
     try {
       const [ownerPets, ownerRecords] = await Promise.all([
-        getOwnerPets(loggedInUser.id),
+        getOwnerPets(loggedInUser.id, { includeArchived: true }),
         getMobileMedicalRecords({ ...loggedInUser, role: loggedInUser?.role || 'pet_owner' }),
       ]);
       setPets(ownerPets);
@@ -94,12 +103,60 @@ const PetOwnerMyPets = ({ navigation, route }) => {
     };
   });
 
-  const filteredPatients = patients.filter(({ pet }) => {
+  // Like the web's View Archived toggle: show either active or archived pets.
+  const scopedPatients = patients.filter(({ pet }) => pet.isArchived === showArchived);
+
+  // Species the owner's pets actually use -- mobile and web name species
+  // differently ("Canine (Dog)" vs "Dog"), so a fixed list would miss some.
+  const speciesFilterOptions = useMemo(() => {
+    const species = [...new Set(pets.map((pet) => String(pet.species || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+    return [{ label: 'All species', value: 'all' }, ...species.map((value) => ({ label: value, value }))];
+  }, [pets]);
+
+  const filteredPatients = scopedPatients.filter(({ pet }) => {
+    if (speciesFilter !== 'all' && String(pet.species || '').trim().toLowerCase() !== speciesFilter.toLowerCase()) {
+      return false;
+    }
     if (!normalizedSearchQuery) return true;
-    return [pet.name, pet.breed, pet.species, pet.referenceCode].some((value) =>
+    return [pet.name, pet.breed, pet.species].some((value) =>
       value?.toLowerCase().includes(normalizedSearchQuery)
     );
   });
+
+  // Display: 8 pets per page with page buttons, like the web list.
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / PAGE_SIZE));
+  const page = Math.min(currentPage, totalPages);
+  const pagedPatients = filteredPatients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const hasActiveFilters = Boolean(searchQuery.trim()) || speciesFilter !== 'all';
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, speciesFilter, showArchived]);
+
+  const goToPage = (nextPage) => {
+    setCurrentPage(nextPage);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSpeciesFilter('all');
+  };
+
+  const restorePet = async (pet) => {
+    if (restoringId) return;
+    try {
+      setRestoringId(pet.id);
+      await archiveOwnerPet(pet.id, loggedInUser?.id, false);
+      await loadData();
+      Alert.alert('Animal Patients', 'Pet record restored successfully.');
+    } catch (e) {
+      Alert.alert('Animal Patients', e?.message || 'Unable to update the pet archive status.');
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const animateLowerHeader = (toValue) => {
     const shouldBeVisible = toValue === 1;
@@ -226,6 +283,53 @@ const PetOwnerMyPets = ({ navigation, route }) => {
               />
             </View>
 
+            <View style={styles.archiveFilterRow}>
+              <View style={[styles.dropdownShell, styles.speciesFilterShell]}>
+                <Dropdown
+                  style={styles.speciesFilterDropdown}
+                  containerStyle={styles.searchableDropdownContainer}
+                  placeholderStyle={styles.dropdownPlaceholder}
+                  selectedTextStyle={styles.dropdownSelectedText}
+                  itemTextStyle={styles.dropdownItemText}
+                  iconStyle={styles.dropdownIcon}
+                  activeColor="#edf7fd"
+                  data={speciesFilterOptions}
+                  search={speciesFilterOptions.length > 6}
+                  maxHeight={280}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="All species"
+                  searchPlaceholder="Search species..."
+                  value={speciesFilter}
+                  onChange={(item) => setSpeciesFilter(item.value)}
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.archiveToggle, showArchived && styles.archiveToggleActive]}
+                onPress={() => setShowArchived((current) => !current)}
+                activeOpacity={0.9}
+                accessibilityRole="button"
+                accessibilityState={{ selected: showArchived }}
+              >
+                <Text style={[styles.archiveToggleText, showArchived && styles.archiveToggleTextActive]}>View Archived</Text>
+              </TouchableOpacity>
+            </View>
+
+            {!loading && !error ? (
+              <View style={styles.resultSummaryRow}>
+                <Text style={styles.archiveFilterSummary}>
+                  {filteredPatients.length === 0
+                    ? `Showing 0 of ${scopedPatients.length} ${showArchived ? 'archived' : 'active'} pets`
+                    : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filteredPatients.length)} of ${filteredPatients.length} pets`}
+                </Text>
+                {hasActiveFilters ? (
+                  <TouchableOpacity onPress={clearFilters} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.clearFiltersText}>Clear filters</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
+
             {loading ? (
               <View style={[styles.searchEmptyState, { alignItems: 'center' }]}>
                 <ActivityIndicator color="#2c6ba3" />
@@ -247,21 +351,24 @@ const PetOwnerMyPets = ({ navigation, route }) => {
               </View>
             ) : null}
 
-            {!loading && !error && filteredPatients.length
-              ? filteredPatients.map(({ pet, visitCount, latestDate, status }) => {
+            {!loading && !error && pagedPatients.length
+              ? pagedPatients.map(({ pet, visitCount, latestDate, status }) => {
                   const petPhoto = getPetPhotoSource(pet);
                   const statusStyleKey = status.key === 'good' ? 'statusBadgeGood' : status.key === 'warn' ? 'statusBadgeWarn' : 'statusBadgeNeutral';
                   const statusTextStyleKey = status.key === 'good' ? 'statusBadgeGoodText' : status.key === 'warn' ? 'statusBadgeWarnText' : 'statusBadgeNeutralText';
+                  // Archived pets can't be opened or edited until restored (same as the web).
+                  const CardComponent = pet.isArchived ? View : TouchableOpacity;
+                  const cardProps = pet.isArchived
+                    ? {}
+                    : {
+                        onPress: () => openPatient(pet.id),
+                        activeOpacity: 0.9,
+                        accessibilityRole: 'button',
+                        accessibilityLabel: `Open ${pet.name || 'pet'}'s profile`,
+                      };
 
                   return (
-                    <TouchableOpacity
-                      key={pet.id}
-                      style={styles.patientCard}
-                      onPress={() => openPatient(pet.id)}
-                      activeOpacity={0.9}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Open ${pet.name || 'pet'}'s profile`}
-                    >
+                    <CardComponent key={pet.id} style={styles.patientCard} {...cardProps}>
                       <View style={styles.patientCardTopRow}>
                         {petPhoto.source ? (
                           <Image source={petPhoto.source} style={styles.patientPhoto} resizeMode="cover" />
@@ -274,9 +381,15 @@ const PetOwnerMyPets = ({ navigation, route }) => {
                         <View style={styles.patientInfo}>
                           <View style={styles.patientTopLine}>
                             <Text style={styles.patientName}>{pet.name || 'Unnamed Pet'}</Text>
-                            <View style={[styles.statusBadge, styles[statusStyleKey]]}>
-                              <Text style={[styles.statusBadgeText, styles[statusTextStyleKey]]}>{status.label}</Text>
-                            </View>
+                            {pet.isArchived ? (
+                              <View style={[styles.statusBadge, styles.statusBadgeArchived]}>
+                                <Text style={[styles.statusBadgeText, styles.statusBadgeArchivedText]}>Archived</Text>
+                              </View>
+                            ) : (
+                              <View style={[styles.statusBadge, styles[statusStyleKey]]}>
+                                <Text style={[styles.statusBadgeText, styles[statusTextStyleKey]]}>{status.label}</Text>
+                              </View>
+                            )}
                           </View>
                           <Text style={styles.patientSpeciesBreed}>
                             {[pet.species, pet.breed].filter(Boolean).join(' • ') || 'Species not recorded'}
@@ -304,24 +417,70 @@ const PetOwnerMyPets = ({ navigation, route }) => {
                       </View>
 
                       <View style={styles.patientCardFooterRow}>
-                        <Text style={styles.referenceCodeText}>{pet.referenceCode}</Text>
-                        <View style={styles.viewProfileChip}>
-                          <Text style={styles.viewProfileChipText}>View Profile</Text>
-                        </View>
+                        {pet.isArchived ? (
+                          <TouchableOpacity
+                            style={[styles.restoreChip, restoringId === pet.id && { opacity: 0.6 }]}
+                            onPress={() => restorePet(pet)}
+                            disabled={Boolean(restoringId)}
+                            activeOpacity={0.9}
+                            accessibilityLabel={`Restore ${pet.name || 'pet'}`}
+                          >
+                            <Text style={styles.restoreChipText}>{restoringId === pet.id ? 'Restoring...' : 'Restore'}</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <View style={styles.viewProfileChip}>
+                            <Text style={styles.viewProfileChipText}>View Profile</Text>
+                          </View>
+                        )}
                       </View>
-                    </TouchableOpacity>
+                    </CardComponent>
                   );
                 })
               : null}
 
             {!loading && !error && !filteredPatients.length ? (
               <View style={styles.searchEmptyState}>
-                <Text style={styles.searchEmptyTitle}>{pets.length ? 'No patients found' : 'No animal patients yet'}</Text>
-                <Text style={styles.searchEmptyText}>
-                  {pets.length
-                    ? 'Try another name, breed, species, or reference code.'
-                    : 'Add your first pet profile to start tracking their visits and medical history.'}
+                <Text style={styles.searchEmptyTitle}>
+                  {scopedPatients.length ? 'No patients found' : showArchived ? 'No archived pets' : 'No animal patients yet'}
                 </Text>
+                <Text style={styles.searchEmptyText}>
+                  {scopedPatients.length
+                    ? 'Try changing the search text or species filter.'
+                    : showArchived
+                      ? 'Pets you archive from Edit Pet Profile will appear here.'
+                      : 'Add your first pet profile to start tracking their visits and medical history.'}
+                </Text>
+              </View>
+            ) : null}
+
+            {!loading && !error && totalPages > 1 ? (
+              <View style={styles.paginationRow}>
+                <TouchableOpacity
+                  style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}
+                  onPress={() => goToPage(page - 1)}
+                  disabled={page === 1}
+                  accessibilityLabel="Previous page"
+                >
+                  <Text style={styles.pageButtonText}>‹</Text>
+                </TouchableOpacity>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <TouchableOpacity
+                    key={pageNumber}
+                    style={[styles.pageButton, pageNumber === page && styles.pageButtonActive]}
+                    onPress={() => goToPage(pageNumber)}
+                    accessibilityLabel={`Page ${pageNumber}`}
+                  >
+                    <Text style={[styles.pageButtonText, pageNumber === page && styles.pageButtonTextActive]}>{pageNumber}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={[styles.pageButton, page === totalPages && styles.pageButtonDisabled]}
+                  onPress={() => goToPage(page + 1)}
+                  disabled={page === totalPages}
+                  accessibilityLabel="Next page"
+                >
+                  <Text style={styles.pageButtonText}>›</Text>
+                </TouchableOpacity>
               </View>
             ) : null}
 

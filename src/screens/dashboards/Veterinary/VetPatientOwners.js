@@ -82,8 +82,7 @@ const VetPatientOwners = ({ navigation, route }) => {
   const query = search.trim().toLowerCase();
   const visiblePatients = patients.filter((pet) => {
     if (!query) return true;
-    const uiPet = toUiPet(pet);
-    return [pet.pet_name, ownerNameOf(pet), uiPet.referenceCode, pet.id].some((value) =>
+    return [pet.pet_name, ownerNameOf(pet)].some((value) =>
       String(value || '').toLowerCase().includes(query)
     );
   });
@@ -110,7 +109,7 @@ const VetPatientOwners = ({ navigation, route }) => {
         <View style={styles.searchCard}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search pet name, owner name, or patient ID"
+            placeholder="Search pet name or owner name"
             placeholderTextColor="#8aa2b4"
             value={search}
             onChangeText={setSearch}
@@ -167,7 +166,6 @@ const VetPatientOwners = ({ navigation, route }) => {
                     <Text style={styles.patientBreed} numberOfLines={1}>
                       {[pet.species, pet.breed].filter(Boolean).join(' • ') || 'Species not recorded'}
                     </Text>
-                    <Text style={styles.patientIdText}>Patient ID: {uiPet.referenceCode}</Text>
                   </View>
                 </View>
 

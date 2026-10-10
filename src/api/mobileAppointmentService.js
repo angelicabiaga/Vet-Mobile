@@ -166,6 +166,25 @@ export async function isScheduleOpen(veterinarianId, appointmentDate) {
   return (day || []).length > 0 || (adjusted || []).length > 0;
 }
 
+// Same as the web's getVeterinarianAvailability: every active vet's free
+// slots on the date, plus the combined list of times at least one vet has.
+export async function getVeterinarianAvailability(appointmentDate, excludeAppointmentId = null) {
+  const vets = await getVeterinarians();
+  const perVet = await Promise.all(vets.map((vet) => getAvailableSlots(vet.id, appointmentDate, excludeAppointmentId)));
+  const slotMap = {};
+  const timeSet = new Set();
+  vets.forEach((vet, index) => {
+    slotMap[vet.id] = perVet[index];
+    perVet[index].forEach((time) => timeSet.add(time));
+  });
+  let unscheduled = false;
+  if (!timeSet.size && vets.length) {
+    const open = await Promise.all(vets.map((vet) => isScheduleOpen(vet.id, appointmentDate)));
+    unscheduled = !open.some(Boolean);
+  }
+  return { vets, slotMap, times: Array.from(timeSet).sort(), unscheduled };
+}
+
 // Read-only view of a veterinarian's own weekly availability, for the
 // Schedule nav item. Reuses the exact table getAvailableSlots already reads
 // when building the pet-owner booking calendar -- no new schema.

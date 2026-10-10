@@ -320,7 +320,6 @@ const VetPatients = ({ navigation, route }) => {
                       {[patient.species, patient.breed].filter(Boolean).join(' • ') ||
                         'Species not recorded'}
                     </Text>
-                    <Text style={styles.patientIdText}>{uiPet.referenceCode}</Text>
                   </View>
                 </View>
 

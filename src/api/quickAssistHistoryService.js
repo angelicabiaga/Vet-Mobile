@@ -60,10 +60,20 @@ export async function appendQuickAssistHistory(userId, message) {
       text: String(message.text),
       time: String(message.time || ""),
       createdAt: message.createdAt || new Date().toISOString(),
+      // Assistant replies keep the urgency notice and suggested-action button.
+      ...(message.urgency ? { urgency: String(message.urgency) } : {}),
+      ...(message.suggestedAction ? { suggestedAction: String(message.suggestedAction) } : {}),
     })
   );
 
   if (!currentIds.includes(id)) {
     await writeIndex(userId, [...currentIds, id]);
   }
+}
+
+// "Clear conversation": removes every saved message for this user.
+export async function clearQuickAssistHistory(userId) {
+  const ids = await readIndex(userId);
+  await Promise.all(ids.map((id) => SecureStore.deleteItemAsync(messageKey(userId, id)).catch(() => {})));
+  await SecureStore.deleteItemAsync(indexKey(userId));
 }

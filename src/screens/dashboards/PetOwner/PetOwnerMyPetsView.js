@@ -217,7 +217,6 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
                   </View>
                 </View>
                 <Text style={styles.profileBreed}>{pet.breed || 'No breed yet'}</Text>
-                <Text style={styles.patientIdText}>Patient ID: {pet.referenceCode}</Text>
               </View>
             </View>
 

@@ -30,7 +30,7 @@ import {
   getFormattedAgeFromBirthday,
   getPetPhotoSource,
  } from './PetOwnerMyPetsInfo';
-import { getOwnerPet, saveOwnerPet } from '../../../api/petService';
+import { archiveOwnerPet, getOwnerPet, saveOwnerPet, validatePatientDetails } from '../../../api/petService';
 import { validatePickedImageAsset } from '../../../utils/imageValidation';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
@@ -154,6 +154,13 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     <Text style={styles.formLabel}>
       {label}
       {showRequiredMark ? <Text style={styles.requiredMark}> *</Text> : null}
+    </Text>
+  );
+
+  const renderOptionalLabel = (label) => (
+    <Text style={styles.formLabel}>
+      {label}
+      <Text style={styles.optionalMark}> (Optional)</Text>
     </Text>
   );
 
@@ -399,6 +406,14 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
       return;
     }
 
+    // Same rules as the web form and the vet's patient editor for the optional fields.
+    const { weight, microchipNumber, allergies, existingConditions, notes } = validatePatientDetails(draftPet);
+    const fieldError = weight || microchipNumber || allergies || existingConditions || notes;
+    if (fieldError) {
+      Alert.alert('Check pet details', fieldError);
+      return;
+    }
+
     setShowDoneConfirm(true);
   };
 
@@ -421,6 +436,34 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     }
 
     navigation.navigate('PetOwnerMyPets', { user: loggedInUser });
+  };
+
+  const [archiving, setArchiving] = useState(false);
+
+  const archivePet = async () => {
+    try {
+      setArchiving(true);
+      await archiveOwnerPet(petId, loggedInUser?.id, true);
+      navigation.navigate('PetOwnerMyPets', { user: loggedInUser });
+      Alert.alert('Animal Patients', 'Pet record archived successfully.');
+    } catch (error) {
+      Alert.alert('Animal Patients', error.message || 'Unable to update the pet archive status.');
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  // Same confirmation the web app shows before archiving.
+  const handleArchivePress = () => {
+    if (archiving) return;
+    Alert.alert(
+      'Archive this pet?',
+      `${draftPet.name || 'This pet'}'s record will be archived and hidden from the active list. You can restore it anytime from View Archived.`,
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes, Archive', style: 'destructive', onPress: archivePet },
+      ],
+    );
   };
 
   const handleSavePet = async () => {
@@ -596,10 +639,6 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
             </View>
 
             <View style={styles.formCard}>
-              <Text style={styles.formLabel}>Pet Reference Code</Text>
-              <View style={styles.readOnlyField}>
-                <Text style={styles.readOnlyFieldText}>{draftPet.referenceCode}</Text>
-              </View>
 
               {renderFormLabel('Name', !draftPet.name?.trim())}
               <TextInput
@@ -706,7 +745,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                 </View>
               </View>
 
-              <Text style={styles.formLabel}>Weight (kg)</Text>
+              {renderOptionalLabel('Weight (kg)')}
               <TextInput
                 value={draftPet.weight}
                 onChangeText={(value) => updateDraftPetField('weight', value.replace(/[^0-9.]/g, ''))}
@@ -717,26 +756,75 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                 maxLength={6}
               />
 
-              <Text style={styles.formLabel}>Color</Text>
+              {renderOptionalLabel('Color')}
               <TextInput
                 value={draftPet.color}
                 onChangeText={(value) => updateDraftPetField('color', value)}
                 style={styles.inputField}
                 placeholder="Enter pet color"
                 placeholderTextColor="#87a0b1"
+                maxLength={40}
               />
 
-              <Text style={styles.formLabel}>Special Markings</Text>
+              {renderOptionalLabel('Microchip Number')}
               <TextInput
-                value={draftPet.specialMarkings}
-                onChangeText={(value) => updateDraftPetField('specialMarkings', value)}
+                value={draftPet.microchipNumber}
+                onChangeText={(value) => updateDraftPetField('microchipNumber', value.replace(/[^0-9]/g, ''))}
+                style={styles.inputField}
+                placeholder="Enter microchip number (9 to 15 digits)"
+                placeholderTextColor="#87a0b1"
+                keyboardType="number-pad"
+                maxLength={15}
+              />
+
+              {renderOptionalLabel('Allergies')}
+              <TextInput
+                value={draftPet.allergies}
+                onChangeText={(value) => updateDraftPetField('allergies', value)}
                 style={styles.textAreaField}
-                placeholder="Enter spots, scars, patterns, or unique markings"
+                placeholder="Enter known allergies or write none"
                 placeholderTextColor="#87a0b1"
                 multiline
                 textAlignVertical="top"
+                maxLength={500}
+              />
+
+              {renderOptionalLabel('Existing Conditions')}
+              <TextInput
+                value={draftPet.existingConditions}
+                onChangeText={(value) => updateDraftPetField('existingConditions', value)}
+                style={styles.textAreaField}
+                placeholder="Enter existing medical conditions"
+                placeholderTextColor="#87a0b1"
+                multiline
+                textAlignVertical="top"
+                maxLength={500}
+              />
+
+              {/* Saved to the same notes column the web form's Additional Notes uses. */}
+              {renderOptionalLabel('Additional Notes')}
+              <TextInput
+                value={draftPet.notes}
+                onChangeText={(value) => updateDraftPetField('notes', value)}
+                style={styles.textAreaField}
+                placeholder="Enter special markings, care or behavior notes"
+                placeholderTextColor="#87a0b1"
+                multiline
+                textAlignVertical="top"
+                maxLength={500}
               />
             </View>
+
+            {!isCreatingPet ? (
+              <TouchableOpacity
+                style={[styles.archivePetButton, archiving && { opacity: 0.6 }]}
+                onPress={handleArchivePress}
+                disabled={archiving}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.archivePetButtonText}>{archiving ? 'Archiving...' : 'Archive Pet'}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </ScrollView>
 

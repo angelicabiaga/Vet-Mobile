@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 const OTP_LENGTH = 6;
 const maskEmail = (email) => {
@@ -70,8 +70,18 @@ export default function ProfileOtpModal({ visible, purpose, destinationEmail, bu
     if (visible && autoVerify && code.length === OTP_LENGTH) submit();
   }, [visible, autoVerify, code]);
 
-  return <Modal transparent animationType="fade" visible={visible} onRequestClose={() => !busy && onCancel?.()}>
-    <View style={s.overlay}><View style={s.card}>
+  const cancel = () => {
+    if (busy) return;
+    Keyboard.dismiss();
+    onCancel?.();
+  };
+
+  // The keyboard opens on show (autoFocus), so the card sits in a keyboard-avoiding
+  // scroll view and a tap outside the code boxes closes the keyboard.
+  return <Modal transparent animationType="fade" visible={visible} onRequestClose={cancel}>
+    <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={s.overlay} contentContainerStyle={s.overlayContent} keyboardShouldPersistTaps="handled"><TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}><View style={s.card}>
+      <TouchableOpacity disabled={busy} onPress={cancel} style={s.back} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}><Text style={[s.backText, busy && s.linkDisabled]}>‹ Back</Text></TouchableOpacity>
       <Text style={s.title}>{title}</Text>
       <Text style={s.message}>Enter the 6-digit code sent to your {destinationLabel}:</Text>
       <Text style={s.email}>{maskEmail(destinationEmail)}</Text>
@@ -81,9 +91,10 @@ export default function ProfileOtpModal({ visible, purpose, destinationEmail, bu
       <View style={s.otpRow}>{digits.map((digit, index) => <TextInput key={index} ref={(node) => { refs.current[index] = node; }} value={digit} onChangeText={(value) => changeDigit(value, index)} onKeyPress={(event) => keyPress(event, index)} keyboardType="number-pad" maxLength={1} autoFocus={index === 0} style={s.otpBox} />)}</View>
       <TouchableOpacity style={[s.primary, (busy || code.length !== OTP_LENGTH) && s.disabled]} disabled={busy || code.length !== OTP_LENGTH} onPress={submit}>{busy ? <View style={s.busyRow}><ActivityIndicator color="#fff" size="small" /><Text style={s.primaryText}>Verifying...</Text></View> : <Text style={s.primaryText}>{emailChange ? 'Verify Email' : 'Verify Password Change'}</Text>}</TouchableOpacity>
       <TouchableOpacity disabled={busy || cooldown > 0} onPress={resend} style={s.linkButton}><Text style={[s.link, (busy || cooldown > 0) && s.linkDisabled]}>{cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend New Code'}</Text></TouchableOpacity>
-      <TouchableOpacity disabled={busy} onPress={onCancel} style={s.cancel}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
-    </View></View>
+      <TouchableOpacity disabled={busy} onPress={cancel} style={[s.cancel, busy && s.disabled]}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
+    </View></TouchableWithoutFeedback></ScrollView>
+    </KeyboardAvoidingView>
   </Modal>;
 }
 
-const s = StyleSheet.create({overlay:{flex:1,backgroundColor:'rgba(10,25,35,.62)',justifyContent:'center',padding:22},card:{backgroundColor:'#fff',borderRadius:28,padding:22},title:{fontSize:23,fontWeight:'900',color:'#123a5e',textAlign:'center'},message:{fontSize:14,lineHeight:20,color:'#526d82',textAlign:'center',marginTop:12},email:{fontSize:15,fontWeight:'900',color:'#123a5e',textAlign:'center',marginTop:5},expiry:{fontSize:12,color:'#6a8aa0',textAlign:'center',marginTop:6,marginBottom:16},otpRow:{flexDirection:'row',justifyContent:'space-between',gap:6,marginBottom:18},otpBox:{flex:1,minWidth:38,maxWidth:52,height:56,borderWidth:1.5,borderColor:'#cfe2eb',borderRadius:13,backgroundColor:'#f9fcfd',textAlign:'center',fontSize:20,fontWeight:'900',color:'#123a5e'},error:{backgroundColor:'#fee2e2',color:'#991b1b',padding:10,borderRadius:10,textAlign:'center',marginBottom:12},notice:{backgroundColor:'#d1fae5',color:'#065f46',padding:10,borderRadius:10,textAlign:'center',marginBottom:12},primary:{minHeight:52,borderRadius:15,backgroundColor:'#2c6ba3',alignItems:'center',justifyContent:'center'},disabled:{opacity:.48},busyRow:{flexDirection:'row',alignItems:'center',gap:8},primaryText:{color:'#fff',fontSize:14,fontWeight:'900'},linkButton:{paddingVertical:15},link:{color:'#2563eb',textAlign:'center',fontWeight:'800'},linkDisabled:{color:'#94a3b8'},cancel:{paddingVertical:8},cancelText:{color:'#64748b',textAlign:'center',fontSize:15}});
+const s = StyleSheet.create({flex:{flex:1},overlay:{flex:1,backgroundColor:'rgba(10,25,35,.62)'},overlayContent:{flexGrow:1,justifyContent:'center',padding:22},card:{backgroundColor:'#fff',borderRadius:28,padding:22},back:{alignSelf:'flex-start',paddingVertical:4,marginBottom:4},backText:{color:'#2c6ba3',fontSize:16,fontWeight:'800'},title:{fontSize:23,fontWeight:'900',color:'#123a5e',textAlign:'center'},message:{fontSize:14,lineHeight:20,color:'#526d82',textAlign:'center',marginTop:12},email:{fontSize:15,fontWeight:'900',color:'#123a5e',textAlign:'center',marginTop:5},expiry:{fontSize:12,color:'#6a8aa0',textAlign:'center',marginTop:6,marginBottom:16},otpRow:{flexDirection:'row',justifyContent:'space-between',gap:6,marginBottom:18},otpBox:{flex:1,minWidth:38,maxWidth:52,height:56,borderWidth:1.5,borderColor:'#cfe2eb',borderRadius:13,backgroundColor:'#f9fcfd',textAlign:'center',fontSize:20,fontWeight:'900',color:'#123a5e'},error:{backgroundColor:'#fee2e2',color:'#991b1b',padding:10,borderRadius:10,textAlign:'center',marginBottom:12},notice:{backgroundColor:'#d1fae5',color:'#065f46',padding:10,borderRadius:10,textAlign:'center',marginBottom:12},primary:{minHeight:52,borderRadius:15,backgroundColor:'#2c6ba3',alignItems:'center',justifyContent:'center'},disabled:{opacity:.48},busyRow:{flexDirection:'row',alignItems:'center',gap:8},primaryText:{color:'#fff',fontSize:14,fontWeight:'900'},linkButton:{paddingVertical:15},link:{color:'#2563eb',textAlign:'center',fontWeight:'800'},linkDisabled:{color:'#94a3b8'},cancel:{minHeight:48,borderRadius:15,borderWidth:1.5,borderColor:'#cfe2eb',alignItems:'center',justifyContent:'center'},cancelText:{color:'#475569',textAlign:'center',fontSize:15,fontWeight:'800'}});

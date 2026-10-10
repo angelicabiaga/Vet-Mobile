@@ -3,6 +3,7 @@ import PetOwnerHeaderGreeting, { getFirstName } from './PetOwnerHeaderGreeting';
 import React from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Image,
   KeyboardAvoidingView,
@@ -16,8 +17,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles as messageStyles } from '../../styles/PetOwnerMessagesDesign';
-import { askPawCruzAI } from '../../../api/aiService';
-import { loadQuickAssistHistory, appendQuickAssistHistory } from '../../../api/quickAssistHistoryService';
+import { Dropdown } from 'react-native-element-dropdown';
+import { SUGGESTED_PROMPTS, askPetAssistant, getLocalReply } from '../../../api/chatbotService';
+import { getOwnerPets } from '../../../api/petService';
+import { loadQuickAssistHistory, appendQuickAssistHistory, clearQuickAssistHistory } from '../../../api/quickAssistHistoryService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
@@ -40,7 +43,54 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
   const [sending, setSending] = React.useState(false);
   const [chatMessages, setChatMessages] = React.useState([]);
   const [historyLoaded, setHistoryLoaded] = React.useState(false);
+  // "Question about": '' = general question, otherwise one of the owner's pets.
+  const [pets, setPets] = React.useState([]);
+  const [petsLoading, setPetsLoading] = React.useState(true);
+  const [selectedPetId, setSelectedPetId] = React.useState('');
   const chatScrollRef = React.useRef(null);
+
+  React.useEffect(() => {
+    let active = true;
+    const ownerId = loggedInUser?.id;
+    if (!ownerId) {
+      setPetsLoading(false);
+      return undefined;
+    }
+    getOwnerPets(ownerId)
+      .then((rows) => {
+        if (!active) return;
+        setPets(rows);
+        setSelectedPetId((current) => (rows.some((pet) => pet.id === current) ? current : ''));
+      })
+      .catch(() => {
+        if (active) setPets([]);
+      })
+      .finally(() => {
+        if (active) setPetsLoading(false);
+      });
+    return () => { active = false; };
+  }, [loggedInUser?.id]);
+
+  const petContextOptions = React.useMemo(
+    () => [
+      { value: '', label: petsLoading ? 'Loading pets...' : 'General question' },
+      ...pets.map((pet) => ({ value: pet.id, label: `${pet.name} (${pet.species || 'Pet'})` })),
+    ],
+    [pets, petsLoading],
+  );
+
+  const nowTime = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  const createWelcomeMessage = () => ({
+    id: 'welcome',
+    role: 'assistant',
+    text: `Hi ${displayName}, welcome to PawCruz Pet Care Assistant! How can I help you and your pet today?`,
+    time: nowTime(),
+  });
+
+  // Last failed AI request, kept for the Retry button (web requestError).
+  const [requestError, setRequestError] = React.useState(null);
+  const inFlightRef = React.useRef(false);
+  const scrollToEnd = () => chatScrollRef.current?.scrollToEnd?.({ animated: true });
 
   React.useEffect(() => {
     let active = true;
@@ -49,19 +99,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
       try {
         const saved = await loadQuickAssistHistory(quickAssistUserId);
         if (!active) return;
-
-        if (saved.length) {
-          setChatMessages(saved);
-        } else {
-          setChatMessages([
-            {
-              id: 'welcome',
-              role: 'assistant',
-              text: `Hi ${displayName}, welcome to PawCruz Pet Care Assistant! How can I help you and your pet today?`,
-              time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase(),
-            },
-          ]);
-        }
+        setChatMessages(saved.length ? saved : [createWelcomeMessage()]);
       } finally {
         if (active) setHistoryLoaded(true);
       }
@@ -71,53 +109,101 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
     return () => { active = false; };
   }, [quickAssistUserId]);
 
-  const sendAiMessage = async () => {
-    const text = inputText.trim();
-    if (!text || sending || !historyLoaded) return;
-
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      text,
-      time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase(),
-    };
-
-    const previous = chatMessages;
-    setChatMessages((current) => [...current, userMessage]);
-    appendQuickAssistHistory(quickAssistUserId, userMessage).catch((historyError) => {
-      console.warn('Unable to save Quick Assist user message:', historyError?.message || historyError);
+  const saveToHistory = (message) => {
+    appendQuickAssistHistory(quickAssistUserId, message).catch((historyError) => {
+      console.warn('Unable to save Quick Assist message:', historyError?.message || historyError);
     });
-    setInputText('');
-    setSending(true);
+  };
 
+  const addAssistantMessage = (result) => {
+    const aiMessage = {
+      id: `ai-${Date.now()}`,
+      role: 'assistant',
+      text: result.reply,
+      time: nowTime(),
+      urgency: result.urgency,
+      suggestedAction: result.suggestedAction,
+    };
+    setChatMessages((current) => [...current, aiMessage]);
+    saveToHistory(aiMessage);
+  };
+
+  const requestAssistant = async (history, petId) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setRequestError(null);
+    setSending(true);
     try {
-      const reply = await askPawCruzAI(text, previous);
-      const aiMessage = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        text: reply,
-        time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase(),
-      };
-      setChatMessages((current) => [...current, aiMessage]);
-      appendQuickAssistHistory(quickAssistUserId, aiMessage).catch((historyError) => {
-        console.warn('Unable to save Quick Assist AI message:', historyError?.message || historyError);
-      });
+      addAssistantMessage(await askPetAssistant({ messages: history, petId }));
     } catch (error) {
-      setChatMessages((current) => [
-        ...current,
-        {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          text: error?.message || 'PawCruz AI is temporarily unavailable.',
-          time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase(),
-        },
-      ]);
+      setRequestError({
+        message: error?.message || 'The pet care assistant is temporarily unavailable. Please try again later.',
+        history,
+        petId,
+      });
     } finally {
+      inFlightRef.current = false;
       setSending(false);
-      setTimeout(() => chatScrollRef.current?.scrollToEnd?.({ animated: true }), 80);
+      setTimeout(scrollToEnd, 80);
     }
   };
 
+  // Used by the input, the "You can ask" chips and the clinic-hours shortcut.
+  const sendMessage = (rawText) => {
+    const text = String(rawText || '').trim();
+    if (!text || sending || !historyLoaded || inFlightRef.current) return;
+
+    const userMessage = { id: `user-${Date.now()}`, role: 'user', text, time: nowTime() };
+    const history = [...chatMessages, userMessage].map((message) => ({ role: message.role, content: message.text }));
+    setChatMessages((current) => [...current, userMessage]);
+    saveToHistory(userMessage);
+    setInputText('');
+    setRequestError(null);
+
+    // Clinic hours, booking, records, queue: answered right away (web getLocalReply).
+    const localReply = getLocalReply(text);
+    if (localReply) {
+      addAssistantMessage(localReply);
+      setTimeout(scrollToEnd, 80);
+      return;
+    }
+    requestAssistant(history, selectedPetId || null);
+  };
+
+  const sendAiMessage = () => sendMessage(inputText);
+
+  const retryLastRequest = () => {
+    if (!requestError?.history || inFlightRef.current) return;
+    requestAssistant(requestError.history, requestError.petId);
+  };
+
+  const clearConversation = () => {
+    if (sending || inFlightRef.current) return;
+    Alert.alert(
+      'Clear Conversation?',
+      'Clear your conversation with the PawCruz Pet Care Assistant? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Yes, Clear Conversation',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearQuickAssistHistory(quickAssistUserId);
+            } catch (error) {
+              console.warn('Unable to clear Quick Assist history:', error?.message || error);
+            }
+            setChatMessages([createWelcomeMessage()]);
+            setInputText('');
+            setRequestError(null);
+          },
+        },
+      ],
+    );
+  };
+
+  const goToBooking = () => navigation.navigate('PetOwnerAppointment', { user: loggedInUser });
+  const goToMessages = () => navigation.navigate('PetOwnerMessages', { user: loggedInUser });
 
   React.useEffect(() => {
     const timerId = setInterval(() => {
@@ -315,14 +401,45 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
                     <Text style={styles.aiStatusText}>Online · Responses may take a moment</Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.clearChatButton, sending && { opacity: 0.5 }]}
+                  onPress={clearConversation}
+                  disabled={sending}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Clear conversation"
+                >
+                  <Text style={styles.clearChatText}>Clear</Text>
+                </TouchableOpacity>
               </View>
               <View style={styles.aiSafetyChip}>
                 <Text style={styles.aiSafetyChipText}>For urgent symptoms, contact a veterinarian immediately.</Text>
               </View>
               <Text style={styles.disclaimerText}>
-                Responses are AI-generated for general information and guidance. Please verify
-                important health concerns with a veterinarian for proper care.
+                <Text style={styles.disclaimerStrong}>Educational guidance, not a diagnosis. </Text>
+                The assistant cannot prescribe or provide medication doses. Contact a veterinarian
+                for medical advice or urgent concerns.
               </Text>
+
+              <Text style={styles.quickActionsLabel}>Quick actions</Text>
+              <TouchableOpacity style={styles.quickActionCard} onPress={goToBooking} activeOpacity={0.88}>
+                <View style={styles.quickActionCopy}>
+                  <Text style={styles.quickActionTitle}>Book an appointment</Text>
+                  <Text style={styles.quickActionSub}>Choose an available schedule</Text>
+                </View>
+                <Text style={styles.quickActionArrow}>›</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.quickActionCard, sending && { opacity: 0.5 }]}
+                onPress={() => sendMessage('What are your clinic hours?')}
+                disabled={sending}
+                activeOpacity={0.88}
+              >
+                <View style={styles.quickActionCopy}>
+                  <Text style={styles.quickActionTitle}>View clinic hours</Text>
+                  <Text style={styles.quickActionSub}>See today's availability</Text>
+                </View>
+                <Text style={styles.quickActionArrow}>›</Text>
+              </TouchableOpacity>
             </View>
 
             {chatMessages.map((item) => (
@@ -348,6 +465,32 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
                     {item.text}
                   </Text>
                 </View>
+                {item.role === 'assistant' && ['emergency', 'same_day'].includes(item.urgency) ? (
+                  <View style={[styles.urgencyNotice, item.urgency === 'emergency' ? styles.urgencyEmergency : styles.urgencySameDay]}>
+                    <Text style={[styles.urgencyText, item.urgency === 'emergency' ? styles.urgencyEmergencyText : styles.urgencySameDayText]}>
+                      {item.urgency === 'emergency'
+                        ? '⚠ Emergency veterinary care recommended'
+                        : '⚠ Same-day veterinary contact recommended'}
+                    </Text>
+                  </View>
+                ) : null}
+                {item.role === 'assistant' && item.suggestedAction === 'book_appointment' ? (
+                  <TouchableOpacity style={styles.messageAction} onPress={goToBooking} activeOpacity={0.88}>
+                    <Text style={styles.messageActionText}>Book an appointment ›</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {item.role === 'assistant' && item.suggestedAction === 'contact_clinic' ? (
+                  <TouchableOpacity style={styles.messageAction} onPress={goToMessages} activeOpacity={0.88}>
+                    <Text style={styles.messageActionText}>Contact the clinic ›</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {item.role === 'assistant' && item.suggestedAction === 'emergency_vet' ? (
+                  <View style={[styles.messageAction, styles.emergencyAction]}>
+                    <Text style={[styles.messageActionText, styles.emergencyActionText]}>
+                      Seek the nearest emergency veterinary facility now
+                    </Text>
+                  </View>
+                ) : null}
                 <Text style={styles.messageTime}>{item.time}</Text>
               </View>
             ))}
@@ -357,9 +500,63 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
                 <Text style={styles.aiTypingText}>PawCruz AI is responding...</Text>
               </View>
             ) : null}
+            {requestError && !sending ? (
+              <View style={styles.errorCard}>
+                <Text style={styles.errorTitle}>AI assistant unavailable</Text>
+                <Text style={styles.errorText}>{requestError.message}</Text>
+                <Text style={styles.errorHint}>
+                  If your pet may be in danger, contact a veterinarian or the nearest emergency facility now.
+                </Text>
+                <TouchableOpacity style={styles.retryButton} onPress={retryLastRequest} activeOpacity={0.88}>
+                  <Text style={styles.retryText}>↻ Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </ScrollView>
 
-          <View style={[messageStyles.inputBar, styles.aiInputBar]}>
+          {/* Hidden while typing so the bar stays compact with the keyboard open. */}
+          <View style={[styles.suggestionBar, inputText.trim() ? styles.suggestionBarHidden : null]}>
+            <Text style={styles.suggestionLabel}>You can ask</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={styles.suggestionList}>
+              {SUGGESTED_PROMPTS.map((prompt) => (
+                <TouchableOpacity
+                  key={prompt}
+                  style={[styles.suggestionChip, (sending || !historyLoaded) && { opacity: 0.5 }]}
+                  onPress={() => sendMessage(prompt)}
+                  disabled={sending || !historyLoaded}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.suggestionChipText}>{prompt}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.petContextBar}>
+            <Text style={styles.petContextLabel}>Question about</Text>
+            <Dropdown
+              style={[styles.petContextDropdown, (petsLoading || sending) && { opacity: 0.6 }]}
+              containerStyle={styles.petContextDropdownList}
+              selectedTextStyle={styles.petContextSelectedText}
+              placeholderStyle={styles.petContextSelectedText}
+              itemTextStyle={styles.petContextItemText}
+              activeColor="#edf7fd"
+              data={petContextOptions}
+              labelField="label"
+              valueField="value"
+              value={selectedPetId}
+              placeholder="General question"
+              disable={petsLoading || sending}
+              dropdownPosition="top"
+              maxHeight={260}
+              onChange={(item) => setSelectedPetId(item.value)}
+            />
+          </View>
+          <Text style={styles.petContextNote}>
+            Only basic health context is sent; your pet's name and records are excluded.
+          </Text>
+
+          <View style={[messageStyles.inputBar, styles.aiInputBar, styles.aiInputBarJoined]}>
             <View style={[messageStyles.inlineInputWrap, styles.aiInputWrap]}>
               <TextInput
                 editable={!sending && historyLoaded}
@@ -823,6 +1020,199 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'android' ? 8 : 10,
     elevation: 20,
     zIndex: 50,
+  },
+
+  aiInputBarJoined: {
+    borderTopWidth: 0,
+    paddingTop: 4,
+  },
+
+  petContextBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#eef4f7',
+  },
+
+  suggestionBar: {
+    paddingTop: 8,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#d7e8ee',
+  },
+  suggestionBarHidden: {
+    display: 'none',
+  },
+  suggestionLabel: {
+    paddingHorizontal: 14,
+    marginBottom: 6,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6a8aa0',
+  },
+  suggestionList: {
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  suggestionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#c6e5ed',
+    backgroundColor: '#edf6f8',
+  },
+  suggestionChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2c6ba3',
+  },
+
+  clearChatButton: {
+    marginLeft: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d5eaf1',
+    backgroundColor: '#f6fbff',
+  },
+  clearChatText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2c6ba3',
+  },
+  disclaimerStrong: {
+    fontWeight: '900',
+    color: '#5d7b91',
+  },
+  quickActionsLabel: {
+    marginTop: 12,
+    marginBottom: 6,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6a8aa0',
+  },
+  quickActionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e1edf2',
+    backgroundColor: '#f8fcfd',
+  },
+  quickActionCopy: { flex: 1 },
+  quickActionTitle: {
+    fontSize: 13.5,
+    fontWeight: '900',
+    color: '#123a5e',
+  },
+  quickActionSub: {
+    marginTop: 2,
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#6a8aa0',
+  },
+  quickActionArrow: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#2c6ba3',
+    marginLeft: 8,
+  },
+
+  urgencyNotice: {
+    maxWidth: '88%',
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  urgencyEmergency: { backgroundColor: '#fbe6e4' },
+  urgencySameDay: { backgroundColor: '#fdf1dc' },
+  urgencyText: { fontSize: 12, fontWeight: '800' },
+  urgencyEmergencyText: { color: '#c0392b' },
+  urgencySameDayText: { color: '#a5680b' },
+  messageAction: {
+    maxWidth: '88%',
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#2c6ba3',
+  },
+  messageActionText: {
+    fontSize: 12.5,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  emergencyAction: { backgroundColor: '#fbe6e4' },
+  emergencyActionText: { color: '#c0392b' },
+
+  errorCard: {
+    marginTop: 4,
+    marginBottom: 10,
+    padding: 13,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#f0c5c5',
+    backgroundColor: '#fff4f4',
+  },
+  errorTitle: { fontSize: 13.5, fontWeight: '900', color: '#991b1b' },
+  errorText: { marginTop: 4, fontSize: 12.5, fontWeight: '600', color: '#7f1d1d', lineHeight: 18 },
+  errorHint: { marginTop: 6, fontSize: 11, fontWeight: '600', color: '#9b4b4b', lineHeight: 16 },
+  retryButton: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#2c6ba3',
+  },
+  retryText: { fontSize: 12.5, fontWeight: '900', color: '#ffffff' },
+  petContextLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#123a5e',
+  },
+  petContextDropdown: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bfdce7',
+    backgroundColor: '#f6fbff',
+    paddingHorizontal: 12,
+  },
+  petContextDropdownList: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#d7edf9',
+    overflow: 'hidden',
+  },
+  petContextSelectedText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#123a5e',
+  },
+  petContextItemText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#123a5e',
+  },
+  petContextNote: {
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    backgroundColor: '#ffffff',
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#7a93a2',
   },
 
   aiInputWrap: {
