@@ -22,16 +22,17 @@ export const addTenMinutes = (value) => {
 
 export const formatTime = (value) => {
   if (!value) return '—';
+  // Built by hand: always 12-hour ("9:20 AM"), whatever the phone's 24-hour setting.
   const [hour, minute] = normalizeTime(value).split(':').map(Number);
-  const date = new Date(2000, 0, 1, hour, minute);
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '—';
+  return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
 };
 
 const formatFullDate = (value) => {
   if (!value) return '—';
   const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 };
 
 export async function getPetsByOwner(ownerId) {

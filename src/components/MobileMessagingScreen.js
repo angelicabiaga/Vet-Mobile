@@ -14,7 +14,6 @@ import {
   markConversationRead, sendMessage, subscribeToMessages, subscribeToMessagingOverview,
   MESSAGE_MAX_LENGTH, ATTACHMENT_MAX_BYTES, validateMessage,
 } from "../api/messageService";
-import { supabase } from "../config/supabaseClient";
 
 const normalizeRole = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, "_");
 const DEFAULT_PROFILE_IMAGE = require("../screens/assets/Profile.png");
@@ -140,7 +139,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
   useEffect(() => {
     if (!profile?.id) return undefined;
     let active = true;
-    const channel = subscribeToMessagingOverview(profile.id, () => {
+    const stopLive = subscribeToMessagingOverview(profile.id, () => {
       if (active) loadOverview();
     });
     const fallbackTimer = setInterval(() => {
@@ -150,7 +149,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
     return () => {
       active = false;
       clearInterval(fallbackTimer);
-      if (channel) supabase.removeChannel(channel);
+      stopLive();
     };
   }, [profile?.id, loadOverview]);
 
@@ -209,7 +208,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
     let active = true;
     loadActive();
 
-    const channel = subscribeToMessages(activeKey.split(","), async () => {
+    const stopLive = subscribeToMessages(activeKey.split(","), async () => {
       if (active) await loadActive();
     });
     const fallbackTimer = setInterval(async () => {
@@ -219,7 +218,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
     return () => {
       active = false;
       clearInterval(fallbackTimer);
-      if (channel) supabase.removeChannel(channel);
+      stopLive();
     };
   }, [activeKey, loadActive]);
 
@@ -407,7 +406,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
                   <View style={styles.row}><Text style={styles.conversationTitle} numberOfLines={1}>{titleFor(item)}</Text>{item.unread > 0 ? <View style={styles.badge}><Text style={styles.badgeText}>{item.unread}</Text></View> : null}</View>
                   <Text style={styles.roleText} numberOfLines={1}>{subtitleFor(item)}</Text>
                   <Text style={styles.preview} numberOfLines={1}>{previewFor(item)}</Text>
-                  <Text style={styles.time}>{new Date(item.last_message_at || item.created_at).toLocaleString()}</Text>
+                  <Text style={styles.time}>{new Date(item.last_message_at || item.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -439,7 +438,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
                   <Text style={[styles.sender, mine && styles.senderMine]}>{mine ? (profile.full_name || profile.fullName || profile.username || "You") : (item.sender?.full_name || "PawCruz User")}</Text>
                   {item.body ? <Text style={styles.messageText}>{item.body}</Text> : null}
                   {item.attachment_url ? <TouchableOpacity onPress={() => Linking.openURL(item.attachment_url)}><Text style={styles.attachment}>📎 {item.attachment_name || "Attachment"}</Text></TouchableOpacity> : null}
-                  <Text style={styles.messageTime}>{new Date(item.created_at).toLocaleString()}</Text>
+                  <Text style={styles.messageTime}>{new Date(item.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</Text>
                 </View>;
               }}
               ListEmptyComponent={!messagesLoading ? <View style={styles.emptyChat}><Text style={styles.emptyText}>No messages yet. Say hello.</Text></View> : null}

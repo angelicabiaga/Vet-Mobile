@@ -104,6 +104,9 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     Boolean(initialPet.breed) && !getBreedOptionsForSpecies(initialPet.species).some((item) => item.value === initialPet.breed)
   ));
   const [showDoneConfirm, setShowDoneConfirm] = useState(false);
+  // Save state: blocks a second tap; errors show on screen (Alert is a no-op on web).
+  const [savingPet, setSavingPet] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [showRequiredFieldsModal, setShowRequiredFieldsModal] = useState(false);
   const [showPhotoOptionsModal, setShowPhotoOptionsModal] = useState(false);
   const [showBirthdayCalendar, setShowBirthdayCalendar] = useState(false);
@@ -387,7 +390,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       quality: 0.85,
     });
@@ -445,14 +448,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
 
   const handleCancelPress = () => {
     if (returnToRoute) {
-      navigation.navigate({
-        name: returnToRoute,
-        params: {
-          ...returnToParams,
-          user: loggedInUser,
-        },
-        merge: true,
-      });
+      navigation.navigate(returnToRoute, { ...returnToParams, user: loggedInUser }, { merge: true });
       return;
     }
 
@@ -493,27 +489,29 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   };
 
   const handleSavePet = async () => {
+    if (savingPet) return;
+    setSavingPet(true);
+    setSaveError('');
     try {
       const savedPet = await saveOwnerPet(draftPet, loggedInUser?.id);
       setShowDoneConfirm(false);
+      setSavingPet(false);
 
       if (returnToRoute) {
-        navigation.navigate({
-          name: returnToRoute,
-          params: {
-            ...returnToParams,
-            user: loggedInUser,
-            preselectedPetId: savedPet.id,
-          },
-          merge: true,
-        });
+        navigation.navigate(returnToRoute, { ...returnToParams, user: loggedInUser, preselectedPetId: savedPet.id }, { merge: true });
         return;
       }
 
-      navigation.replace('PetOwnerMyPetsView', { user: loggedInUser, petId: savedPet.id });
+      navigation.replace('PetOwnerMyPetsView', {
+        user: loggedInUser,
+        petId: savedPet.id,
+        savedNotice: isCreatingPet ? `${savedPet.name || 'Your pet'} was added successfully.` : 'Pet profile saved successfully.',
+      });
     } catch (error) {
       setShowDoneConfirm(false);
-      Alert.alert("Animal Patients", error.message || "Unable to save your pet.");
+      setSavingPet(false);
+      setSaveError(error?.message || 'Unable to save the pet right now. Please try again.');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
   };
 
@@ -613,14 +611,6 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
         </LinearGradient>
 
         <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.sectionHeaderWrap}>
-            <Text style={styles.sectionTitle}>
-              {isCreatingPet ? 'Add Pet Profile' : 'Edit Pet Profile'}
-            </Text>
-            <Text style={styles.sectionSubtitle}>
-              Update pet photo, basic details, and profile information
-            </Text>
-          </View>
 
           <View style={styles.detailCard}>
             <View style={styles.detailTopRow}>
@@ -636,6 +626,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                 <Text style={styles.primaryActionText}>Done</Text>
               </TouchableOpacity>
             </View>
+            {saveError ? <Text style={inlineStyles.saveError}>{saveError}</Text> : null}
 
             <View style={styles.editPhotoSection} ref={errorScroll.anchor('photo')}>
               <View style={styles.editAvatarWrap}>
@@ -643,7 +634,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                   {activePhoto.source ? (
                     <Image
                       source={activePhoto.source}
-                      style={[styles.largePetAvatarImage, activePhoto.isCustom && styles.largePetAvatarImageCustom]}
+                      style={activePhoto.isCustom ? styles.largePetAvatarImageCustom : styles.largePetAvatarImage}
                       resizeMode="cover"
                     />
                   ) : (
@@ -1049,11 +1040,11 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
               <Text style={styles.modalTitle}>Save Changes</Text>
               <Text style={styles.modalMessage}>Are you sure you want to apply these pet profile updates?</Text>
               <View style={styles.modalButtonRow}>
-                <TouchableOpacity style={styles.modalSecondaryButton} onPress={() => setShowDoneConfirm(false)} activeOpacity={0.9}>
+                <TouchableOpacity style={styles.modalSecondaryButton} onPress={() => setShowDoneConfirm(false)} disabled={savingPet} activeOpacity={0.9}>
                   <Text style={styles.modalSecondaryText}>No</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.modalPrimaryButton} onPress={handleSavePet} activeOpacity={0.9}>
-                  <Text style={styles.modalPrimaryText}>Yes</Text>
+                <TouchableOpacity style={[styles.modalPrimaryButton, savingPet && { opacity: 0.6 }]} onPress={handleSavePet} disabled={savingPet} activeOpacity={0.9}>
+                  <Text style={styles.modalPrimaryText}>{savingPet ? 'Saving…' : 'Yes'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1070,4 +1061,5 @@ export default PetOwnerMyPetsEdit;
 const inlineStyles = StyleSheet.create({
   invalid: { borderColor: '#dc2626', borderWidth: 1 },
   errorText: { marginTop: 6, fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#dc2626' },
+  saveError: { marginTop: 12, padding: 10, borderRadius: 12, backgroundColor: '#fff1f1', borderWidth: 1, borderColor: '#f4cccc', color: '#a33f3f', fontSize: 12.5, fontWeight: '700' },
 });

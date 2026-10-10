@@ -135,9 +135,9 @@ export async function saveOwnerPet(pet, ownerId) {
     breed: String(pet?.breed || "").trim() || null,
     sex: pet?.sex || "Unknown",
     date_of_birth: toDateOfBirth(pet),
-    weight: pet?.weight ? Number(String(pet.weight).replace(/[^0-9.]/g, "")) : null,
+    weight: optionalNumber(pet?.weight) ? Number(String(pet.weight).replace(/[^0-9.]/g, "")) : null,
     color: String(pet?.color || "").trim() || null,
-    microchip_number: String(pet?.microchipNumber || "").trim() || null,
+    microchip_number: optionalNumber(pet?.microchipNumber) || null,
     allergies: String(pet?.allergies || "").trim() || null,
     existing_conditions: String(pet?.existingConditions || "").trim() || null,
     notes: String(pet?.notes ?? pet?.specialMarkings ?? "").trim() || null,
@@ -159,7 +159,8 @@ export async function saveOwnerPet(pet, ownerId) {
 
   if (result.error) {
     if (result.error.code === "23505") throw new Error("That microchip number is already registered.");
-    throw new Error(result.error.message || "Unable to save pet.");
+    console.warn("Pet save failed:", result.error.code, result.error.message);
+    throw new Error("Unable to save the pet right now. Please try again.");
   }
 
   const saved = toUiPet(result.data);
@@ -206,6 +207,10 @@ const todayKey = () => {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
+// "N/A", "none", "wala", "-" typed into an optional number field mean "nothing".
+const isPlaceholder = (value) => /^(?:n\/?a|none|null|nil|wala|-+)$/i.test(String(value ?? "").trim());
+const optionalNumber = (value) => (isPlaceholder(value) ? "" : String(value ?? "").trim());
+
 // Returns { fieldName: message } for every missing or invalid field ({} = valid).
 export function validatePatientDetails(values) {
   const errors = {};
@@ -213,8 +218,9 @@ export function validatePatientDetails(values) {
   const species = String(values.species || "").trim();
   const breed = String(values.breed || "").trim();
   const color = String(values.color || "").trim();
-  const weight = String(values.weight ?? "").trim();
-  const microchip = String(values.microchipNumber || "").trim();
+  // Optional: empty or a placeholder like "N/A" counts as not given.
+  const weight = optionalNumber(values.weight);
+  const microchip = optionalNumber(values.microchipNumber);
   const { birthYear, birthMonth, birthDay } = values;
 
   if (!name) errors.petName = "Pet name is required.";
@@ -233,7 +239,9 @@ export function validatePatientDetails(values) {
     errors.birthday = "Birthday is required.";
   } else {
     const y = Number(birthYear);
-    const m = Number(birthMonth);
+    // The vet editor sends the month as a number ("8"), the owner form as a
+    // name ("August"); accept both.
+    const m = Number.isNaN(Number(birthMonth)) ? MONTH_NAMES.indexOf(String(birthMonth)) + 1 : Number(birthMonth);
     const d = Number(birthDay);
     const date = new Date(y, m - 1, d);
     if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
@@ -282,9 +290,9 @@ export async function updatePatientDetails(petId, values, veterinarian) {
     breed: String(values.breed).trim(),
     sex: values.sex,
     date_of_birth: `${values.birthYear}-${pad2(values.birthMonth)}-${pad2(values.birthDay)}`,
-    weight: String(values.weight ?? "").trim() ? Number(values.weight) : null,
+    weight: optionalNumber(values.weight) ? Number(optionalNumber(values.weight)) : null,
     color: text(values.color),
-    microchip_number: text(values.microchipNumber),
+    microchip_number: optionalNumber(values.microchipNumber) || null,
     allergies: text(values.allergies),
     existing_conditions: text(values.existingConditions),
     notes: text(values.notes),

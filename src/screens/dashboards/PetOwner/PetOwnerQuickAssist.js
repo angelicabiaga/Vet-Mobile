@@ -1,4 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getOwnerPets } from '../../../api/petService';
 import PetOwnerHeaderGreeting, { getFirstName } from './PetOwnerHeaderGreeting';
 import React from 'react';
 import {
@@ -32,7 +33,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
   const headerMenuAnimation = React.useRef(new Animated.Value(0)).current;
   const [isHeaderMenuVisible, setIsHeaderMenuVisible] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(() =>
-    new Date().toLocaleTimeString([], {
+    new Date().toLocaleTimeString('en-US', { hour12: true, 
       hour: 'numeric',
       minute: '2-digit',
     }).toLowerCase(),
@@ -43,7 +44,28 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
   const [historyLoaded, setHistoryLoaded] = React.useState(false);
   const chatScrollRef = React.useRef(null);
 
-  const nowTime = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  // The owner's pets, so a question that names one ("Why is Hoshi vomiting?")
+  // is answered with that pet's basic health context. The last pet named is
+  // kept for follow-up questions in the same chat.
+  const [ownerPets, setOwnerPets] = React.useState([]);
+  const lastPetIdRef = React.useRef(null);
+  React.useEffect(() => {
+    let active = true;
+    if (!loggedInUser?.id) return undefined;
+    getOwnerPets(loggedInUser.id).then((rows) => { if (active) setOwnerPets(rows || []); }).catch(() => {});
+    return () => { active = false; };
+  }, [loggedInUser?.id]);
+  const petMentionedIn = (text) => {
+    const words = ` ${String(text).toLowerCase().replace(/[^a-z0-9À-ɏ]+/g, ' ')} `;
+    const named = ownerPets
+      .map((pet) => ({ pet, name: String(pet.name || pet.pet_name || '').trim().toLowerCase() }))
+      .filter(({ name }) => name.length >= 2)
+      .sort((a, b) => b.name.length - a.name.length)
+      .find(({ name }) => words.includes(` ${name.replace(/[^a-z0-9À-ɏ]+/g, ' ')} `));
+    return named?.pet || null;
+  };
+
+  const nowTime = () => new Date().toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' }).toLowerCase();
   const createWelcomeMessage = () => ({
     id: 'welcome',
     role: 'assistant',
@@ -98,7 +120,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
     setRequestError(null);
     setSending(true);
     try {
-      addAssistantMessage(await askPetAssistant({ messages: history, petId }));
+      addAssistantMessage(await askPetAssistant({ messages: history, petId, ownerId: loggedInUser?.id }));
     } catch (error) {
       setRequestError({
         message: error?.message || 'The pet care assistant is temporarily unavailable. Please try again later.',
@@ -115,7 +137,13 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
   // Used by the input, the "You can ask" chips and the clinic-hours shortcut.
   const sendMessage = (rawText) => {
     const text = String(rawText || '').trim();
-    if (!text || sending || !historyLoaded || inFlightRef.current) return;
+    if (sending || !historyLoaded || inFlightRef.current) return;
+    // Validation: an empty (or spaces-only) question is never sent to the AI.
+    if (!text) {
+      setQuestionError('Please type your question before sending.');
+      return;
+    }
+    setQuestionError('');
 
     const userMessage = { id: `user-${Date.now()}`, role: 'user', text, time: nowTime() };
     const history = [...chatMessages, userMessage].map((message) => ({ role: message.role, content: message.text }));
@@ -131,10 +159,13 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
       setTimeout(scrollToEnd, 80);
       return;
     }
-    requestAssistant(history, null);
+    const mentioned = petMentionedIn(text);
+    if (mentioned) lastPetIdRef.current = mentioned.id;
+    requestAssistant(history, lastPetIdRef.current);
   };
 
   const sendAiMessage = () => sendMessage(inputText);
+  const [questionError, setQuestionError] = React.useState('');
 
   const retryLastRequest = () => {
     if (!requestError?.history || inFlightRef.current) return;
@@ -172,7 +203,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
   React.useEffect(() => {
     const timerId = setInterval(() => {
       setCurrentTime(
-        new Date().toLocaleTimeString([], {
+        new Date().toLocaleTimeString('en-US', { hour12: true, 
           hour: 'numeric',
           minute: '2-digit',
         }).toLowerCase(),
@@ -489,14 +520,15 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
           </View>
 
           <View style={[messageStyles.inputBar, styles.aiInputBar]}>
-            <View style={[messageStyles.inlineInputWrap, styles.aiInputWrap]}>
+            {questionError ? <Text style={styles.questionError}>{questionError}</Text> : null}
+            <View style={[messageStyles.inlineInputWrap, styles.aiInputWrap, questionError && styles.aiInputWrapInvalid]}>
               <TextInput
                 editable={!sending && historyLoaded}
                 placeholder="Enter your inquiries here..."
                 placeholderTextColor="#8aa2b4"
                 style={[messageStyles.inlineInput, styles.aiInput]}
                 value={inputText}
-                onChangeText={setInputText}
+                onChangeText={(text) => { setInputText(text); if (questionError) setQuestionError(''); }}
                 onSubmitEditing={sendAiMessage}
                 returnKeyType="send"
                 textAlignVertical="center"
@@ -504,7 +536,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
                 cursorColor="#2c6ba3"
                 autoCorrect={true}
               />
-              <TouchableOpacity onPress={sendAiMessage} disabled={!inputText.trim() || sending || !historyLoaded} activeOpacity={0.8}>
+              <TouchableOpacity onPress={sendAiMessage} disabled={sending || !historyLoaded} activeOpacity={0.8}>
                 <Image
                   source={require('../../assets/send.png')}
                   style={[messageStyles.inlineSendImage, (!inputText.trim() || sending || !historyLoaded) && { opacity: 0.4 }]}
@@ -1095,6 +1127,8 @@ const styles = StyleSheet.create({
   },
   retryText: { fontSize: 12.5, fontWeight: '900', color: '#ffffff' },
 
+  questionError: { color: '#dc2626', fontSize: 12.5, fontWeight: '700', marginBottom: 6, paddingHorizontal: 4 },
+  aiInputWrapInvalid: { borderColor: '#dc2626', borderWidth: 1 },
   aiInputWrap: {
     minHeight: 50,
     borderRadius: 17,

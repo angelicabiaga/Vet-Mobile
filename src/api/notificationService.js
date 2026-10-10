@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import { supabase } from '../config/supabaseClient';
 
 export async function getNotifications(profileId) {
@@ -86,68 +87,120 @@ function uniqueChannelName(profileId) {
 
 // The live connection drops whenever the phone switches network, sleeps, or the
 // app is backgrounded (status CHANNEL_ERROR / TIMED_OUT). That's expected on
-// mobile, so instead of warning, reconnect with a growing delay (5s → 30s max)
-// and refresh once reconnected so nothing missed while offline is lost.
-const RETRY_BASE_MS = 5000;
+// mobile: reconnect quietly with a growing delay (2s → 30s max), straight away
+// when the app comes back to the foreground, and refresh once reconnected so
+// nothing missed while offline is lost.
+const RETRY_BASE_MS = 2000;
 const RETRY_MAX_MS = 30000;
+// Only mention it in the log when reconnecting keeps failing.
+const LOG_AFTER_FAILURES = 3;
 
-export function subscribeNotifications(profileId, handlers = {}) {
-  if (!profileId) return () => {};
+// One shared live channel per user. Every screen that subscribes (the header
+// badge, the notifications list, the in-app popups) adds its handlers to it,
+// instead of opening its own channel to the same table.
+const liveFeeds = new Map();
 
-  let channel = null;
-  let cleaned = false;
-  let retryTimer = null;
-  let attempt = 0;
+function createFeed(profileId) {
+  const feed = { listeners: new Set(), channel: null, retryTimer: null, failures: 0, appState: null, closed: false };
+
+  const dispatch = (payload) => {
+    feed.listeners.forEach((handlers) => {
+      try {
+        if (payload.eventType === 'INSERT') handlers.onInsert?.(payload.new);
+        if (payload.eventType === 'UPDATE') handlers.onUpdate?.(payload.new);
+        if (payload.eventType === 'DELETE') handlers.onDelete?.(payload.old);
+        handlers.onChange?.(payload);
+      } catch (error) {
+        console.warn('Notification handler failed:', error?.message || error);
+      }
+    });
+  };
+
+  const scheduleReconnect = (delay) => {
+    if (feed.closed || feed.retryTimer) return;
+    feed.retryTimer = setTimeout(() => {
+      feed.retryTimer = null;
+      connect();
+    }, delay);
+  };
+
+  const dropChannel = () => {
+    const old = feed.channel;
+    feed.channel = null;
+    if (old) void supabase.removeChannel(old);
+  };
 
   const connect = () => {
-    if (cleaned) return;
-    channel = supabase
+    if (feed.closed) return;
+    dropChannel();
+    const channel = supabase
       .channel(uniqueChannelName(profileId))
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications' },
-        (payload) => {
-          const item = payload.new || payload.old;
-          if (!item) return;
-
-          const appliesToUser = !item.recipient_id || item.recipient_id === profileId;
-          if (!appliesToUser) return;
-
-          if (payload.eventType === 'INSERT') handlers.onInsert?.(payload.new);
-          if (payload.eventType === 'UPDATE') handlers.onUpdate?.(payload.new);
-          if (payload.eventType === 'DELETE') handlers.onDelete?.(payload.old);
-          handlers.onChange?.(payload);
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+        const item = payload.new || payload.old;
+        if (!item) return;
+        if (item.recipient_id && item.recipient_id !== profileId) return;
+        dispatch(payload);
+      })
       .subscribe((status) => {
-        if (cleaned) return;
+        if (feed.closed || channel !== feed.channel) return;
         if (status === 'SUBSCRIBED') {
-          if (attempt > 0) handlers.onChange?.({ eventType: 'RECONNECTED' });
-          attempt = 0;
+          if (feed.failures > 0) dispatch({ eventType: 'RECONNECTED' });
+          feed.failures = 0;
           return;
         }
-        if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && !retryTimer) {
-          console.log(`Notification live updates interrupted (${status}); reconnecting…`);
-          const failed = channel;
-          channel = null;
-          if (failed) void supabase.removeChannel(failed);
-          const delay = Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS);
-          attempt += 1;
-          retryTimer = setTimeout(() => {
-            retryTimer = null;
-            connect();
-          }, delay);
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          feed.failures += 1;
+          if (feed.failures === LOG_AFTER_FAILURES) {
+            console.log('Notification live updates are reconnecting; the list still refreshes in the background.');
+          }
+          dropChannel();
+          scheduleReconnect(Math.min(RETRY_BASE_MS * 2 ** (feed.failures - 1), RETRY_MAX_MS));
         }
       });
+    feed.channel = channel;
+  };
+
+  // Back in the foreground: reconnect now instead of waiting for the timer.
+  feed.appState = AppState.addEventListener?.('change', (state) => {
+    if (state !== 'active' || feed.closed) return;
+    if (!feed.channel || feed.failures > 0) {
+      clearTimeout(feed.retryTimer);
+      feed.retryTimer = null;
+      connect();
+    }
+  });
+
+  feed.close = () => {
+    feed.closed = true;
+    clearTimeout(feed.retryTimer);
+    feed.appState?.remove?.();
+    dropChannel();
   };
 
   connect();
+  return feed;
+}
 
+export function subscribeNotifications(profileId, handlers = {}) {
+  if (!profileId) return () => {};
+  const key = String(profileId);
+  let feed = liveFeeds.get(key);
+  if (!feed) {
+    feed = createFeed(profileId);
+    liveFeeds.set(key, feed);
+  }
+  const listener = { ...handlers };
+  feed.listeners.add(listener);
+
+  let removed = false;
   return () => {
-    if (cleaned) return;
-    cleaned = true;
-    clearTimeout(retryTimer);
-    if (channel) void supabase.removeChannel(channel);
+    if (removed) return;
+    removed = true;
+    feed.listeners.delete(listener);
+    if (!feed.listeners.size) {
+      feed.close();
+      liveFeeds.delete(key);
+    }
   };
 }
 
@@ -163,7 +216,7 @@ export function formatNotificationTime(value) {
   if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
   if (diff < day) return `${Math.floor(diff / hour)}h ago`;
   if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
-  return new Date(value).toLocaleDateString();
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function notificationAccent(type) {

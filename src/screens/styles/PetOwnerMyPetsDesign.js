@@ -495,7 +495,6 @@ export const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 16,
-    tintColor: undefined,
   },
 
   petRowContent: {
@@ -708,7 +707,6 @@ export const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 24,
-    tintColor: undefined,
   },
 
   viewProfileInfo: {

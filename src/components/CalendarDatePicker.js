@@ -48,9 +48,9 @@ export default function CalendarDatePicker({ value, onChange, minDate, maxDate, 
   };
 
   const fieldLabel = selected
-    ? selected.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    ? selected.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
     : placeholder;
-  const monthTitle = visibleMonth.toLocaleDateString([], { month: 'long', year: 'numeric' });
+  const monthTitle = visibleMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
     <View>

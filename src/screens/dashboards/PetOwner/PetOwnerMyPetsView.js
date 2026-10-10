@@ -3,8 +3,8 @@ import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
 import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
 import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from '../../styles/PetOwnerMyPetsDesign';
@@ -21,6 +21,14 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
   const headerMotion = useLowerHeaderMotion();
   const loggedInUser = route?.params?.user;
   const petId = route?.params?.petId;
+  // "Kimchi was added successfully." after a save on the edit screen.
+  const [savedNotice, setSavedNotice] = useState(route?.params?.savedNotice || '');
+  useEffect(() => {
+    setSavedNotice(route?.params?.savedNotice || '');
+    if (!route?.params?.savedNotice) return undefined;
+    const timer = setTimeout(() => setSavedNotice(''), 5000);
+    return () => clearTimeout(timer);
+  }, [route?.params?.savedNotice]);
   const profileImageUri = loggedInUser?.profileImageUri || loggedInUser?.avatar || '';
   const headerDisplayName = loggedInUser?.username || loggedInUser?.name || loggedInUser?.fullName || 'Pet Owner';
   const ownerContact = loggedInUser?.email || loggedInUser?.phone || loggedInUser?.contactNumber || '';
@@ -178,32 +186,15 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
         </LinearGradient>
 
         <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {savedNotice ? <View style={noticeStyles.saved}><Text style={noticeStyles.savedText}>✓ {savedNotice}</Text></View> : null}
 
           <View style={styles.detailCard}>
-            <View style={styles.detailTopRow}>
-              <TouchableOpacity
-                style={styles.secondaryActionButton}
-                onPress={() => navigation.navigate('PetOwnerMyPets', { user: loggedInUser, selectedPetId: pet.id })}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.secondaryActionText}>Back</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.primaryActionButton}
-                onPress={() => navigation.navigate('PetOwnerMyPetsEdit', { user: loggedInUser, petId: pet.id })}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.primaryActionText}>Edit</Text>
-              </TouchableOpacity>
-            </View>
-
             <View style={styles.viewProfileHeader}>
               <View style={[styles.largePetAvatar, { backgroundColor: pet.profileColor }]}>
                 {activePhoto.source ? (
                   <Image
                     source={activePhoto.source}
-                    style={[styles.largePetAvatarImage, activePhoto.isCustom && styles.largePetAvatarImageCustom]}
+                    style={activePhoto.isCustom ? styles.largePetAvatarImageCustom : styles.largePetAvatarImage}
                     resizeMode="cover"
                   />
                 ) : (
@@ -220,6 +211,15 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
                 </View>
                 <Text style={styles.profileBreed}>{pet.breed || 'No breed yet'}</Text>
               </View>
+
+              {/* Edit sits on the same line as the photo and name. */}
+              <TouchableOpacity
+                style={[styles.primaryActionButton, editStyles.inline]}
+                onPress={() => navigation.navigate('PetOwnerMyPetsEdit', { user: loggedInUser, petId: pet.id })}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.primaryActionText}>Edit</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.profileGrid}>
@@ -305,3 +305,12 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
 };
 
 export default PetOwnerMyPetsView;
+
+const editStyles = StyleSheet.create({
+  inline: { alignSelf: 'center', marginLeft: 10, minHeight: 40, paddingHorizontal: 16 },
+});
+
+const noticeStyles = StyleSheet.create({
+  saved: { marginBottom: 12, padding: 12, borderRadius: 14, backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#bbf7d0' },
+  savedText: { color: '#166534', fontSize: 13, fontWeight: '800' },
+});

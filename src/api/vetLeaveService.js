@@ -115,7 +115,7 @@ export function subscribeToVetSchedule(veterinarianId, callback) {
 export function formatDayLabel(date) {
   if (!date) return '—';
   const [y, m, d] = String(date).slice(0, 10).split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export function formatClock(time) {

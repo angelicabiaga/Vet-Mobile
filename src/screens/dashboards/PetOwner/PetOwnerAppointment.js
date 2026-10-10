@@ -45,7 +45,7 @@ const toDateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-$
 const formatDate = (value) => {
   if (!value) return '—';
   const date = new Date(`${value}T12:00:00`);
-  return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 };
 
 export default function PetOwnerAppointment({ navigation, route }) {
@@ -142,7 +142,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
       const value = toDateKey(date);
       return {
         value,
-        label: date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+        label: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
       };
     });
   }, []);

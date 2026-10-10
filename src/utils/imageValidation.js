@@ -1,3 +1,5 @@
+import { imageTypeFromBytes, readFileBytes } from './fileBytes';
+
 export const MAX_IMAGE_SIZE_BYTES = 25 * 1024 * 1024;
 export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 export const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
@@ -27,26 +29,25 @@ export function validatePickedImageAsset(asset) {
   return null;
 }
 
-const MIME_BY_EXTENSION = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
-
 // Reads a picked image as raw bytes with an explicit image type, ready for
-// supabase.storage.upload. On a phone, uploading the React Native Blob sends
-// it as text/plain and the image-only buckets reject it; bytes + contentType
-// upload correctly on Android, iOS and web. Throws the user-facing message
-// when the file isn't an allowed image.
+// supabase.storage.upload (bytes + contentType upload correctly on Android,
+// iOS and web). The type comes from the file's own bytes, so anything that
+// isn't really a JPEG/PNG/WEBP -- e.g. a "File not found" error read in
+// place of the photo -- is refused instead of being saved as a broken image.
+// Throws the user-facing message when the file isn't an allowed image.
 export async function readImageForUpload(uri) {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const validationError = validateImageBlob(blob, uri);
-  if (validationError) throw new Error(validationError);
-  const blobType = String(blob.type || '').toLowerCase();
-  const fromExtension = MIME_BY_EXTENSION[extensionFromUri(uri)];
-  const contentType = blobType === 'image/jpg' ? 'image/jpeg'
-    : ALLOWED_IMAGE_MIME_TYPES.includes(blobType) ? blobType
-    : fromExtension || 'image/jpeg';
-  const ext = Object.keys(MIME_BY_EXTENSION).find((key) => key !== 'jpg' && MIME_BY_EXTENSION[key] === contentType) || 'jpg';
-  const body = await new Response(blob).arrayBuffer();
-  return { body, contentType, ext: ext === 'jpeg' ? 'jpg' : ext };
+  let body;
+  try {
+    body = await readFileBytes(uri);
+  } catch {
+    throw new Error('Unable to read the selected photo. Please choose it again.');
+  }
+  if (!body || body.byteLength === 0) throw new Error('Unable to read the selected photo. Please choose it again.');
+  if (body.byteLength > MAX_IMAGE_SIZE_BYTES) throw new Error(IMAGE_SIZE_ERROR);
+  const contentType = imageTypeFromBytes(body);
+  if (!contentType) throw new Error(IMAGE_FORMAT_ERROR);
+  const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+  return { body, contentType, ext };
 }
 
 // Backend/service-layer check, run against the fetched blob right before upload

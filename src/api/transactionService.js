@@ -62,7 +62,7 @@ export function formatTransactionDate(value) {
   if (!value) return 'Not recorded';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 }
 
 export function formatCurrency(value) {

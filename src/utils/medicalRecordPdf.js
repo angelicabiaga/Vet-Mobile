@@ -2,7 +2,9 @@ import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { jsPDF } from 'jspdf';
+// Web only: jsPDF can't load on Android/iOS (Hermes has no latin1 TextDecoder),
+// so native gets null here and prints the HTML version of the same document.
+import { jsPDF } from './jspdfLoader';
 import { DENTAL_FIELDS, VACCINE_FIELDS, getRecordTemplate, parseJsonColumn } from '../constants/medicalRecordTemplates';
 import { petAgeText } from './medicalDocuments';
 
@@ -11,8 +13,8 @@ import { petAgeText } from './medicalDocuments';
 // Built from data only (never the screen) with jsPDF on every platform, so web
 // and phones get the same multi-page A4 document with "Page X of Y":
 //   web    -> opens the PDF in a new tab (in-app viewer if the popup is blocked)
-//   native -> writes the PDF to a file and opens the system print preview;
-//             falls back to an HTML version of the same document if jsPDF fails.
+//   native -> HTML version of the same document -> PDF file (expo-print),
+//             then the system print preview.
 
 export const RECORD_ERROR_TITLE = 'Medical record not available';
 export const RECORD_ERROR_MESSAGE = "The medical record couldn't be printed. Please try again.";
@@ -241,6 +243,7 @@ const GREY = [97, 118, 127];
 const DARK = [30, 49, 58];
 
 function renderPdf(model, photo) {
+  if (!jsPDF) throw new Error('jsPDF is only available on web.');
   const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
   let y = MARGIN;
 
@@ -568,14 +571,17 @@ export async function printMedicalRecordPdf({ record, pet, owner, vet }) {
     return opened ? {} : { blockedUrl: url, download: () => pdf.save(fileName) };
   }
 
-  let uri;
-  try {
-    const base64 = renderPdf(model, photo).output('datauristring').split(',')[1];
-    uri = `${FileSystem.cacheDirectory}${fileName}`;
-    await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
-  } catch (pdfError) {
-    console.warn('Medical record PDF via jsPDF failed, using HTML:', pdfError?.message || pdfError);
-    ({ uri } = await Print.printToFileAsync({ html: renderHtml(model, photo), width: 595, height: 842 }));
+  let { uri } = await Print.printToFileAsync({ html: renderHtml(model, photo), width: 595, height: 842 });
+  // Give the file its proper name for sharing; keep the temp name if that fails.
+  if (FileSystem.cacheDirectory) {
+    const named = `${FileSystem.cacheDirectory}${fileName}`;
+    try {
+      await FileSystem.deleteAsync(named, { idempotent: true });
+      await FileSystem.moveAsync({ from: uri, to: named });
+      uri = named;
+    } catch {
+      // keep the temporary file
+    }
   }
   await Print.printAsync({ uri });
   return { shareUri: uri };

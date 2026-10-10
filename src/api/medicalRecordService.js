@@ -109,7 +109,7 @@ export function formatMedicalDate(value) {
   if (!value) return 'Not recorded';
   const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 }
 
 // consultation_date is a date-only column (no time-of-day field exists on
@@ -121,7 +121,9 @@ export function formatMedicalTime12h(record) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  // Always 12-hour ("1:07 PM"), whatever the phone's 24-hour setting.
+  const hour = date.getHours();
+  return `${hour % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
 }
 
 const AI_CONTEXT_FIELDS =

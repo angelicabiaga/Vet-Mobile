@@ -86,7 +86,7 @@ export default function VetPatientEdit({ navigation, route }) {
   }, []);
 
   const goBackToProfile = (params = {}) =>
-    navigation.navigate({ name: 'VetPatientProfile', params: { user: currentUser, petId, ...params }, merge: true });
+    navigation.navigate('VetPatientProfile', { user: currentUser, petId, ...params }, { merge: true });
 
   // A failed save scrolls back to the first field outlined in red.
   const scrollRef = useRef(null);
@@ -138,7 +138,7 @@ export default function VetPatientEdit({ navigation, route }) {
 
   if (!loaded || !patient) {
     return (
-      <VetShell navigation={navigation} route={route} subtitle="Edit Animal Patient" caption="Update patient details" showBack>
+      <VetShell navigation={navigation} route={route} subtitle="Edit Animal Patient" caption="Update patient details">
         <View style={styles.centerCard}>
           {!loaded ? <ActivityIndicator size="large" color="#2c6ba3" /> : <Text style={styles.centerText}>This animal patient could not be found.</Text>}
         </View>
@@ -147,13 +147,10 @@ export default function VetPatientEdit({ navigation, route }) {
   }
 
   return (
-    <VetShell navigation={navigation} route={route} subtitle="Edit Animal Patient" caption={`Editing ${patient.pet_name || 'animal patient'}`} showBack>
+    <VetShell navigation={navigation} route={route} subtitle="Edit Animal Patient" caption={`Editing ${patient.pet_name || 'animal patient'}`}>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Animal Patient Details</Text>
-          <Text style={styles.cardSubtitle}>
-            Owner: {patient.owner?.full_name || patient.owner?.username || 'Not listed'} · the owner and medical history stay unchanged.
-          </Text>
 
           {formError ? (
             <View style={styles.formErrorBox}><Text style={styles.formErrorText}>{formError}</Text></View>

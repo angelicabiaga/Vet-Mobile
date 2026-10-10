@@ -46,7 +46,7 @@ const getOwnerId = (user) => user?.id || user?.user_id || user?.profile_id || ''
 const formatDate = (value) => {
   if (!value) return '—';
   const date = new Date(`${value}T12:00:00`);
-  return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 };
 // Same filter as the vet's Appointments screen, plus Confirmed (owners have
 // upcoming visits).
@@ -69,8 +69,8 @@ const dateSearchText = (value) => {
   return [
     value,
     formatDate(value),
-    date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
-    date.toLocaleDateString([], { weekday: 'long' }),
+    date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    date.toLocaleDateString('en-US', { weekday: 'long' }),
     `${month}/${day}/${year}`,
     `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`,
   ].join(' ');
@@ -80,7 +80,7 @@ const formatTimestamp = (value) => {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleString('en-US', { hour12: true, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 
 export default function PetOwnerMyAppointments({ navigation, route }) {
@@ -95,6 +95,9 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   // The appointment whose details sheet is open (same as the vet's Appointments).
   const [selected, setSelected] = useState(null);
+  // Shown in the details sheet when Cancel is tapped on a visit that can't be cancelled.
+  const [sheetError, setSheetError] = useState('');
+  useEffect(() => { setSheetError(''); }, [selected?.id]);
   const [message, setMessage] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -240,14 +243,17 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  // Web rules: Cancel on upcoming visits; Rebook only on your own online booking.
+  // Cancel is offered on every Confirmed visit and validated against the
+  // cancellation rules (1-hour cutoff, not started, not checked in); a visit
+  // that fails them stays booked and the reason is shown. Rebook only on
+  // your own upcoming online booking (web rule).
   const actionsFor = (item) => {
     const canViewQueue = queueEntries.some((entry) => String(entry.appointment_id) === String(item.id));
-    const canManage = isUpcoming(item);
+    const canManage = item.status === 'Confirmed';
     return {
       canViewQueue,
       canManage,
-      canRebook: canManage && (item.appointment_source || 'Online') === 'Online',
+      canRebook: isUpcoming(item) && (item.appointment_source || 'Online') === 'Online',
       cancelBlockReason: canManage ? getCancellationBlockReason(item, { checkedIn: canViewQueue }) : null,
     };
   };
@@ -462,7 +468,14 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
                       <View style={styles.actionRow}>
                         <TouchableOpacity
                           style={[styles.cancelButton, cancelBlockReason && styles.cancelButtonDisabled]}
-                          onPress={() => { if (!cancelBlockReason) close(() => requestCancel(selected, null)); }}
+                          onPress={() => {
+                            // Validate first: a visit that fails the cancellation rules stays booked.
+                            if (cancelBlockReason) {
+                              setSheetError(cancelBlockReason);
+                              return;
+                            }
+                            close(() => requestCancel(selected, null));
+                          }}
                           accessibilityState={{ disabled: Boolean(cancelBlockReason) }}
                         >
                           <Text style={[styles.cancelText, cancelBlockReason && styles.cancelTextDisabled]}>Cancel</Text>
@@ -473,7 +486,12 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
                           </TouchableOpacity>
                         ) : null}
                       </View>
-                      {cancelBlockReason ? <Text style={styles.cancelNote}>{cancelBlockReason}</Text> : null}
+                      {sheetError ? (
+                        <View style={styles.sheetError}>
+                          <Text style={styles.sheetErrorTitle}>This appointment can't be cancelled</Text>
+                          <Text style={styles.sheetErrorText}>{sheetError}</Text>
+                        </View>
+                      ) : cancelBlockReason ? <Text style={styles.cancelNote}>{cancelBlockReason}</Text> : null}
                     </>
                   ) : null}
 
@@ -666,6 +684,9 @@ const styles = StyleSheet.create({
   detailHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   detailTitle: { fontSize: 19, fontWeight: '900', color: '#123a5e', flex: 1, marginRight: 10 },
   detailQueueButton: { marginTop: 14 },
+  sheetError: { marginTop: 10, padding: 10, borderRadius: 12, backgroundColor: '#fff1f1', borderWidth: 1, borderColor: '#f4cccc' },
+  sheetErrorTitle: { color: '#a33f3f', fontSize: 13, fontWeight: '900' },
+  sheetErrorText: { marginTop: 2, color: '#a33f3f', fontSize: 12.5, fontWeight: '600', lineHeight: 18 },
   detailCloseButton: { marginTop: 16, minHeight: 46, borderRadius: 14, backgroundColor: '#2c6ba3', alignItems: 'center', justifyContent: 'center' },
   detailCloseText: { color: '#ffffff', fontWeight: '900', fontSize: 13 },
   appointmentMeta: { color: '#5d7b91', fontSize: 12, fontWeight: '700', marginTop: 2 },

@@ -1,5 +1,7 @@
 import { supabase } from "../config/supabaseClient";
 import { createNotification } from "./notificationService";
+import { readFileBytes } from "../utils/fileBytes";
+import { openLiveChannel } from "./liveChannel";
 
 const FALLBACK_CODES = new Set(["PGRST200", "PGRST201", "PGRST204", "PGRST205", "42P01", "42703"]);
 
@@ -203,8 +205,14 @@ export async function uploadMessageAttachment(file, profileId) {
   const originalName = file.name || "attachment";
   const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${profileId}/${Date.now()}-${safeName}`;
-  const response = await fetch(file.uri);
-  const arrayBuffer = await response.arrayBuffer();
+  // Read via the file system on phones (fetch can fail on local cache paths).
+  let arrayBuffer;
+  try {
+    arrayBuffer = await readFileBytes(file.uri);
+  } catch {
+    throw new Error("Unable to read the attached file. Please choose it again.");
+  }
+  if (!arrayBuffer?.byteLength) throw new Error("Unable to read the attached file. Please choose it again.");
   const { error } = await supabase.storage.from("message-attachments").upload(path, arrayBuffer, {
     contentType: file.mimeType || "application/octet-stream", cacheControl: "3600", upsert: false,
   });
@@ -290,47 +298,27 @@ export async function sendMessage(conversationId, profile, body, file) {
   return rpcData;
 }
 
+// Live updates for one chat. Reconnects by itself after network/background
+// drops (see liveChannel.js). Returns a function that stops listening.
 export function subscribeToMessages(conversationIds, onChange) {
   const ids = asIdList(conversationIds);
-  if (!ids.length) return null;
+  if (!ids.length) return () => {};
   const filter = ids.length === 1 ? `conversation_id=eq.${ids[0]}` : `conversation_id=in.(${ids.join(",")})`;
-  return supabase
-    .channel(`pawcruz-mobile-messages-${ids[0]}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "messages", filter },
-      onChange
-    )
-    .subscribe((status) => {
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.warn("Message Realtime status:", status);
-      }
-    });
+  return openLiveChannel(
+    "Messages",
+    (channel) => channel.on("postgres_changes", { event: "*", schema: "public", table: "messages", filter }, onChange),
+    { onReconnected: onChange },
+  );
 }
 
+// Live updates for the conversation list. Returns a function that stops listening.
 export function subscribeToMessagingOverview(profileId, onChange) {
-  if (!profileId) return null;
-
-  return supabase
-    .channel(`pawcruz-mobile-message-overview-${profileId}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "messages" },
-      onChange
-    )
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "conversation_participants",
-        filter: `profile_id=eq.${profileId}`,
-      },
-      onChange
-    )
-    .subscribe((status) => {
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.warn("Messaging overview Realtime status:", status);
-      }
-    });
+  if (!profileId) return () => {};
+  return openLiveChannel(
+    "Messaging overview",
+    (channel) => channel
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_participants", filter: `profile_id=eq.${profileId}` }, onChange),
+    { onReconnected: onChange },
+  );
 }

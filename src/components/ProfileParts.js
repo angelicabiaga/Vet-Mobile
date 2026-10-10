@@ -369,7 +369,7 @@ export function useProfilePhotoPicker(onPicked) {
   const fromAlbum = () => pick(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return null;
-    return ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.85 });
+    return ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.85 });
   });
   const fromFiles = () => pick(() => DocumentPicker.getDocumentAsync({ type: ['image/*'], copyToCacheDirectory: true, multiple: false }));
   const fromCamera = () => pick(async () => {
