@@ -80,14 +80,11 @@ function shiftForDate(schedule, date) {
   return weekly.is_available ? { start: String(weekly.start_time).slice(0, 5), end: String(weekly.end_time).slice(0, 5) } : { off: true };
 }
 
-// Emergency default: now, rounded down to the 10-minute grid, inside today's shift.
-function defaultEmergencyTime(shiftStart, shiftEnd) {
+// The current time on the 10-minute grid ("16:40" at 4:47 PM).
+const currentSlot = () => {
   const now = new Date();
-  const rounded = Math.floor((now.getHours() * 60 + now.getMinutes()) / 10) * 10;
-  const min = toMinutes(shiftStart);
-  const max = toMinutes(shiftEnd) - 10;
-  return fromMinutes(Math.min(Math.max(rounded, min), max));
-}
+  return fromMinutes(Math.floor((now.getHours() * 60 + now.getMinutes()) / 10) * 10);
+};
 
 function FieldError({ text }) {
   return text ? <Text style={styles.reasonError}>{text}</Text> : null;
@@ -205,6 +202,18 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
   const [saving, setSaving] = React.useState(false);
   const [submitError, setSubmitError] = React.useState('');
   const sequence = React.useRef(0);
+  // Kept current while the form is open, so the time list follows the clock.
+  const [nowSlot, setNowSlot] = React.useState(currentSlot);
+  React.useEffect(() => {
+    if (!visible) return undefined;
+    setNowSlot(currentSlot());
+    const timer = setInterval(() => setNowSlot(currentSlot()), 30000);
+    return () => clearInterval(timer);
+  }, [visible]);
+  // A chosen time that has slipped into the past moves up to now.
+  React.useEffect(() => {
+    if (isEmergency && fromTime && fromTime < nowSlot && nowSlot <= fromMinutes(toMinutes(shiftEnd) - 10)) setFromTime(nowSlot);
+  }, [isEmergency, fromTime, nowSlot, shiftEnd]);
 
   // Fresh form every time it opens.
   React.useEffect(() => {
@@ -217,7 +226,7 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
     setDuration('full');
     setPartialTime('');
     setEmergencyMode('from');
-    setFromTime(defaultEmergencyTime(shiftStart, shiftEnd));
+    setFromTime('');
     setReason('');
     setFieldErrors({});
     setImpact(null);
@@ -244,7 +253,11 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
   }, [isEmergency, emergencyMode, fromTime, today, singleDay, duration, partialTime, startDate, endDate]);
 
   React.useEffect(() => {
-    if (!visible || !veterinarianId || !today || (!isEmergency && !startDate)) return undefined;
+    const needsTime = isEmergency && emergencyMode === 'from' && !fromTime;
+    if (!visible || !veterinarianId || !today || (!isEmergency && !startDate) || needsTime) {
+      if (needsTime) setImpact(null);
+      return undefined;
+    }
     const current = ++sequence.current;
     setChecking(true);
     setCheckError('');
@@ -272,7 +285,10 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
   const partialFrom = dayShift?.start ? fromMinutes(toMinutes(dayShift.start) + 30) : '09:30';
   const partialTo = dayShift?.end ? fromMinutes(toMinutes(dayShift.end) - 30) : '18:30';
   const partialOptions = React.useMemo(() => timeOptions(partialFrom, partialTo, 30), [partialFrom, partialTo]);
-  const emergencyOptions = timeOptions(shiftStart, fromMinutes(toMinutes(shiftEnd) - 10), 10);
+  // Emergency times start now (never in the past) and run to the end of the shift.
+  const emergencyFrom = nowSlot > shiftStart ? nowSlot : shiftStart;
+  const emergencyLast = fromMinutes(toMinutes(shiftEnd) - 10);
+  const emergencyOptions = emergencyFrom <= emergencyLast ? timeOptions(emergencyFrom, emergencyLast, 10) : [];
 
   React.useEffect(() => {
     if (partialOptions.length && !partialOptions.some((option) => option.value === partialTime)) {
@@ -299,14 +315,23 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
     if (needsReason) {
       const text = reason.trim();
       if (!text) need('reason', 'Describe the reason so staff can plan coverage.');
+      else if (!/[A-Za-zÀ-ɏ]{2,}/.test(text)) errors.reason = 'Enter a real reason using words, not only numbers or symbols.';
       else if (text.length < 3) errors.reason = 'Describe the reason in a few words.';
       else if (text.length > REASON_LIMIT) errors.reason = `Keep the reason under ${REASON_LIMIT} characters.`;
     }
 
     if (isEmergency) {
+      if (todayShift?.off) {
+        errors.leaveType = "You're not scheduled to work today, so there's no shift to take emergency leave from.";
+        return { errors, missing };
+      }
       if (emergencyMode === 'from') {
-        if (!fromTime) need('fromTime', "Select the time you're leaving.");
-        else if (!emergencyOptions.some((option) => option.value === fromTime)) errors.fromTime = "Choose a time within today's shift.";
+        // The current 10-minute slot is the earliest allowed time.
+        const earliest = currentSlot();
+        if (!emergencyOptions.length) errors.fromTime = "Your shift today has already ended. Choose \"Can't work today\" instead.";
+        else if (!fromTime) need('fromTime', "Select the time you're leaving.");
+        else if (fromTime < earliest) errors.fromTime = `That time has already passed. Choose ${formatClock(earliest)} or later.`;
+        else if (!emergencyOptions.some((option) => option.value === fromTime)) errors.fromTime = "Choose a time within today's shift."
       }
       return { errors, missing };
     }
@@ -493,7 +518,9 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
             )}
 
             <Text style={styles.sectionTitle}>Impact on your schedule</Text>
-            {!isEmergency && !startDate
+            {isEmergency && emergencyMode === 'from' && !fromTime
+              ? <Text style={styles.hint}>Select the time you're leaving to see the impact.</Text>
+              : !isEmergency && !startDate
               ? <Text style={styles.hint}>Select your leave dates to see the impact.</Text>
               : <ImpactPreview impact={impact} loading={checking} error={checkError} />}
           </ScrollView>
