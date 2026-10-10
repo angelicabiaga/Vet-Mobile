@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -20,16 +19,19 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [message, setMessage] = useState("");
+  // Shown under the input with a red border (not as a popup).
+  const [fieldError, setFieldError] = useState("");
 
   const handleSubmit = async () => {
-    if (!email) {
-      Alert.alert("Required", "Please enter your email");
+    if (!email.trim()) {
+      setFieldError("Email or username is required.");
       return;
     }
 
     setLoading(true);
     setStatus("");
     setMessage("");
+    setFieldError("");
 
     try {
       const result = await requestPasswordReset(email);
@@ -38,8 +40,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         purpose: "forgot_password",
       });
     } catch (err) {
-      setMessage(err.message || "Email not found.");
-      setStatus("error");
+      setFieldError(err.message || "Email not found.");
     } finally {
       setLoading(false);
     }
@@ -81,13 +82,14 @@ export default function ForgotPasswordScreen({ navigation }) {
             <TextInput
               placeholder="Enter email or username"
               placeholderTextColor="#8d98a5"
-              style={styles.input}
+              style={[styles.input, fieldError && styles.inputError]}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(value) => { setEmail(value); if (fieldError) setFieldError(""); }}
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading && status !== "success"}
             />
+            {fieldError ? <Text style={styles.fieldError}>{fieldError}</Text> : null}
 
             {status === "success" ? (
               <TouchableOpacity
@@ -195,6 +197,19 @@ const styles = StyleSheet.create({
     borderColor: "#dce8ef",
     marginBottom: 15,
     color: "#243746",
+  },
+
+  inputError: {
+    borderWidth: 1.5,
+    borderColor: "#EF4444",
+    marginBottom: 6,
+  },
+
+  fieldError: {
+    color: "#FCA5A5",
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 12,
   },
 
   inputLabel: {

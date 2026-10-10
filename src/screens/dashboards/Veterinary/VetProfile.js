@@ -19,6 +19,7 @@ import {
   usePasswordChange,
   useProfilePhotoPicker,
 } from '../../../components/ProfileParts';
+import useScrollToError from '../../../hooks/useScrollToError';
 import VetShell, { getVetUser } from './VetShell';
 import { getProfile, subscribeProfile, updateProfileAvatar, updateVeterinarianProfile, uploadProfileAvatar } from '../../../api/profileService';
 import { logoutAndResetToLogin } from '../../../api/authService';
@@ -97,6 +98,9 @@ const VetProfile = ({ navigation, route }) => {
   const routeUser = getVetUser(route);
   const profileId = routeUser?.id || routeUser?.user_id || routeUser?.profile_id || null;
   const scrollViewRef = useRef(null);
+  // A failed save scrolls back to the first field outlined in red.
+  const errorScroll = useScrollToError(scrollViewRef);
+  const FIELD_ORDER = ['firstName', 'lastName', 'middleName', 'phone', 'specialization', 'address', 'education', 'years_experience'];
 
   // `profile` is the saved row the page shows; `form` is only the draft while editing.
   const [profile, setProfile] = useState(routeUser);
@@ -148,7 +152,7 @@ const VetProfile = ({ navigation, route }) => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const passwordChange = usePasswordChange(profileId, { setMessage, onChanged: () => changeMode('view') });
+  const passwordChange = usePasswordChange(profileId, { setMessage, onChanged: () => changeMode('view'), errorScroll });
 
   const openMode = (next) => {
     setMessage(NO_MESSAGE);
@@ -167,6 +171,7 @@ const VetProfile = ({ navigation, route }) => {
     const errors = validateDetails(form);
     setFieldErrors(errors);
     if (Object.keys(errors).length) {
+      errorScroll.scrollToFirstError(errors, FIELD_ORDER);
       setMessage({ type: 'error', text: 'Please fix the highlighted fields before saving.' });
       return;
     }
@@ -288,7 +293,7 @@ const VetProfile = ({ navigation, route }) => {
   // Called as a function, not rendered as a component, so the input keeps
   // focus while typing.
   const textField = (name, label, { required, optional, multiline, transform, ...inputProps } = {}) => (
-    <View key={name}>
+    <View key={name} ref={errorScroll.anchor(name)}>
       <FormLabel label={label} required={required} optional={optional} />
       <TextInput
         value={form[name]}

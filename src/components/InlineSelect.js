@@ -8,7 +8,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 const ROW_HEIGHT = 37;
 const VISIBLE_ROWS = 8;
 
-export default function InlineSelect({ options = [], value, onChange, placeholder = 'Select', disabled = false }) {
+// error: thin red border for inline validation (the message goes below the field).
+export default function InlineSelect({ options = [], value, onChange, placeholder = 'Select', disabled = false, error = false }) {
   const [open, setOpen] = useState(false);
   const listRef = useRef(null);
   const selected = options.find((option) => option.value === value) || null;
@@ -27,7 +28,7 @@ export default function InlineSelect({ options = [], value, onChange, placeholde
   return (
     <View>
       <TouchableOpacity
-        style={[styles.field, open && styles.fieldOpen, disabled && styles.fieldDisabled]}
+        style={[styles.field, open && styles.fieldOpen, error && styles.fieldError, disabled && styles.fieldDisabled]}
         onPress={() => !disabled && setOpen((current) => !current)}
         disabled={disabled}
         activeOpacity={0.85}
@@ -75,6 +76,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fbfdfe', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   fieldOpen: { borderColor: '#2c6ba3' },
+  fieldError: { borderColor: '#dc2626' },
   fieldDisabled: { opacity: 0.6 },
   fieldText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#294b5d' },
   fieldPlaceholder: { color: '#8d98a5' },

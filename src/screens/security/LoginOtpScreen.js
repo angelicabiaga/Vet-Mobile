@@ -189,7 +189,6 @@ const LoginOtpScreen = () => {
               <Text style={styles.email}>{maskedEmail}</Text>
               <Text style={styles.expiry}>This code expires in 10 minutes.</Text>
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
               {message ? <Text style={styles.success}>{message}</Text> : null}
 
               <View style={styles.otpContainer}>
@@ -197,7 +196,7 @@ const LoginOtpScreen = () => {
                   <TextInput
                     key={i}
                     ref={(el) => (inputsRef.current[i] = el)}
-                    style={styles.otpInput}
+                    style={[styles.otpInput, error && styles.otpInputError]}
                     value={digit}
                     onChangeText={(val) => handleChange(val, i)}
                     keyboardType="number-pad"
@@ -210,6 +209,8 @@ const LoginOtpScreen = () => {
                   />
                 ))}
               </View>
+              {/* Code errors sit right under the boxes, which turn red. */}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
 
               {purpose === "login" ? (
                 <TouchableOpacity
@@ -357,6 +358,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 22,
+  },
+
+  otpInputError: {
+    borderColor: "#EF4444",
   },
 
   otpInput: {

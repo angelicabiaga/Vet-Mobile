@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
@@ -107,6 +109,8 @@ const formatBookedTimestamp = (value) => {
 };
 
 const PetOwnerAppointmentSchedule = ({ navigation, route }) => {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const loggedInUser = route?.params?.user;
   const appointmentDraft = route?.params?.appointmentDraft || {};
   const existingAppointment = route?.params?.existingAppointment || null;
@@ -649,12 +653,14 @@ const PetOwnerAppointmentSchedule = ({ navigation, route }) => {
           </View>
           </LinearGradient>
 
-          <View style={styles.headerBottomRowWrap}>
-            <View style={styles.headerBottomRow}>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
+            <View style={styles.headerBottomRowWrap}>
+              <View style={styles.headerBottomRow}>
 
-              <PetOwnerHeaderGreeting caption="Choose pet, vet, date and time" user={loggedInUser} />
+                <PetOwnerHeaderGreeting caption="Choose pet, vet, date and time" user={loggedInUser} />
+              </View>
             </View>
-          </View>
+          </CollapsingHeaderRow>
 
           {false ? (
             <Animated.View
@@ -728,7 +734,7 @@ const PetOwnerAppointmentSchedule = ({ navigation, route }) => {
 
         </LinearGradient>
 
-        <ScrollView
+        <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >

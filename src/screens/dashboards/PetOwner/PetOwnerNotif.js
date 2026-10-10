@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,14 +18,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from '../../styles/PetOwnerNotifDesign';
 import {
-  formatNotificationTime,
   getNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-  notificationAccent,
   subscribeNotifications,
 } from '../../../api/notificationService';
 import { getStoredSession } from '../../../api/authService';
+import { MarkAllReadButton, NotificationCard, NotificationEmpty } from '../../../components/NotificationCard';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
@@ -39,6 +40,8 @@ const ROUTE_BY_MODULE = {
 const routeForNotification = (item) => ROUTE_BY_MODULE[String(item?.related_module || '').trim().toLowerCase()] || null;
 
 const PetOwnerNotif = ({ navigation, route }) => {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const routeUser = route?.params?.user || null;
   const [user, setUser] = useState(routeUser);
   const [notifications, setNotifications] = useState([]);
@@ -190,11 +193,11 @@ const PetOwnerNotif = ({ navigation, route }) => {
             </View>
           </LinearGradient>
 
-          <Animated.View style={[styles.headerBottomRowWrap, { opacity: lowerHeaderAnimation }]}>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
             <View style={styles.headerBottomRow}>
               <PetOwnerHeaderGreeting caption={unreadCount ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'You are all caught up'} user={routeUser} />
             </View>
-          </Animated.View>
+          </CollapsingHeaderRow>
 
           {false ? (
             <Animated.View style={[styles.headerMenuPanel, { opacity: headerMenuAnimation, transform: [{ translateY: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) }] }] }>
@@ -208,50 +211,24 @@ const PetOwnerNotif = ({ navigation, route }) => {
           ) : null}
         </LinearGradient>
 
-        <ScrollView
+        <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16}
           ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNotifications(false)} />}
         >
-          <View style={styles.sectionHeaderWrap}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flex: 1, paddingRight: 12 }} />
-              <TouchableOpacity
-                disabled={unreadCount === 0}
-                onPress={handleReadAll}
-                style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 14, backgroundColor: unreadCount ? '#2c6ba3' : '#dce8ed' }}
-              >
-                <Text style={{ color: unreadCount ? '#fff' : '#8ca0aa', fontWeight: '800', fontSize: 11 }}>Mark all read</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <MarkAllReadButton unreadCount={unreadCount} onPress={handleReadAll} />
 
           {error ? <View style={{ marginBottom: 12, padding: 12, borderRadius: 14, backgroundColor: '#fff0ee' }}><Text style={{ color: '#b44b3d', fontWeight: '700' }}>{error}</Text></View> : null}
 
           {loading ? (
             <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color="#2c6ba3" /><Text style={{ marginTop: 12, color: '#5d7b91', fontWeight: '700' }}>Loading notifications...</Text></View>
           ) : notifications.length ? (
-            notifications.map((item) => {
-              const accent = notificationAccent(item.notification_type);
-              const unread = !item.is_read;
-              return (
-                <TouchableOpacity key={item.id} onPress={() => handleOpen(item)} activeOpacity={0.9} style={[styles.notifItem, { marginBottom: 12, opacity: unread ? 1 : 0.72, borderWidth: unread ? 1 : 0, borderColor: unread ? '#b8dce7' : 'transparent' }]}>
-                  <View style={[styles.notifAccent, { backgroundColor: accent }]} />
-                  <View style={styles.notifContent}>
-                    <View style={styles.notifMetaRow}>
-                      <Text style={styles.notifCategory}>{item.notification_type || 'Notification'}</Text>
-                      {unread ? <View style={[styles.priorityPill, { borderColor: accent }]}><Text style={[styles.priorityPillText, { color: accent }]}>Unread</Text></View> : null}
-                    </View>
-                    <Text style={styles.notifTitle}>{item.title || 'PawCruz Notification'}</Text>
-                    <Text style={styles.notifBody}>{item.message || ''}</Text>
-                    <Text style={styles.notifTime}>{formatNotificationTime(item.created_at)}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
+            notifications.map((item) => (
+              <NotificationCard key={item.id} notification={item} onPress={() => handleOpen(item)} />
+            ))
           ) : (
-            <View style={styles.emptyCard}><Text style={styles.emptyTitle}>No notifications yet</Text><Text style={styles.emptyText}>Appointment, queue, medical record, message, and clinic updates will appear here automatically.</Text></View>
+            <NotificationEmpty text="Appointment, queue, medical record, message, and clinic updates will appear here automatically." />
           )}
         </ScrollView>
 

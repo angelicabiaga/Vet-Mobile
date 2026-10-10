@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -9,6 +11,7 @@ import {
   Image,
   Modal,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -32,6 +35,7 @@ import {
  } from './PetOwnerMyPetsInfo';
 import { archiveOwnerPet, getOwnerPet, saveOwnerPet, validatePatientDetails } from '../../../api/petService';
 import { validatePickedImageAsset } from '../../../utils/imageValidation';
+import useScrollToError from '../../../hooks/useScrollToError';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 const CALENDAR_ICON = require('../../assets/calendar.png');
@@ -78,6 +82,8 @@ const isSameCalendarDate = (leftDate, rightDate) => (
 );
 
 const PetOwnerMyPetsEdit = ({ navigation, route }) => {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const loggedInUser = route?.params?.user;
   const petId = route?.params?.petId;
   const returnToRoute = route?.params?.returnToRoute || '';
@@ -146,19 +152,35 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     { key: 'messages', label: 'Messages', icon: require('../../assets/Message_Icon.png'), route: 'PetOwnerMessages' },
   ];
 
+  // Per-field validation shown under each input with a red border.
+  const [fieldErrors, setFieldErrors] = useState({});
+  const scrollRef = useRef(null);
+  // A failed save scrolls back to the first field outlined in red.
+  const errorScroll = useScrollToError(scrollRef);
+  const FIELD_ORDER = ['photo', 'name', 'species', 'breed', 'birthday', 'weight', 'color', 'microchipNumber', 'allergies', 'existingConditions', 'notes'];
+  const LABEL_FIELDS = {
+    Name: 'name', Species: 'species', Breed: 'breed', Birthday: 'birthday', 'Weight (kg)': 'weight', Color: 'color',
+    'Microchip Number': 'microchipNumber', Allergies: 'allergies', 'Existing Conditions': 'existingConditions', 'Additional Notes': 'notes',
+  };
+  const clearFieldError = (...names) => setFieldErrors((current) => (
+    names.some((name) => current[name]) ? names.reduce((next, name) => ({ ...next, [name]: undefined }), current) : current
+  ));
+  const fieldErrorText = (name) => (fieldErrors[name] ? <Text style={inlineStyles.errorText}>{fieldErrors[name]}</Text> : null);
+
   const updateDraftPetField = (field, value) => {
+    clearFieldError(field === 'profileImageUri' ? 'photo' : field);
     setDraftPet((current) => ({ ...current, [field]: value }));
   };
 
   const renderFormLabel = (label, showRequiredMark = false) => (
-    <Text style={styles.formLabel}>
+    <Text style={styles.formLabel} ref={LABEL_FIELDS[label] ? errorScroll.anchor(LABEL_FIELDS[label]) : undefined}>
       {label}
       {showRequiredMark ? <Text style={styles.requiredMark}> *</Text> : null}
     </Text>
   );
 
   const renderOptionalLabel = (label) => (
-    <Text style={styles.formLabel}>
+    <Text style={styles.formLabel} ref={LABEL_FIELDS[label] ? errorScroll.anchor(LABEL_FIELDS[label]) : undefined}>
       {label}
       <Text style={styles.optionalMark}> (Optional)</Text>
     </Text>
@@ -173,6 +195,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     !pet?.birthYear;
 
   const handleSpeciesChange = (item) => {
+    clearFieldError('species');
     setIsCustomBreedMode(false);
     setDraftPet((current) => ({
       ...current,
@@ -183,6 +206,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   };
 
   const handleBreedChange = (item) => {
+    clearFieldError('breed');
     if (item.value === OTHER_OPTION_VALUE) {
       setIsCustomBreedMode(true);
       setDraftPet((current) => ({
@@ -201,6 +225,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   };
 
   const handleCustomBreedChange = (value) => {
+    clearFieldError('breed');
     setDraftPet((current) => ({
       ...current,
       customBreed: value,
@@ -231,6 +256,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     if (!pendingBirthdayDate) {
       return;
     }
+    clearFieldError('birthday');
 
     setDraftPet((current) => ({
       ...current,
@@ -345,7 +371,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
 
     const validationError = validatePickedImageAsset(result.assets[0]);
     if (validationError) {
-      Alert.alert('Invalid Photo', validationError);
+      setFieldErrors((current) => ({ ...current, photo: validationError }));
       return;
     }
 
@@ -372,7 +398,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
 
     const validationError = validatePickedImageAsset(result.assets[0]);
     if (validationError) {
-      Alert.alert('Invalid Photo', validationError);
+      setFieldErrors((current) => ({ ...current, photo: validationError }));
       return;
     }
 
@@ -393,7 +419,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
 
     const validationError = validatePickedImageAsset(result.assets[0]);
     if (validationError) {
-      Alert.alert('Invalid Photo', validationError);
+      setFieldErrors((current) => ({ ...current, photo: validationError }));
       return;
     }
 
@@ -401,16 +427,16 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   };
 
   const handleDonePress = () => {
-    if (hasEmptyRequiredField(draftPet)) {
-      setShowRequiredFieldsModal(true);
-      return;
-    }
-
-    // Same rules as the web form and the vet's patient editor for the optional fields.
-    const { weight, microchipNumber, allergies, existingConditions, notes } = validatePatientDetails(draftPet);
-    const fieldError = weight || microchipNumber || allergies || existingConditions || notes;
-    if (fieldError) {
-      Alert.alert('Check pet details', fieldError);
+    // Same rules as the web form and the vet's patient editor. Sex stays
+    // optional here, as before.
+    const { petName, species, breed, birthday, weight, color, microchipNumber, allergies, existingConditions, notes } =
+      validatePatientDetails({ ...draftPet, petName: draftPet.name });
+    const errors = Object.fromEntries(Object.entries({
+      name: petName, species, breed, birthday, weight, color, microchipNumber, allergies, existingConditions, notes,
+    }).filter(([, message]) => message));
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      errorScroll.scrollToFirstError(errors, FIELD_ORDER);
       return;
     }
 
@@ -549,10 +575,12 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
           </View>
           </LinearGradient>
 
-          <View style={styles.headerBottomRow}>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
+            <View style={styles.headerBottomRow}>
 
-            <PetOwnerHeaderGreeting caption="Edit your pet's profile" user={loggedInUser} />
-          </View>
+              <PetOwnerHeaderGreeting caption="Edit your pet's profile" user={loggedInUser} />
+            </View>
+          </CollapsingHeaderRow>
 
           {false ? (
             <Animated.View
@@ -588,7 +616,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
           ) : null}
         </LinearGradient>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <View style={styles.sectionHeaderWrap}>
             <Text style={styles.sectionTitle}>
               {isCreatingPet ? 'Add Pet Profile' : 'Edit Pet Profile'}
@@ -613,7 +641,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.editPhotoSection}>
+            <View style={styles.editPhotoSection} ref={errorScroll.anchor('photo')}>
               <View style={styles.editAvatarWrap}>
                 <View style={[styles.largePetAvatar, { backgroundColor: draftPet.profileColor }]}>
                   {activePhoto.source ? (
@@ -635,6 +663,7 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                   <Text style={styles.avatarAddButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
+              {fieldErrorText('photo')}
 
             </View>
 
@@ -644,14 +673,15 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
               <TextInput
                 value={draftPet.name}
                 onChangeText={(value) => updateDraftPetField('name', value)}
-                style={styles.inputField}
+                style={[styles.inputField, fieldErrors.name && inlineStyles.invalid]}
                 placeholder="Enter pet name"
                 placeholderTextColor="#87a0b1"
               />
+              {fieldErrorText('name')}
 
               {renderFormLabel('Species', !draftPet.species?.trim())}
               <View style={styles.enhancedFieldCard}>
-                <View style={styles.dropdownShell}>
+                <View style={[styles.dropdownShell, fieldErrors.species && inlineStyles.invalid]}>
                   <Dropdown
                     style={styles.searchableDropdown}
                     containerStyle={styles.searchableDropdownContainer}
@@ -671,12 +701,13 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                     onChange={handleSpeciesChange}
                   />
                 </View>
+                {fieldErrorText('species')}
                 <Text style={styles.inlineFieldHint}>Breed options update based on the species you pick.</Text>
               </View>
 
               {renderFormLabel('Breed', !draftPet.breed?.trim())}
               <View style={styles.enhancedFieldCard}>
-                <View style={styles.dropdownShell}>
+                <View style={[styles.dropdownShell, fieldErrors.breed && !isCustomBreedMode && inlineStyles.invalid]}>
                   <Dropdown
                     style={styles.searchableDropdown}
                     containerStyle={styles.searchableDropdownContainer}
@@ -700,11 +731,12 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
                   <TextInput
                     value={draftPet.customBreed}
                     onChangeText={handleCustomBreedChange}
-                    style={[styles.inputField, styles.stackedInputField]}
+                    style={[styles.inputField, styles.stackedInputField, fieldErrors.breed && inlineStyles.invalid]}
                     placeholder="Type breed"
                     placeholderTextColor="#87a0b1"
                   />
                 ) : null}
+                {fieldErrorText('breed')}
               </View>
 
               <Text style={styles.formLabel}>Sex</Text>
@@ -732,13 +764,14 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
               {renderFormLabel('Birthday', !draftPet.birthMonth || !draftPet.birthDay || !draftPet.birthYear)}
               <View style={styles.birthdayFieldCard}>
                 <Text style={styles.birthdayInfoText}>Select the birthday to identify the pet&apos;s age.</Text>
-                <TouchableOpacity style={styles.calendarTriggerButton} onPress={openBirthdayCalendar} activeOpacity={0.88}>
+                <TouchableOpacity style={[styles.calendarTriggerButton, fieldErrors.birthday && inlineStyles.invalid]} onPress={openBirthdayCalendar} activeOpacity={0.88}>
                   <View>
                     <Text style={styles.calendarTriggerLabel}>Selected Date</Text>
                     <Text style={styles.calendarTriggerValue}>{birthdayLabel}</Text>
                   </View>
                   <Image source={CALENDAR_ICON} style={styles.calendarTriggerIconImage} resizeMode="contain" />
                 </TouchableOpacity>
+                {fieldErrorText('birthday')}
                 <View style={styles.birthdayAgeSummary}>
                   <Text style={styles.birthdayAgeLabel}>Age</Text>
                   <Text style={styles.birthdayAgeValue}>{ageLabel}</Text>
@@ -749,70 +782,76 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
               <TextInput
                 value={draftPet.weight}
                 onChangeText={(value) => updateDraftPetField('weight', value.replace(/[^0-9.]/g, ''))}
-                style={styles.inputField}
+                style={[styles.inputField, fieldErrors.weight && inlineStyles.invalid]}
                 placeholder="Enter pet weight in kg"
                 placeholderTextColor="#87a0b1"
                 keyboardType="decimal-pad"
                 maxLength={6}
               />
+              {fieldErrorText('weight')}
 
               {renderOptionalLabel('Color')}
               <TextInput
                 value={draftPet.color}
                 onChangeText={(value) => updateDraftPetField('color', value)}
-                style={styles.inputField}
+                style={[styles.inputField, fieldErrors.color && inlineStyles.invalid]}
                 placeholder="Enter pet color"
                 placeholderTextColor="#87a0b1"
                 maxLength={40}
               />
+              {fieldErrorText('color')}
 
               {renderOptionalLabel('Microchip Number')}
               <TextInput
                 value={draftPet.microchipNumber}
                 onChangeText={(value) => updateDraftPetField('microchipNumber', value.replace(/[^0-9]/g, ''))}
-                style={styles.inputField}
+                style={[styles.inputField, fieldErrors.microchipNumber && inlineStyles.invalid]}
                 placeholder="Enter microchip number (9 to 15 digits)"
                 placeholderTextColor="#87a0b1"
                 keyboardType="number-pad"
                 maxLength={15}
               />
+              {fieldErrorText('microchipNumber')}
 
               {renderOptionalLabel('Allergies')}
               <TextInput
                 value={draftPet.allergies}
                 onChangeText={(value) => updateDraftPetField('allergies', value)}
-                style={styles.textAreaField}
+                style={[styles.textAreaField, fieldErrors.allergies && inlineStyles.invalid]}
                 placeholder="Enter known allergies or write none"
                 placeholderTextColor="#87a0b1"
                 multiline
                 textAlignVertical="top"
                 maxLength={500}
               />
+              {fieldErrorText('allergies')}
 
               {renderOptionalLabel('Existing Conditions')}
               <TextInput
                 value={draftPet.existingConditions}
                 onChangeText={(value) => updateDraftPetField('existingConditions', value)}
-                style={styles.textAreaField}
+                style={[styles.textAreaField, fieldErrors.existingConditions && inlineStyles.invalid]}
                 placeholder="Enter existing medical conditions"
                 placeholderTextColor="#87a0b1"
                 multiline
                 textAlignVertical="top"
                 maxLength={500}
               />
+              {fieldErrorText('existingConditions')}
 
               {/* Saved to the same notes column the web form's Additional Notes uses. */}
               {renderOptionalLabel('Additional Notes')}
               <TextInput
                 value={draftPet.notes}
                 onChangeText={(value) => updateDraftPetField('notes', value)}
-                style={styles.textAreaField}
+                style={[styles.textAreaField, fieldErrors.notes && inlineStyles.invalid]}
                 placeholder="Enter special markings, care or behavior notes"
                 placeholderTextColor="#87a0b1"
                 multiline
                 textAlignVertical="top"
                 maxLength={500}
               />
+              {fieldErrorText('notes')}
             </View>
 
             {!isCreatingPet ? (
@@ -1031,3 +1070,8 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
 };
 
 export default PetOwnerMyPetsEdit;
+
+const inlineStyles = StyleSheet.create({
+  invalid: { borderColor: '#dc2626', borderWidth: 1 },
+  errorText: { marginTop: 6, fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#dc2626' },
+});

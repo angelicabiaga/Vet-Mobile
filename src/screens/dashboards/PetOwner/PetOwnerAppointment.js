@@ -1,6 +1,9 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import useScrollToError from '../../../hooks/useScrollToError';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import CalendarDatePicker from '../../../components/CalendarDatePicker';
 import InlineSelect from '../../../components/InlineSelect';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -16,7 +19,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Dropdown } from 'react-native-element-dropdown';
+import { Dropdown, MultiSelect } from 'react-native-element-dropdown';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   addTenMinutes,
@@ -46,6 +49,8 @@ const formatDate = (value) => {
 };
 
 export default function PetOwnerAppointment({ navigation, route }) {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const user = route?.params?.user || {};
   const ownerId = getOwnerId(user);
   const ownerName = user?.full_name || user?.fullName || user?.name || user?.username || 'Pet Owner';
@@ -64,6 +69,15 @@ export default function PetOwnerAppointment({ navigation, route }) {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [message, setMessage] = useState('');
+  // Per-field validation shown under each input (not in the top notice).
+  const [fieldErrors, setFieldErrors] = useState({});
+  // A failed save scrolls back to the first field outlined in red.
+  const scrollRef = useRef(null);
+  const errorScroll = useScrollToError(scrollRef);
+  const scrollToFirstError = (errors) => errorScroll.scrollToFirstError(errors, ['pets', 'appointmentDate', 'startTime', 'veterinarianId']);
+  const clearFieldError = (...names) => setFieldErrors((current) => (
+    names.some((name) => current[name]) ? names.reduce((next, name) => ({ ...next, [name]: undefined }), current) : current
+  ));
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [isSidebarMounted, setIsSidebarMounted] = useState(false);
   const sidebarAnimation = useRef(new Animated.Value(0)).current;
@@ -157,12 +171,12 @@ export default function PetOwnerAppointment({ navigation, route }) {
   const notEnoughSlots = Boolean(form.petIds.length > 1 && form.veterinarianId && form.startTime && consecutiveSlots.length < form.petIds.length);
   const lastSlot = consecutiveSlots[consecutiveSlots.length - 1] || form.startTime;
 
-  const togglePet = (petId) => setForm((current) => ({
-    ...current,
-    petIds: current.petIds.some((id) => String(id) === String(petId))
-      ? current.petIds.filter((id) => String(id) !== String(petId))
-      : [...current.petIds, petId],
-  }));
+  // Pet dropdown (same look as the single-pet picker); tapping a pet in the
+  // list adds or removes it, so several pets can still share one visit.
+  const changePets = (petIds) => {
+    clearFieldError('pets');
+    setForm((current) => ({ ...current, petIds }));
+  };
 
   const loadData = useCallback(async () => {
     if (!ownerId) {
@@ -259,10 +273,30 @@ export default function PetOwnerAppointment({ navigation, route }) {
     setEditing(null);
     setForm({ petIds: [], veterinarianId: '', appointmentDate: todayLocal(), startTime: '', visitReason: '', notes: '' });
     setSlots([]);
+    setFieldErrors({});
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!form.petIds.length) errors.pets = 'Select at least one pet.';
+    if (!form.appointmentDate) errors.appointmentDate = 'Select an appointment date.';
+    if (!form.startTime) errors.startTime = 'Select an available time.';
+    else if (!form.veterinarianId) errors.veterinarianId = 'Select a veterinarian.';
+    if (!editing && !errors.startTime && !errors.veterinarianId && consecutiveSlots.length < form.petIds.length) {
+      errors.startTime = `Only ${consecutiveSlots.length} consecutive slot(s) available from this time for ${form.petIds.length} pet(s). Choose an earlier time or fewer pets.`;
+    }
+    return errors;
   };
 
   const saveAppointment = async () => {
     if (saving) return;
+    const errors = validateForm();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setMessage('');
+      scrollToFirstError(errors);
+      return;
+    }
     try {
       setMessage('');
       if (editing) {
@@ -271,14 +305,6 @@ export default function PetOwnerAppointment({ navigation, route }) {
         setMessage('Appointment rebooked successfully.');
         resetForm();
         return;
-      }
-
-      if (!form.petIds.length) throw new Error('Select at least one pet.');
-      if (!form.appointmentDate) throw new Error('Select an appointment date.');
-      if (!form.startTime) throw new Error('Select an available time.');
-      if (!form.veterinarianId) throw new Error('Select a veterinarian.');
-      if (consecutiveSlots.length < form.petIds.length) {
-        throw new Error(`Only ${consecutiveSlots.length} consecutive slot(s) available from the selected time for ${form.petIds.length} pet(s). Choose an earlier time or fewer pets.`);
       }
 
       setSaving(true);
@@ -392,9 +418,11 @@ export default function PetOwnerAppointment({ navigation, route }) {
             </View>
           </LinearGradient>
 
-          <View style={styles.headerBottomRow}>
-            <PetOwnerHeaderGreeting caption="Book your appointment" user={user} />
-          </View>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
+            <View style={styles.headerBottomRow}>
+              <PetOwnerHeaderGreeting caption="Book your appointment" user={user} />
+            </View>
+          </CollapsingHeaderRow>
 
         </LinearGradient>
 
@@ -459,7 +487,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
           </View>
         ) : null}
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} onScroll={headerMotion.handleScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.heroCard}>
             <Text style={styles.eyebrow}>GENERAL CONSULTATION</Text>
             <Text style={styles.title}>{editing ? 'Rebook Appointment' : 'Book an Appointment'}</Text>
@@ -467,85 +495,77 @@ export default function PetOwnerAppointment({ navigation, route }) {
           </LinearGradient>
 
           <View style={styles.card}>
-            <FieldLabel text="Pet Selection" />
+            <FieldLabel text="Pet" anchorRef={errorScroll.anchor('pets')} />
             {editing ? (
               <View style={[styles.dropdown, styles.dropdownDisabled, styles.lockedPet]}>
                 <Text style={styles.petOptionText}>{selectedPets[0]?.pet_name || editing.pet?.pet_name || 'Pet'}</Text>
               </View>
             ) : (
-              <View style={styles.petSelectBox}>
-                <Text style={styles.petSelectSummary}>
-                  {form.petIds.length
-                    ? `${form.petIds.length} pet${form.petIds.length > 1 ? 's' : ''} selected`
-                    : pets.length ? 'Select pet(s)' : 'No registered pets found'}
-                </Text>
-                {pets.map((pet) => {
-                  const checked = form.petIds.some((id) => String(id) === String(pet.id));
-                  return (
-                    <TouchableOpacity
-                      key={pet.id}
-                      style={[styles.petOption, checked && styles.petOptionChecked]}
-                      onPress={() => togglePet(pet.id)}
-                      activeOpacity={0.85}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked }}
-                    >
-                      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                        {checked ? <Text style={styles.checkboxMark}>✓</Text> : null}
-                      </View>
-                      <Text style={styles.petOptionText} numberOfLines={1}>
-                        {pet.pet_name} — {pet.species}{pet.breed ? ` / ${pet.breed}` : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <MultiSelect
+                style={[styles.dropdown, fieldErrors.pets && styles.fieldInvalid]}
+                data={pets.map((pet) => ({ value: pet.id, label: `${pet.pet_name} — ${pet.species}${pet.breed ? ` / ${pet.breed}` : ''}` }))}
+                labelField="label"
+                valueField="value"
+                value={form.petIds}
+                placeholder={selectedPets.length
+                  ? selectedPets.map((pet) => pet.pet_name).join(', ')
+                  : pets.length ? 'Select your registered pet' : 'No registered pets found'}
+                placeholderStyle={selectedPets.length ? styles.petPickerValue : undefined}
+                visibleSelectedItem={false}
+                activeColor="#e8f3fb"
+                onChange={changePets}
+              />
             )}
+            <FieldErrorText text={fieldErrors.pets} />
             {!editing ? (
               <TouchableOpacity style={styles.addPetButton} onPress={addNewPet} activeOpacity={0.85} accessibilityRole="button">
                 <Text style={styles.addPetButtonText}>+ Add New Pet</Text>
               </TouchableOpacity>
             ) : null}
 
-            <FieldLabel text="Appointment Date" />
+            <FieldLabel text="Appointment Date" anchorRef={errorScroll.anchor('appointmentDate')} />
             <CalendarDatePicker
               value={form.appointmentDate}
               minDate={dateOptions[0]?.value}
               maxDate={dateOptions[dateOptions.length - 1]?.value}
-              onChange={(value) => setForm((current) => (
+              onChange={(value) => { clearFieldError('appointmentDate', 'startTime', 'veterinarianId'); setForm((current) => (
                 value === current.appointmentDate
                   ? current
                   : { ...current, appointmentDate: value, startTime: '', veterinarianId: '' }
-              ))}
+              )); }}
             />
+            <FieldErrorText text={fieldErrors.appointmentDate} />
 
-            <FieldLabel text="Available Time" />
+            <FieldLabel text="Available Time" anchorRef={errorScroll.anchor('startTime')} />
             <InlineSelect
               options={slots.map((slot) => ({ value: slot, label: formatTime(slot) }))}
               value={form.startTime}
               placeholder={slotLoading ? 'Loading available times...' : slots.length ? 'Select time' : scheduleClosed ? 'Schedule not open yet' : 'No available slots'}
               disabled={slotLoading || !slots.length}
-              onChange={(value) => setForm((current) => ({
+              error={Boolean(fieldErrors.startTime)}
+              onChange={(value) => { clearFieldError('startTime', 'veterinarianId'); setForm((current) => ({
                 ...current,
                 startTime: value,
                 // Keep the chosen vet only if they're also free at the new time.
                 veterinarianId: (slotMap[current.veterinarianId] || []).includes(value) ? current.veterinarianId : '',
-              }))}
+              })); }}
             />
+            <FieldErrorText text={fieldErrors.startTime} />
             {!slotLoading && scheduleClosed ? (
               <Text style={styles.scheduleNote}>The clinic hasn't released the veterinarians' schedule for this date yet. Please choose an earlier date.</Text>
             ) : null}
 
-            <FieldLabel text="Veterinarian" />
+            <FieldLabel text="Veterinarian" anchorRef={errorScroll.anchor('veterinarianId')} />
             <Dropdown
-              style={[styles.dropdown, (!form.startTime || !eligibleVets.length) && styles.dropdownDisabled]}
+              style={[styles.dropdown, fieldErrors.veterinarianId && styles.fieldInvalid, (!form.startTime || !eligibleVets.length) && styles.dropdownDisabled]}
               data={eligibleVets.map((vet) => ({ value: vet.id, label: vet.full_name }))}
               labelField="label" valueField="value" value={form.veterinarianId}
               disable={!form.startTime || !eligibleVets.length}
               placeholder={!form.startTime ? 'Select a time first' : eligibleVets.length ? 'Select veterinarian' : 'No veterinarian available at this time'}
-              onChange={(item) => setForm((current) => ({ ...current, veterinarianId: item.value }))}
+              onChange={(item) => { clearFieldError('veterinarianId', 'startTime'); setForm((current) => ({ ...current, veterinarianId: item.value })); }}
             />
-            {notEnoughSlots ? (
+            <FieldErrorText text={fieldErrors.veterinarianId} />
+            {notEnoughSlots && !fieldErrors.startTime ? (
               <Text style={styles.slotWarning}>
                 Only {consecutiveSlots.length} consecutive slot(s) available from this time for {form.petIds.length} pets. Choose an earlier time or fewer pets.
               </Text>
@@ -601,8 +621,12 @@ export default function PetOwnerAppointment({ navigation, route }) {
   );
 }
 
-function FieldLabel({ text, optional = false }) {
-  return <Text style={styles.label}>{text}{optional ? <Text style={styles.optional}> (optional)</Text> : null}</Text>;
+function FieldLabel({ text, optional = false, anchorRef }) {
+  return <Text style={styles.label} ref={anchorRef}>{text}{optional ? <Text style={styles.optional}> (optional)</Text> : null}</Text>;
+}
+
+function FieldErrorText({ text }) {
+  return text ? <Text style={styles.fieldErrorText}>{text}</Text> : null;
 }
 
 function SummaryRow({ label, value }) {
@@ -773,10 +797,13 @@ const styles = StyleSheet.create({
   petSelectSummary: { color: '#5d7b91', fontSize: 12.5, fontWeight: '800', paddingHorizontal: 4 },
   petOption: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#e2eef2', backgroundColor: '#ffffff' },
   petOptionChecked: { borderColor: '#2c6ba3', backgroundColor: '#edf6fb' },
+  petPickerValue: { color: '#294b5d', fontSize: 16 },
   petOptionText: { flex: 1, color: '#294b5d', fontSize: 14, fontWeight: '700' },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: '#9fc3d6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
   checkboxChecked: { backgroundColor: '#2c6ba3', borderColor: '#2c6ba3' },
   checkboxMark: { color: '#ffffff', fontSize: 14, fontWeight: '900', lineHeight: 16 },
+  fieldInvalid: { borderColor: '#dc2626' },
+  fieldErrorText: { color: '#dc2626', fontSize: 12.5, fontWeight: '700', lineHeight: 18, marginTop: 6 },
   slotWarning: { color: '#b54b4b', fontSize: 12.5, fontWeight: '700', lineHeight: 18, marginTop: 8 },
   addPetButton: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: '#c6e5ed', backgroundColor: '#edf6f8' },
   addPetButtonText: { color: '#2c6ba3', fontSize: 13, fontWeight: '900' },

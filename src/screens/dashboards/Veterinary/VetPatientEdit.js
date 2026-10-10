@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import VetShell, { getVetUser } from './VetShell';
 import { loadPatientById } from './VetPatients';
 import InlineSelect from '../../../components/InlineSelect';
+import useScrollToError from '../../../hooks/useScrollToError';
 import { PET_SEX_OPTIONS, updatePatientDetails, validatePatientDetails } from '../../../api/petService';
 import { PET_SPECIES_OPTIONS } from '../PetOwner/PetOwnerMyPetsInfo';
 
@@ -87,11 +88,17 @@ export default function VetPatientEdit({ navigation, route }) {
   const goBackToProfile = (params = {}) =>
     navigation.navigate({ name: 'VetPatientProfile', params: { user: currentUser, petId, ...params }, merge: true });
 
+  // A failed save scrolls back to the first field outlined in red.
+  const scrollRef = useRef(null);
+  const errorScroll = useScrollToError(scrollRef);
+  const FIELD_ORDER = ['petName', 'species', 'breed', 'sex', 'birthday', 'weight', 'color', 'microchipNumber', 'allergies', 'existingConditions', 'notes'];
+
   const handleSave = async () => {
     const nextErrors = validatePatientDetails(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setFormError('Please complete or correct the highlighted fields.');
+      errorScroll.scrollToFirstError(nextErrors, FIELD_ORDER);
       return;
     }
     try {
@@ -103,6 +110,7 @@ export default function VetPatientEdit({ navigation, route }) {
       if (error.fieldErrors) {
         setErrors(error.fieldErrors);
         setFormError('Please complete or correct the highlighted fields.');
+        errorScroll.scrollToFirstError(error.fieldErrors, FIELD_ORDER);
       } else {
         setFormError(error.message || 'Unable to save the animal patient details right now. Please try again.');
       }
@@ -112,7 +120,7 @@ export default function VetPatientEdit({ navigation, route }) {
   };
 
   const renderInput = (field, label, { required = false, placeholder, keyboardType, multiline = false, maxLength } = {}) => (
-    <View style={styles.field}>
+    <View style={styles.field} ref={errorScroll.anchor(field)}>
       <Text style={styles.label}>{label}{required ? <Text style={styles.required}> *</Text> : <Text style={styles.optional}> (optional)</Text>}</Text>
       <TextInput
         style={[styles.input, multiline && styles.inputMultiline, errors[field] && styles.inputError]}
@@ -140,7 +148,7 @@ export default function VetPatientEdit({ navigation, route }) {
 
   return (
     <VetShell navigation={navigation} route={route} subtitle="Edit Animal Patient" caption={`Editing ${patient.pet_name || 'animal patient'}`} showBack>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Animal Patient Details</Text>
           <Text style={styles.cardSubtitle}>
@@ -153,31 +161,31 @@ export default function VetPatientEdit({ navigation, route }) {
 
           {renderInput('petName', 'Pet Name', { required: true, placeholder: 'Enter pet name', maxLength: 50 })}
 
-          <View style={styles.field}>
+          <View style={styles.field} ref={errorScroll.anchor('species')}>
             <Text style={styles.label}>Species<Text style={styles.required}> *</Text></Text>
-            <InlineSelect options={speciesOptions} value={form.species} placeholder="Select species" onChange={(value) => setField('species', value)} />
+            <InlineSelect options={speciesOptions} value={form.species} placeholder="Select species" error={Boolean(errors.species)} onChange={(value) => setField('species', value)} />
             {errors.species ? <Text style={styles.errorText}>{errors.species}</Text> : null}
           </View>
 
           {renderInput('breed', 'Breed', { required: true, placeholder: 'Enter breed', maxLength: 60 })}
 
-          <View style={styles.field}>
+          <View style={styles.field} ref={errorScroll.anchor('sex')}>
             <Text style={styles.label}>Sex<Text style={styles.required}> *</Text></Text>
-            <InlineSelect options={PET_SEX_OPTIONS.map((sex) => ({ value: sex, label: sex }))} value={form.sex} placeholder="Select sex" onChange={(value) => setField('sex', value)} />
+            <InlineSelect options={PET_SEX_OPTIONS.map((sex) => ({ value: sex, label: sex }))} value={form.sex} placeholder="Select sex" error={Boolean(errors.sex)} onChange={(value) => setField('sex', value)} />
             {errors.sex ? <Text style={styles.errorText}>{errors.sex}</Text> : null}
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} ref={errorScroll.anchor('birthday')}>
             <Text style={styles.label}>Birthday<Text style={styles.required}> *</Text></Text>
             <View style={styles.birthdayRow}>
               <View style={styles.birthdayMonth}>
-                <InlineSelect options={MONTH_OPTIONS} value={form.birthMonth} placeholder="Month" onChange={(value) => setField('birthMonth', value)} />
+                <InlineSelect options={MONTH_OPTIONS} value={form.birthMonth} placeholder="Month" error={Boolean(errors.birthday)} onChange={(value) => setField('birthMonth', value)} />
               </View>
               <View style={styles.birthdayDay}>
-                <InlineSelect options={DAY_OPTIONS} value={form.birthDay} placeholder="Day" onChange={(value) => setField('birthDay', value)} />
+                <InlineSelect options={DAY_OPTIONS} value={form.birthDay} placeholder="Day" error={Boolean(errors.birthday)} onChange={(value) => setField('birthDay', value)} />
               </View>
               <View style={styles.birthdayYear}>
-                <InlineSelect options={YEAR_OPTIONS} value={form.birthYear} placeholder="Year" onChange={(value) => setField('birthYear', value)} />
+                <InlineSelect options={YEAR_OPTIONS} value={form.birthYear} placeholder="Year" error={Boolean(errors.birthday)} onChange={(value) => setField('birthYear', value)} />
               </View>
             </View>
             {errors.birthday ? <Text style={styles.errorText}>{errors.birthday}</Text> : null}

@@ -223,7 +223,9 @@ export function PasswordChecklist({ password }) {
 
 // Change password: the form's state plus the emailed-code step. setMessage
 // shows errors and the final success; onChanged runs once the code is accepted.
-export function usePasswordChange(profileId, { setMessage, onChanged }) {
+// errorScroll (optional, from useScrollToError): scroll back to the first
+// password field outlined in red when the form doesn't pass.
+export function usePasswordChange(profileId, { setMessage, onChanged, errorScroll }) {
   const [passwords, setPasswords] = useState(EMPTY_PASSWORDS);
   const [errors, setErrors] = useState({});
   const [sending, setSending] = useState(false);
@@ -246,6 +248,7 @@ export function usePasswordChange(profileId, { setMessage, onChanged }) {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setMessage({ type: 'error', text: 'Please fix the highlighted fields before continuing.' });
+      errorScroll?.scrollToFirstError(nextErrors, ['current', 'next', 'confirm']);
       return;
     }
     setSending(true);
@@ -306,7 +309,7 @@ export function usePasswordChange(profileId, { setMessage, onChanged }) {
     },
   };
 
-  return { passwords, errors, sending, update, submit, reset, otpModalProps };
+  return { passwords, errors, sending, update, submit, reset, otpModalProps, anchor: errorScroll?.anchor };
 }
 
 export function FormTitle({ icon, title }) {
@@ -322,7 +325,7 @@ export function FormTitle({ icon, title }) {
 export function ChangePasswordForm({ change, onCancel }) {
   const field = (name, label, placeholder) => (
     <>
-      <FormLabel label={label} required />
+      <View ref={change.anchor?.(name)}><FormLabel label={label} required /></View>
       <PasswordInput value={change.passwords[name]} onChangeText={(value) => change.update(name, value)} placeholder={placeholder} error={change.errors[name]} />
       <FieldError text={change.errors[name]} />
     </>

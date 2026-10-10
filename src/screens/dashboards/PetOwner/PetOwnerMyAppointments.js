@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,17 +16,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Dropdown } from 'react-native-element-dropdown';
-import CalendarDatePicker from '../../../components/CalendarDatePicker';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { APPOINTMENT_STATUSES, cancelAppointment, formatTime, getCancellationBlockReason, getOwnerAppointments, todayLocal } from '../../../api/mobileAppointmentService';
+import { cancelAppointment, formatTime, getCancellationBlockReason, getOwnerAppointments, todayLocal } from '../../../api/mobileAppointmentService';
 import { getQueue, subscribeToQueue } from '../../../api/queueService';
 import { supabase } from '../../../config/supabaseClient';
 
 // Same page size as the web Appointments table.
 const PAGE_SIZE = 10;
-const STATUS_OPTIONS = [{ label: 'All statuses', value: '' }, ...APPOINTMENT_STATUSES.map((status) => ({ label: status, value: status }))];
 
 const pad2 = (value) => String(value).padStart(2, '0');
 // A Confirmed visit that hasn't started yet (web isUpcoming): only these get
@@ -43,6 +42,25 @@ const formatDate = (value) => {
   const date = new Date(`${value}T12:00:00`);
   return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 };
+// Every way someone might type an appointment's date, so the one search box
+// finds "2026-10-08", "Oct 8", "October 8, 2026", "10/08/2026" or "Thursday".
+const dateSearchText = (value) => {
+  if (!value) return '';
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return [
+    value,
+    formatDate(value),
+    date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+    date.toLocaleDateString([], { weekday: 'long' }),
+    `${month}/${day}/${year}`,
+    `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`,
+  ].join(' ');
+};
+
 const formatTimestamp = (value) => {
   if (!value) return '—';
   const date = new Date(value);
@@ -51,6 +69,8 @@ const formatTimestamp = (value) => {
 };
 
 export default function PetOwnerMyAppointments({ navigation, route }) {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const user = route?.params?.user || {};
   const ownerId = getOwnerId(user);
   const ownerName = user?.full_name || user?.fullName || user?.name || user?.username || 'Pet Owner';
@@ -65,8 +85,6 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
   const [cancelling, setCancelling] = useState(false);
   // Search / status / date filters and paging, same as the web table.
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
   const scrollRef = useRef(null);
 
@@ -144,13 +162,7 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
     navigation.navigate('PetOwnerAppointment', { user, rescheduleAppointment: appointment });
   };
 
-  useEffect(() => { setPage(1); }, [search, statusFilter, dateFilter]);
-
-  const clearFilters = () => {
-    setSearch('');
-    setStatusFilter('');
-    setDateFilter('');
-  };
+  useEffect(() => { setPage(1); }, [search]);
 
   // Pets booked together share a visit_group_id; a row names the other pets.
   const visitGroups = useMemo(() => {
@@ -171,14 +183,18 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
   };
 
   const filteredAppointments = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const rows = appointments.filter((row) =>
-      (!statusFilter || row.status === statusFilter) &&
-      (!dateFilter || row.appointment_date === dateFilter) &&
-      (!query || [
+    // One search box for everything: pet, vet, reason, notes, status, date and
+    // time. Each word must match somewhere ("completed oct 8", "chu confirmed").
+    const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const rows = appointments.filter((row) => {
+      if (!terms.length) return true;
+      const haystack = [
         row.pet?.pet_name, row.pet?.species, row.visit_reason, row.status,
         row.veterinarian?.full_name, row.notes, row.appointment_source,
-      ].some((value) => String(value || '').toLowerCase().includes(query))));
+        dateSearchText(row.appointment_date), formatTime(row.start_time),
+      ].map((value) => String(value || '')).join(' | ').toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    });
     // Most recently created/updated first, so whatever was just booked,
     // rebooked or cancelled shows at the top (same order as the web).
     return [...rows].sort((a, b) => {
@@ -188,12 +204,11 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
       if (a.appointment_date !== b.appointment_date) return a.appointment_date < b.appointment_date ? 1 : -1;
       return String(b.start_time || '').localeCompare(String(a.start_time || ''));
     });
-  }, [appointments, search, statusFilter, dateFilter]);
+  }, [appointments, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredAppointments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const hasFilters = Boolean(search.trim() || statusFilter || dateFilter);
 
   const goToPage = (nextPage) => {
     setPage(nextPage);
@@ -271,50 +286,25 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
             </View>
           </LinearGradient>
 
-          <View style={styles.headerBottomRow}>
-            <PetOwnerHeaderGreeting caption="Your appointment history" user={user} />
-          </View>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
+            <View style={styles.headerBottomRow}>
+              <PetOwnerHeaderGreeting caption="Your appointment history" user={user} />
+            </View>
+          </CollapsingHeaderRow>
         </LinearGradient>
 
 
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.heroCard}>
-            <Text style={styles.eyebrow}>APPOINTMENT HISTORY</Text>
-            <Text style={styles.title}>Appointments</Text>
-            <Text style={styles.subtitle}>View, rebook, or cancel your eligible appointments.</Text>
-          </LinearGradient>
-
+        <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.filtersCard}>
             <TextInput
               style={styles.searchInput}
               value={search}
               onChangeText={setSearch}
-              placeholder="Search pet, veterinarian, reason, or notes"
+              placeholder="Search pet, vet, status, date, reason or notes"
               placeholderTextColor="#87a0b1"
               returnKeyType="search"
+              clearButtonMode="while-editing"
             />
-            <View style={styles.filterRow}>
-              <Dropdown
-                style={styles.statusDropdown}
-                selectedTextStyle={styles.filterText}
-                placeholderStyle={styles.filterText}
-                itemTextStyle={styles.filterText}
-                data={STATUS_OPTIONS}
-                labelField="label"
-                valueField="value"
-                value={statusFilter}
-                placeholder="All statuses"
-                onChange={(item) => setStatusFilter(item.value)}
-              />
-              <TouchableOpacity
-                style={[styles.clearFiltersButton, !hasFilters && styles.clearFiltersButtonIdle]}
-                onPress={clearFilters}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.clearFiltersText}>✕ Clear</Text>
-              </TouchableOpacity>
-            </View>
-            <CalendarDatePicker value={dateFilter} onChange={setDateFilter} placeholder="Any date" />
           </View>
 
           <View style={styles.card}>
@@ -574,12 +564,6 @@ const styles = StyleSheet.create({
     shadowColor: '#3a7ab8', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 3,
   },
   searchInput: { minHeight: 46, borderWidth: 1, borderColor: '#d6e7ee', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#ffffff', color: '#1d3a4a', fontSize: 14, fontWeight: '600' },
-  filterRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  statusDropdown: { flex: 1, minHeight: 46, borderWidth: 1, borderColor: '#d6e7ee', borderRadius: 12, paddingHorizontal: 12, backgroundColor: '#ffffff' },
-  filterText: { fontSize: 14, fontWeight: '700', color: '#2f4a56' },
-  clearFiltersButton: { minHeight: 46, paddingHorizontal: 16, borderWidth: 1, borderColor: '#cfe4ed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
-  clearFiltersButtonIdle: { opacity: 0.6 },
-  clearFiltersText: { color: '#257fa9', fontWeight: '800', fontSize: 13 },
   appointmentSub: { color: '#7b8e97', fontSize: 12, fontWeight: '600', marginTop: 3 },
   visitBadge: { alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: '#eaf6fc', color: '#2c7fb8', fontSize: 11, fontWeight: '700' },
   pagination: { marginTop: 16, alignItems: 'center', gap: 8 },

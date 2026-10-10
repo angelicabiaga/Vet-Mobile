@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -301,6 +303,8 @@ function QueueSelfService({ entry, ownerId, petNames, onDone }) {
 }
 
 export default function PetOwnerQueue({ navigation, route }) {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const user = route?.params?.user;
   const profileImageUri = user?.profileImageUri || user?.avatar || '';
   const headerDisplayName = user?.username || user?.name || user?.fullName || 'Pet Owner';
@@ -427,9 +431,11 @@ export default function PetOwnerQueue({ navigation, route }) {
             </View>
           </LinearGradient>
 
-          <View style={styles.headerBottomRow}>
-            <PetOwnerHeaderGreeting caption="Track your queue number" user={user} />
-          </View>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
+            <View style={styles.headerBottomRow}>
+              <PetOwnerHeaderGreeting caption="Track your queue number" user={user} />
+            </View>
+          </CollapsingHeaderRow>
 
           {false ? (
             <Animated.View style={[styles.headerMenuPanel, { opacity: headerMenuAnimation, transform: [{ translateY: headerMenuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-18, 0] }) }] }] }>
@@ -443,7 +449,7 @@ export default function PetOwnerQueue({ navigation, route }) {
           ) : null}
         </LinearGradient>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.queueScrollContent}>
+        <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.queueScrollContent}>
           {notice ? (
             <TouchableOpacity style={offerStyles.notice} onPress={() => setNotice('')} activeOpacity={0.85}>
               <Text style={offerStyles.noticeText}>{notice}</Text>

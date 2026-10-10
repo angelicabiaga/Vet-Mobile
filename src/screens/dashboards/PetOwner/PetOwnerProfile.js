@@ -21,6 +21,7 @@ import {
   usePasswordChange,
   useProfilePhotoPicker,
 } from '../../../components/ProfileParts';
+import useScrollToError from '../../../hooks/useScrollToError';
 import {
   EMAIL_TAKEN_ERROR,
   USERNAME_TAKEN_ERROR,
@@ -97,6 +98,9 @@ const PetOwnerProfile = ({ navigation, route }) => {
   const loggedInUser = route?.params?.user;
   const profileId = loggedInUser?.id;
   const scrollViewRef = useRef(null);
+  // A failed save scrolls back to the first field outlined in red.
+  const errorScroll = useScrollToError(scrollViewRef);
+  const FIELD_ORDER = ['firstName', 'lastName', 'middleName', 'username', 'email', 'phone', 'address'];
 
   // `profile` is what the page shows; `form` is only the draft while editing.
   const [profile, setProfile] = useState(() => profileFromUser(loggedInUser));
@@ -145,7 +149,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const passwordChange = usePasswordChange(profileId, { setMessage, onChanged: () => changeMode('view') });
+  const passwordChange = usePasswordChange(profileId, { setMessage, onChanged: () => changeMode('view'), errorScroll });
 
   const openMode = (next) => {
     setMessage(NO_MESSAGE);
@@ -175,6 +179,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
     const errors = validateDetails(form);
     setFieldErrors(errors);
     if (Object.keys(errors).length) {
+      errorScroll.scrollToFirstError(errors, FIELD_ORDER);
       setMessage({ type: 'error', text: 'Please fix the highlighted fields before saving.' });
       return;
     }
@@ -191,6 +196,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
       if (emailChanged && await isEmailTaken(email, profileId)) taken.email = EMAIL_TAKEN_ERROR;
       if (Object.keys(taken).length) {
         setFieldErrors(taken);
+        errorScroll.scrollToFirstError(taken, FIELD_ORDER);
         setMessage({ type: 'error', text: taken.username || taken.email });
         return;
       }
@@ -287,7 +293,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
   // Called as a function, not rendered as a component, so the input keeps
   // focus while typing.
   const textField = (name, label, { required, optional, multiline, transform, ...inputProps } = {}) => (
-    <View key={name}>
+    <View key={name} ref={errorScroll.anchor(name)}>
       <FormLabel label={label} required={required} optional={optional} />
       <TextInput
         value={form[name]}

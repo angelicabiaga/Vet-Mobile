@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,6 +21,8 @@ const PAYMENT_STATUS_STYLE = {
 };
 
 export default function PetOwnerPayHis({ navigation, route }) {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const user = route?.params?.user;
   const profileImageUri = user?.profileImageUri || user?.avatar || '';
   const headerDisplayName = user?.username || user?.name || user?.fullName || user?.full_name || 'Pet Owner';
@@ -65,12 +69,14 @@ export default function PetOwnerPayHis({ navigation, route }) {
               </View>
             </View>
           </LinearGradient>
-          <View style={styles.headerBottomRow}>
-            <PetOwnerHeaderGreeting caption="Invoices and receipts from your visits" user={user} />
-          </View>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
+            <View style={styles.headerBottomRow}>
+              <PetOwnerHeaderGreeting caption="Invoices and receipts from your visits" user={user} />
+            </View>
+          </CollapsingHeaderRow>
         </LinearGradient>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={localStyles.scrollContent}>
+        <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={localStyles.scrollContent}>
           <View style={styles.sectionHeaderWrap}>
             <Text style={styles.sectionTitle}>Payment History</Text>
             <Text style={styles.sectionSubtitle}>Every invoice recorded for your visits</Text>

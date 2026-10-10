@@ -1,6 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import PetOwnerOnboardingTutorial, { hasSeenPetOwnerTutorial, markPetOwnerTutorialSeen } from './PetOwnerOnboardingTutorial';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -39,7 +40,9 @@ const PetOwnerDashboard = ({ navigation, route }) => {
   const scrollViewRef = useRef(null);
   const [isHeaderMenuVisible, setIsHeaderMenuVisible] = useState(false);
   const headerMenuAnimation = useRef(new Animated.Value(0)).current;
-  const lowerHeaderAnimation = useRef(new Animated.Value(1)).current;
+  // Shared, steady hide-on-scroll for the lower header row (same as the vet header).
+  const headerMotion = useLowerHeaderMotion();
+  const lowerHeaderAnimation = headerMotion.lowerHeaderAnimation;
   const isHeaderMenuAnimating = useRef(false);
   const isLowerHeaderVisible = useRef(true);
   const lastScrollY = useRef(0);
@@ -274,22 +277,7 @@ const PetOwnerDashboard = ({ navigation, route }) => {
     }).start();
   };
 
-  const handleScroll = (event) => {
-    const currentScrollY = event.nativeEvent.contentOffset.y;
-
-    if (currentScrollY > lastScrollY.current + 4 && currentScrollY > 8) {
-      if (isHeaderMenuVisible) {
-        closeHeaderMenu(() => animateLowerHeader(0));
-        lastScrollY.current = currentScrollY;
-        return;
-      }
-      animateLowerHeader(0);
-    } else if (currentScrollY < lastScrollY.current - 4 || currentScrollY <= 0) {
-      animateLowerHeader(1);
-    }
-
-    lastScrollY.current = currentScrollY;
-  };
+  const handleScroll = (event) => headerMotion.handleScroll(event);
 
   return (
     <LinearGradient

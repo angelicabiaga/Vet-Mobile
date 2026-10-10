@@ -1,6 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PetOwnerBottomNav from './PetOwnerBottomNav';
 import PetOwnerHeaderGreeting from './PetOwnerHeaderGreeting';
+import CollapsingHeaderRow from '../../../components/CollapsingHeaderRow';
+import { useLowerHeaderMotion } from '../Veterinary/useLowerHeaderMotion';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +17,8 @@ import PetOwnerMyPetsAIHealth from './PetOwnerMyPetsAIHealth';
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
 
 const PetOwnerMyPetsView = ({ navigation, route }) => {
+  // Lower header row hides on scroll down, like the Veterinarian header.
+  const headerMotion = useLowerHeaderMotion();
   const loggedInUser = route?.params?.user;
   const petId = route?.params?.petId;
   const profileImageUri = loggedInUser?.profileImageUri || loggedInUser?.avatar || '';
@@ -168,14 +172,16 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
           </View>
           </LinearGradient>
 
-          <View style={styles.headerBottomRow}>
+          <CollapsingHeaderRow animation={headerMotion.lowerHeaderAnimation}>
+            <View style={styles.headerBottomRow}>
 
-            <PetOwnerHeaderGreeting caption="Animal patient details" user={loggedInUser} />
-          </View>
+              <PetOwnerHeaderGreeting caption="Animal patient details" user={loggedInUser} />
+            </View>
+          </CollapsingHeaderRow>
 
         </LinearGradient>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
           <View style={styles.detailCard}>
             <View style={styles.detailTopRow}>

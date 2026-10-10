@@ -1,7 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { registerUser } from "../api/authService";
+import useScrollToError from "../hooks/useScrollToError";
 import {
   CONTACT_FORMAT_ERROR,
   CONTACT_REQUIRED_ERROR,
@@ -43,6 +44,10 @@ const RegisterScreen = ({ navigation }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  // A failed submit scrolls back to the first field outlined in red.
+  const scrollRef = useRef(null);
+  const errorScroll = useScrollToError(scrollRef);
+  const FIELD_ORDER = ['firstName', 'middleName', 'lastName', 'contact', 'address', 'username', 'email', 'password', 'confirmPassword'];
   const [touched, setTouched] = useState({});
   // Values the server reported as already registered; each stays flagged until that field changes.
   const [taken, setTaken] = useState({});
@@ -117,6 +122,7 @@ const RegisterScreen = ({ navigation }) => {
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length) {
+      errorScroll.scrollToFirstError(validationErrors, FIELD_ORDER);
       return;
     }
 
@@ -138,6 +144,7 @@ const RegisterScreen = ({ navigation }) => {
           return next;
         });
         setErrors((current) => ({ ...current, ...fieldErrors }));
+        errorScroll.scrollToFirstError(fieldErrors, FIELD_ORDER);
         return;
       }
       setModal({
@@ -181,6 +188,7 @@ const RegisterScreen = ({ navigation }) => {
           style={styles.flex}
         >
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={styles.innerContainer}
             showsVerticalScrollIndicator={false}
           >
@@ -203,7 +211,7 @@ const RegisterScreen = ({ navigation }) => {
                 Join our pet care platform and create your account to get started.
               </Text>
 
-              <Text style={styles.label}>First Name</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('firstName')}>First Name</Text>
               <TextInput
                 style={[styles.input, errors.firstName && styles.inputError]}
                 placeholder="First name"
@@ -214,7 +222,7 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
 
-              <Text style={styles.label}>Middle Name <Text style={styles.optionalText}>(Optional)</Text></Text>
+              <Text style={styles.label} ref={errorScroll.anchor('middleName')}>Middle Name <Text style={styles.optionalText}>(Optional)</Text></Text>
               <TextInput
                 style={[styles.input, errors.middleName && styles.inputError]}
                 placeholder="Middle name"
@@ -225,7 +233,7 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.middleName ? <Text style={styles.errorText}>{errors.middleName}</Text> : null}
 
-              <Text style={styles.label}>Last Name</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('lastName')}>Last Name</Text>
               <TextInput
                 style={[styles.input, errors.lastName && styles.inputError]}
                 placeholder="Last name"
@@ -236,7 +244,7 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
 
-              <Text style={styles.label}>Contact Number</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('contact')}>Contact Number</Text>
               <TextInput
                 style={[styles.input, errors.contact && styles.inputError]}
                 placeholder="09XXXXXXXXX"
@@ -249,7 +257,7 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.contact ? <Text style={styles.errorText}>{errors.contact}</Text> : null}
 
-              <Text style={styles.label}>Address</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('address')}>Address</Text>
               <TextInput
                 style={[styles.input, errors.address && styles.inputError]}
                 placeholder="House no., street, barangay, city"
@@ -260,7 +268,7 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
-              <Text style={styles.label}>Username</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('username')}>Username</Text>
               <TextInput
                 style={[styles.input, errors.username && styles.inputError]}
                 placeholder="Enter username"
@@ -272,7 +280,7 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
 
-              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('email')}>Email Address</Text>
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
                 placeholder="name@gmail.com"
@@ -285,7 +293,7 @@ const RegisterScreen = ({ navigation }) => {
               />
               {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('password')}>Password</Text>
               <TextInput
                 style={[styles.input, errors.password && styles.inputError]}
                 placeholder="••••••••"
@@ -310,7 +318,7 @@ const RegisterScreen = ({ navigation }) => {
                 })}
               </View>
 
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label} ref={errorScroll.anchor('confirmPassword')}>Confirm Password</Text>
               <TextInput
                 style={[styles.input, errors.confirmPassword && styles.inputError]}
                 placeholder="••••••••"
