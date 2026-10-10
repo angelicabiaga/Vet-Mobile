@@ -253,6 +253,8 @@ export async function createAppointment(payload) {
     notes: payload.notes?.trim() || null,
     status: 'Confirmed',
     created_by: payload.createdBy || payload.ownerId,
+    // Pets booked together in one visit share this id (web multi-pet booking).
+    ...(payload.visitGroupId ? { visit_group_id: payload.visitGroupId } : {}),
   };
 
   const { data, error } = await supabase.from('appointments').insert(row).select('*').single();
@@ -291,8 +293,8 @@ export async function getOwnerAppointments(ownerId) {
     .select(`
       id, pet_id, owner_id, veterinarian_id, appointment_date, start_time, end_time,
       appointment_source, consultation_type, visit_reason, notes, status, created_by,
-      created_at, updated_at,
-      pet:pets(id, pet_name, species, breed),
+      visit_group_id, created_at, updated_at,
+      pet:pets(id, pet_name, species, breed, photo_url),
       owner:profiles!appointments_owner_id_fkey(id, full_name, email, username),
       veterinarian:profiles!appointments_veterinarian_id_fkey(id, full_name)
     `)
@@ -309,6 +311,18 @@ export async function getOwnerAppointments(ownerId) {
     creators = Object.fromEntries((creatorRows || []).map((item) => [String(item.id), item]));
   }
   return rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null }));
+}
+
+// Rolls back a partly-saved multi-pet booking (web cancelAppointmentsByIds).
+export async function cancelAppointmentsByIds(ids, ownerId) {
+  if (!ids?.length) return;
+  try {
+    let query = supabase.from('appointments').update({ status: 'Cancelled' }).in('id', ids).eq('status', 'Confirmed');
+    if (ownerId) query = query.eq('owner_id', ownerId);
+    await query;
+  } catch {
+    // Best-effort rollback -- the caller already has a primary error to show.
+  }
 }
 
 // Pet owner cancellation policy: the appointment must still be Confirmed, not

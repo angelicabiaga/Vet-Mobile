@@ -20,6 +20,7 @@ import { Dropdown } from 'react-native-element-dropdown';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   addTenMinutes,
+  cancelAppointmentsByIds,
   createAppointment,
   formatTime,
   getPetsByOwner,
@@ -31,6 +32,11 @@ import {
 const DATE_WINDOW_DAYS = 60;
 
 const getOwnerId = (user) => user?.id || user?.user_id || user?.profile_id || '';
+// uuid v4 for appointments.visit_group_id (crypto.randomUUID isn't on every RN runtime).
+const createVisitGroupId = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+  const random = Math.floor(Math.random() * 16);
+  return (char === 'x' ? random : (random % 4) + 8).toString(16);
+});
 const pad = (value) => String(value).padStart(2, '0');
 const toDateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 const formatDate = (value) => {
@@ -62,7 +68,8 @@ export default function PetOwnerAppointment({ navigation, route }) {
   const [isSidebarMounted, setIsSidebarMounted] = useState(false);
   const sidebarAnimation = useRef(new Animated.Value(0)).current;
   const [form, setForm] = useState({
-    petId: '',
+    // One or more pets, like the web's "Pet Selection" (several pets = one visit).
+    petIds: [],
     veterinarianId: '',
     appointmentDate: todayLocal(),
     startTime: '',
@@ -126,12 +133,36 @@ export default function PetOwnerAppointment({ navigation, route }) {
     });
   }, []);
 
-  const selectedPet = pets.find((item) => String(item.id) === String(form.petId));
+  const selectedPets = pets.filter((item) => form.petIds.some((id) => String(id) === String(item.id)));
   const selectedVet = vets.find((item) => String(item.id) === String(form.veterinarianId));
   const eligibleVets = useMemo(
     () => vets.filter((vet) => (slotMap[vet.id] || []).includes(form.startTime)),
     [vets, slotMap, form.startTime],
   );
+
+  // Several pets get back-to-back 10-minute slots with the same vet, starting
+  // at the chosen time (web AppointmentForm consecutiveSlots).
+  const consecutiveSlots = useMemo(() => {
+    const vetSlots = slotMap[form.veterinarianId] || [];
+    const startIndex = vetSlots.indexOf(form.startTime);
+    if (startIndex === -1) return [];
+    const needed = Math.max(form.petIds.length, 1);
+    const result = [vetSlots[startIndex]];
+    for (let i = startIndex + 1; i < vetSlots.length && result.length < needed; i += 1) {
+      if (vetSlots[i] === addTenMinutes(result[result.length - 1])) result.push(vetSlots[i]);
+      else break;
+    }
+    return result;
+  }, [slotMap, form.veterinarianId, form.startTime, form.petIds.length]);
+  const notEnoughSlots = Boolean(form.petIds.length > 1 && form.veterinarianId && form.startTime && consecutiveSlots.length < form.petIds.length);
+  const lastSlot = consecutiveSlots[consecutiveSlots.length - 1] || form.startTime;
+
+  const togglePet = (petId) => setForm((current) => ({
+    ...current,
+    petIds: current.petIds.some((id) => String(id) === String(petId))
+      ? current.petIds.filter((id) => String(id) !== String(petId))
+      : [...current.petIds, petId],
+  }));
 
   const loadData = useCallback(async () => {
     if (!ownerId) {
@@ -167,7 +198,10 @@ export default function PetOwnerAppointment({ navigation, route }) {
   useEffect(() => {
     const newPetId = route?.params?.preselectedPetId;
     if (!newPetId) return;
-    setForm((current) => ({ ...current, petId: newPetId }));
+    setForm((current) => ({
+      ...current,
+      petIds: current.petIds.some((id) => String(id) === String(newPetId)) ? current.petIds : [...current.petIds, newPetId],
+    }));
     setMessage('New pet added successfully and selected for this booking.');
     navigation.setParams({ preselectedPetId: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,22 +257,53 @@ export default function PetOwnerAppointment({ navigation, route }) {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ petId: '', veterinarianId: '', appointmentDate: todayLocal(), startTime: '', visitReason: '', notes: '' });
+    setForm({ petIds: [], veterinarianId: '', appointmentDate: todayLocal(), startTime: '', visitReason: '', notes: '' });
     setSlots([]);
   };
 
   const saveAppointment = async () => {
+    if (saving) return;
     try {
       setMessage('');
-      setSaving(true);
-      const payload = { ...form, ownerId, createdBy: ownerId };
       if (editing) {
-        await rescheduleAppointment(editing.id, payload, ownerId, ownerId);
-        setMessage('Appointment rescheduled successfully.');
-      } else {
-        await createAppointment(payload);
-        setMessage('Appointment booked successfully.');
+        setSaving(true);
+        await rescheduleAppointment(editing.id, { ...form, petId: form.petIds[0], ownerId, createdBy: ownerId }, ownerId, ownerId);
+        setMessage('Appointment rebooked successfully.');
+        resetForm();
+        return;
       }
+
+      if (!form.petIds.length) throw new Error('Select at least one pet.');
+      if (!form.appointmentDate) throw new Error('Select an appointment date.');
+      if (!form.startTime) throw new Error('Select an available time.');
+      if (!form.veterinarianId) throw new Error('Select a veterinarian.');
+      if (consecutiveSlots.length < form.petIds.length) {
+        throw new Error(`Only ${consecutiveSlots.length} consecutive slot(s) available from the selected time for ${form.petIds.length} pet(s). Choose an earlier time or fewer pets.`);
+      }
+
+      setSaving(true);
+      const visitGroupId = form.petIds.length > 1 ? createVisitGroupId() : null;
+      const createdIds = [];
+      try {
+        for (let index = 0; index < form.petIds.length; index += 1) {
+          const created = await createAppointment({
+            ...form,
+            petId: form.petIds[index],
+            startTime: consecutiveSlots[index],
+            visitGroupId,
+            ownerId,
+            createdBy: ownerId,
+          });
+          if (created?.id) createdIds.push(created.id);
+        }
+      } catch (bookingError) {
+        // Don't leave half a multi-pet visit booked.
+        if (createdIds.length) await cancelAppointmentsByIds(createdIds, ownerId);
+        throw bookingError;
+      }
+      setMessage(form.petIds.length > 1
+        ? `${form.petIds.length} appointments booked successfully.`
+        : 'Appointment booked successfully.');
       resetForm();
     } catch (error) {
       setMessage(error.message);
@@ -251,7 +316,7 @@ export default function PetOwnerAppointment({ navigation, route }) {
   const startReschedule = (appointment) => {
     setEditing(appointment);
     setForm({
-      petId: appointment.pet_id,
+      petIds: [appointment.pet_id],
       veterinarianId: appointment.veterinarian_id,
       appointmentDate: appointment.appointment_date,
       startTime: appointment.start_time?.slice(0, 5) || '',
@@ -397,19 +462,45 @@ export default function PetOwnerAppointment({ navigation, route }) {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <LinearGradient colors={['#3a7ab8', '#3a7ab8', '#3a7ab8']} style={styles.heroCard}>
             <Text style={styles.eyebrow}>GENERAL CONSULTATION</Text>
-            <Text style={styles.title}>{editing ? 'Reschedule Appointment' : 'Book an Appointment'}</Text>
+            <Text style={styles.title}>{editing ? 'Rebook Appointment' : 'Book an Appointment'}</Text>
             <Text style={styles.subtitle}>Choose your registered pet, a date and an available 10-minute slot, then a veterinarian who is free at that time. Booking hours are 9:00 AM–7:00 PM.</Text>
           </LinearGradient>
 
           <View style={styles.card}>
-            <FieldLabel text="Pet" />
-            <Dropdown
-              style={styles.dropdown}
-              data={pets.map((pet) => ({ value: pet.id, label: `${pet.pet_name} — ${pet.species}${pet.breed ? ` / ${pet.breed}` : ''}` }))}
-              labelField="label" valueField="value" value={form.petId}
-              placeholder={pets.length ? 'Select your registered pet' : 'No registered pets found'}
-              onChange={(item) => setForm((current) => ({ ...current, petId: item.value }))}
-            />
+            <FieldLabel text="Pet Selection" />
+            {editing ? (
+              <View style={[styles.dropdown, styles.dropdownDisabled, styles.lockedPet]}>
+                <Text style={styles.petOptionText}>{selectedPets[0]?.pet_name || editing.pet?.pet_name || 'Pet'}</Text>
+              </View>
+            ) : (
+              <View style={styles.petSelectBox}>
+                <Text style={styles.petSelectSummary}>
+                  {form.petIds.length
+                    ? `${form.petIds.length} pet${form.petIds.length > 1 ? 's' : ''} selected`
+                    : pets.length ? 'Select pet(s)' : 'No registered pets found'}
+                </Text>
+                {pets.map((pet) => {
+                  const checked = form.petIds.some((id) => String(id) === String(pet.id));
+                  return (
+                    <TouchableOpacity
+                      key={pet.id}
+                      style={[styles.petOption, checked && styles.petOptionChecked]}
+                      onPress={() => togglePet(pet.id)}
+                      activeOpacity={0.85}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked }}
+                    >
+                      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                        {checked ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                      </View>
+                      <Text style={styles.petOptionText} numberOfLines={1}>
+                        {pet.pet_name} — {pet.species}{pet.breed ? ` / ${pet.breed}` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
             {!editing ? (
               <TouchableOpacity style={styles.addPetButton} onPress={addNewPet} activeOpacity={0.85} accessibilityRole="button">
                 <Text style={styles.addPetButtonText}>+ Add New Pet</Text>
@@ -454,6 +545,11 @@ export default function PetOwnerAppointment({ navigation, route }) {
               placeholder={!form.startTime ? 'Select a time first' : eligibleVets.length ? 'Select veterinarian' : 'No veterinarian available at this time'}
               onChange={(item) => setForm((current) => ({ ...current, veterinarianId: item.value }))}
             />
+            {notEnoughSlots ? (
+              <Text style={styles.slotWarning}>
+                Only {consecutiveSlots.length} consecutive slot(s) available from this time for {form.petIds.length} pets. Choose an earlier time or fewer pets.
+              </Text>
+            ) : null}
 
             <FieldLabel text="Visit Reason" optional />
             <TextInput style={styles.input} value={form.visitReason} onChangeText={(value) => setForm((current) => ({ ...current, visitReason: value }))} placeholder="Example: Routine checkup" maxLength={200} />
@@ -464,12 +560,20 @@ export default function PetOwnerAppointment({ navigation, route }) {
 
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Appointment Summary</Text>
-            <SummaryRow label="Pet" value={selectedPet ? `${selectedPet.pet_name} (${selectedPet.species})` : 'Not selected'} />
+            <SummaryRow
+              label={selectedPets.length > 1 ? 'Pets' : 'Pet'}
+              value={selectedPets.length ? selectedPets.map((pet) => `${pet.pet_name} (${pet.species})`).join(', ') : 'Not selected'}
+            />
             <SummaryRow label="Pet Owner" value={ownerName} />
             <SummaryRow label="Veterinarian" value={selectedVet?.full_name || 'Not selected'} />
             <SummaryRow label="Date" value={form.appointmentDate ? formatDate(form.appointmentDate) : 'Not selected'} />
             <SummaryRow label="Start Time" value={form.startTime ? formatTime(form.startTime) : 'Not selected'} />
-            <SummaryRow label="End Time" value={form.startTime ? formatTime(addTenMinutes(form.startTime)) : 'Not selected'} />
+            <SummaryRow
+              label="End Time"
+              value={form.startTime
+                ? `${formatTime(addTenMinutes(lastSlot))}${form.petIds.length > 1 ? ` (${form.petIds.length} slots)` : ''}`
+                : 'Not selected'}
+            />
             <View style={styles.queueAvailabilityNote}>
               <Text style={styles.queueAvailabilityNoteText}>
                 The View Queue button will appear 30 minutes before your appointed time.
@@ -479,9 +583,9 @@ export default function PetOwnerAppointment({ navigation, route }) {
             <SummaryRow label="Consultation Type" value="General Consultation" />
             <SummaryRow label="Status" value="Confirmed" />
             <View style={styles.actionRow}>
-              {editing && <TouchableOpacity style={styles.secondaryButton} onPress={resetForm}><Text style={styles.secondaryText}>Cancel Reschedule</Text></TouchableOpacity>}
-              <TouchableOpacity style={styles.primaryButton} disabled={saving} onPress={saveAppointment}>
-                <Text style={styles.primaryText}>{saving ? 'Saving...' : editing ? 'Save New Schedule' : 'Book Appointment'}</Text>
+              {editing && <TouchableOpacity style={styles.secondaryButton} onPress={resetForm}><Text style={styles.secondaryText}>Cancel Rebook</Text></TouchableOpacity>}
+              <TouchableOpacity style={[styles.primaryButton, notEnoughSlots && { opacity: 0.5 }]} disabled={saving || notEnoughSlots} onPress={saveAppointment}>
+                <Text style={styles.primaryText}>{saving ? (editing ? 'Rebooking...' : 'Saving...') : editing ? 'Confirm Rebook' : 'Book Appointment'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -664,6 +768,16 @@ const styles = StyleSheet.create({
   optional: { color: '#78909b', fontWeight: '600' },
   dropdown: { minHeight: 52, borderWidth: 1, borderColor: '#cee2e9', borderRadius: 16, paddingHorizontal: 14, backgroundColor: '#fbfdfe' },
   dropdownDisabled: { backgroundColor: '#f1f5f7', opacity: 0.75 },
+  lockedPet: { justifyContent: 'center' },
+  petSelectBox: { borderWidth: 1, borderColor: '#cee2e9', borderRadius: 16, padding: 10, backgroundColor: '#fbfdfe', gap: 8 },
+  petSelectSummary: { color: '#5d7b91', fontSize: 12.5, fontWeight: '800', paddingHorizontal: 4 },
+  petOption: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#e2eef2', backgroundColor: '#ffffff' },
+  petOptionChecked: { borderColor: '#2c6ba3', backgroundColor: '#edf6fb' },
+  petOptionText: { flex: 1, color: '#294b5d', fontSize: 14, fontWeight: '700' },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: '#9fc3d6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
+  checkboxChecked: { backgroundColor: '#2c6ba3', borderColor: '#2c6ba3' },
+  checkboxMark: { color: '#ffffff', fontSize: 14, fontWeight: '900', lineHeight: 16 },
+  slotWarning: { color: '#b54b4b', fontSize: 12.5, fontWeight: '700', lineHeight: 18, marginTop: 8 },
   addPetButton: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: '#c6e5ed', backgroundColor: '#edf6f8' },
   addPetButtonText: { color: '#2c6ba3', fontSize: 13, fontWeight: '900' },
   input: { minHeight: 52, borderWidth: 1, borderColor: '#cee2e9', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11, color: '#294b5d', backgroundColor: '#fbfdfe', fontWeight: '600', fontSize: 14 },
