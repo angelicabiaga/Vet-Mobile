@@ -22,6 +22,7 @@ import {
   getLeaveImpact,
   submitLeaveRequest,
 } from '../../../api/vetLeaveService';
+import useScrollToError from '../../../hooks/useScrollToError';
 
 const REASON_LIMIT = 500;
 
@@ -86,6 +87,10 @@ function defaultEmergencyTime(shiftStart, shiftEnd) {
   const min = toMinutes(shiftStart);
   const max = toMinutes(shiftEnd) - 10;
   return fromMinutes(Math.min(Math.max(rounded, min), max));
+}
+
+function FieldError({ text }) {
+  return text ? <Text style={styles.reasonError}>{text}</Text> : null;
 }
 
 function Chip({ label, active, disabled, danger, onPress }) {
@@ -187,10 +192,13 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
   const [emergencyMode, setEmergencyMode] = React.useState('from');
   const [fromTime, setFromTime] = React.useState('09:00');
   const [reason, setReason] = React.useState('');
-  const [reasonMissing, setReasonMissing] = React.useState(false);
+  // Per-field problems, shown under each field with a red border.
+  const [fieldErrors, setFieldErrors] = React.useState({});
   const scrollRef = React.useRef(null);
-  const reasonRef = React.useRef(null);
-  const reasonY = React.useRef(0);
+  const errorScroll = useScrollToError(scrollRef);
+  const clearError = (...names) => setFieldErrors((current) => (
+    names.some((name) => current[name]) ? names.reduce((next, name) => ({ ...next, [name]: undefined }), current) : current
+  ));
   const [impact, setImpact] = React.useState(null);
   const [checking, setChecking] = React.useState(false);
   const [checkError, setCheckError] = React.useState('');
@@ -211,6 +219,7 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
     setEmergencyMode('from');
     setFromTime(defaultEmergencyTime(shiftStart, shiftEnd));
     setReason('');
+    setFieldErrors({});
     setImpact(null);
     setSubmitError('');
     setSaving(false);
@@ -255,31 +264,6 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
     return () => clearTimeout(timer);
   }, [visible, veterinarianId, today, isEmergency, startDate, payload]);
 
-  // The chosen type is the reason; only "Other" asks for one in words
-  // (matches the web app). The button stays tappable and points to the box.
-  const needsReason = leaveType === 'Other';
-  const hasReason = !needsReason || reason.trim().length > 0;
-  const canSubmit = !saving && !checking && impact?.ok;
-
-  const submit = async () => {
-    if (!canSubmit) return;
-    if (!hasReason) {
-      setReasonMissing(true);
-      scrollRef.current?.scrollTo({ y: Math.max(reasonY.current - 24, 0), animated: true });
-      reasonRef.current?.focus();
-      return;
-    }
-    try {
-      setSaving(true);
-      setSubmitError('');
-      const result = await submitLeaveRequest({ veterinarianId, leaveType, reason: needsReason ? reason.trim() : leaveType, ...payload });
-      onSubmitted?.(result);
-    } catch (error) {
-      setSubmitError(error.message);
-      setSaving(false);
-    }
-  };
-
   const firstDayOptions = tomorrow ? dateOptions(tomorrow, 90) : [];
   const lastDayOptions = startDate ? dateOptions(startDate, 31) : [];
   // Part-day choices stay inside that day's shift (e.g. 9:30 AM-4:30 PM for
@@ -295,6 +279,85 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
       setPartialTime(partialOptions[Math.floor(partialOptions.length / 2)].value);
     }
   }, [partialOptions, partialTime]);
+
+  // The chosen type is the reason; only "Other" asks for one in words
+  // (matches the web app).
+  const needsReason = leaveType === 'Other';
+  const FIELD_ORDER = ['leaveType', 'reason', 'fromTime', 'startDate', 'endDate', 'partialTime'];
+
+  // { errors, missing }: missing = something required is empty (incomplete),
+  // otherwise the details are filled in but not valid.
+  const validate = () => {
+    const errors = {};
+    let missing = false;
+    const need = (name, message) => { errors[name] = message; missing = true; };
+    const types = isEmergency ? EMERGENCY_TYPES : LEAVE_TYPES;
+
+    if (!leaveType) need('leaveType', 'Choose a leave type.');
+    else if (!types.includes(leaveType)) errors.leaveType = 'Choose one of the listed leave types.';
+
+    if (needsReason) {
+      const text = reason.trim();
+      if (!text) need('reason', 'Describe the reason so staff can plan coverage.');
+      else if (text.length < 3) errors.reason = 'Describe the reason in a few words.';
+      else if (text.length > REASON_LIMIT) errors.reason = `Keep the reason under ${REASON_LIMIT} characters.`;
+    }
+
+    if (isEmergency) {
+      if (emergencyMode === 'from') {
+        if (!fromTime) need('fromTime', "Select the time you're leaving.");
+        else if (!emergencyOptions.some((option) => option.value === fromTime)) errors.fromTime = "Choose a time within today's shift.";
+      }
+      return { errors, missing };
+    }
+
+    if (!startDate) need('startDate', 'Select the first day of your leave.');
+    else if (today && startDate <= today) errors.startDate = 'Leave must be filed at least one day ahead.';
+    if (!endDate) need('endDate', 'Select the last day of your leave.');
+    else if (startDate && endDate < startDate) errors.endDate = "The last day can't be before the first day.";
+    else if (startDate && endDate > addDays(startDate, 30)) errors.endDate = 'A leave request can cover at most 31 days.';
+
+    if (startDate && startDate === endDate && duration !== 'full') {
+      if (dayShift?.off) errors.partialTime = "You're not scheduled that day, so you can't arrive late or leave early.";
+      else if (!partialTime) need('partialTime', duration === 'late' ? 'Select the time you will start.' : 'Select the time you will leave.');
+      else if (!partialOptions.some((option) => option.value === partialTime)) errors.partialTime = 'Choose a time within your shift.';
+    }
+    return { errors, missing };
+  };
+
+  const submit = async () => {
+    if (saving) return;
+    setSubmitError('');
+    const { errors, missing } = validate();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setSubmitError(missing ? 'Please complete the missing details.' : 'Please correct the highlighted details.');
+      errorScroll.scrollToFirstError(errors, FIELD_ORDER);
+      return;
+    }
+    // The schedule check must pass too (e.g. no overlap with another leave).
+    if (checking) {
+      setSubmitError('Still checking your schedule. Please try again in a moment.');
+      return;
+    }
+    if (checkError) {
+      setSubmitError(checkError);
+      return;
+    }
+    if (!impact?.ok) {
+      const reasons = (impact?.errors || []).filter(Boolean);
+      setSubmitError(reasons.length ? `This leave can't be filed: ${reasons.join(' ')}` : 'Please correct the highlighted details.');
+      return;
+    }
+    try {
+      setSaving(true);
+      const result = await submitLeaveRequest({ veterinarianId, leaveType, reason: needsReason ? reason.trim() : leaveType, ...payload });
+      onSubmitted?.(result);
+    } catch (error) {
+      setSubmitError(error.message);
+      setSaving(false);
+    }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={() => !saving && onClose()}>
@@ -314,59 +377,60 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
           </View>
 
           <ScrollView ref={scrollRef} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-            <Text style={styles.label}>{isEmergency ? 'What happened?' : 'Leave type'}</Text>
+            <Text style={styles.label} ref={errorScroll.anchor('leaveType')}>{isEmergency ? 'What happened?' : 'Leave type'}</Text>
             <View style={styles.chipRow}>
               {(isEmergency ? EMERGENCY_TYPES : LEAVE_TYPES).map((type) => (
-                <Chip key={type} label={type} active={leaveType === type} danger={isEmergency} onPress={() => { setLeaveType(type); setReasonMissing(false); }} />
+                <Chip key={type} label={type} active={leaveType === type} danger={isEmergency} onPress={() => { setLeaveType(type); clearError('leaveType', 'reason'); }} />
               ))}
             </View>
+            <FieldError text={fieldErrors.leaveType} />
 
             {needsReason ? (
               <>
-                <Text style={styles.label} onLayout={(event) => { reasonY.current = event.nativeEvent.layout.y; }}>
+                <Text style={styles.label} ref={errorScroll.anchor('reason')}>
                   Please describe <Text style={styles.required}>(required)</Text>
                 </Text>
                 <TextInput
-                  ref={reasonRef}
-                  style={[styles.reason, reasonMissing && !hasReason && styles.reasonInvalid]}
+                  style={[styles.reason, fieldErrors.reason && styles.reasonInvalid]}
                   multiline
                   maxLength={REASON_LIMIT}
                   value={reason}
-                  onChangeText={setReason}
+                  onChangeText={(text) => { setReason(text); clearError('reason'); }}
                   placeholder={isEmergency ? 'A short note for staff' : 'e.g. Wedding, moving house'}
                   placeholderTextColor="#8aa2b4"
                 />
-                {reasonMissing && !hasReason ? <Text style={styles.reasonError}>Describe what happened so staff can plan coverage.</Text> : null}
+                <FieldError text={fieldErrors.reason} />
                 <Text style={styles.counter}>{reason.length}/{REASON_LIMIT}</Text>
               </>
             ) : null}
 
             {isEmergency ? (
               <>
-                <Text style={styles.label}>When are you unavailable?</Text>
+                <Text style={styles.label} ref={errorScroll.anchor('fromTime')}>When are you unavailable?</Text>
                 <View style={styles.chipRow}>
                   <Chip label="Leaving from a time" active={emergencyMode === 'from'} danger onPress={() => setEmergencyMode('from')} />
                   <Chip label="Can't work today" active={emergencyMode === 'whole'} danger onPress={() => setEmergencyMode('whole')} />
                 </View>
                 {emergencyMode === 'from' ? (
                   <Dropdown
-                    style={styles.dropdown}
+                    style={[styles.dropdown, fieldErrors.fromTime && styles.dropdownInvalid]}
                     {...dropdownListProps}
                     data={emergencyOptions}
                     labelField="label"
                     valueField="value"
                     value={fromTime}
                     placeholder="Select time"
-                    onChange={(item) => setFromTime(item.value)}
+                    onChange={(item) => { setFromTime(item.value); clearError('fromTime'); }}
                   />
                 ) : null}
+                <FieldError text={fieldErrors.fromTime} />
                 {emergencyMode === 'from' ? <Text style={styles.hint}>Until the end of your shift ({formatClock(shiftEnd)}).</Text> : null}
               </>
             ) : (
               <>
-                <Text style={styles.label}>First day</Text>
+                <Text style={styles.label} ref={errorScroll.anchor('startDate')}>First day</Text>
                 <Dropdown
-                  style={styles.dropdown}
+                  style={[styles.dropdown, fieldErrors.startDate && styles.dropdownInvalid]}
                   {...dropdownListProps}
                   data={firstDayOptions}
                   labelField="label"
@@ -379,11 +443,13 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
                     setStartDate(item.value);
                     setEndDate(nextEnd);
                     if (nextEnd !== item.value) setDuration('full');
+                    clearError('startDate', 'endDate', 'partialTime');
                   }}
                 />
-                <Text style={styles.label}>Last day</Text>
+                <FieldError text={fieldErrors.startDate} />
+                <Text style={styles.label} ref={errorScroll.anchor('endDate')}>Last day</Text>
                 <Dropdown
-                  style={styles.dropdown}
+                  style={[styles.dropdown, fieldErrors.endDate && styles.dropdownInvalid]}
                   {...dropdownListProps}
                   data={lastDayOptions}
                   labelField="label"
@@ -394,29 +460,32 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
                   onChange={(item) => {
                     setEndDate(item.value);
                     if (item.value !== startDate) setDuration('full');
+                    clearError('endDate', 'partialTime');
                   }}
                 />
+                <FieldError text={fieldErrors.endDate} />
                 <Text style={styles.label}>Duration</Text>
                 <View style={styles.chipRow}>
-                  <Chip label={singleDay ? 'Whole day' : 'Whole days'} active={duration === 'full'} onPress={() => setDuration('full')} />
-                  <Chip label="Arrive late" active={duration === 'late'} disabled={!singleDay} onPress={() => setDuration('late')} />
-                  <Chip label="Leave early" active={duration === 'early'} disabled={!singleDay} onPress={() => setDuration('early')} />
+                  <Chip label={singleDay ? 'Whole day' : 'Whole days'} active={duration === 'full'} onPress={() => { setDuration('full'); clearError('partialTime'); }} />
+                  <Chip label="Arrive late" active={duration === 'late'} disabled={!singleDay} onPress={() => { setDuration('late'); clearError('partialTime'); }} />
+                  <Chip label="Leave early" active={duration === 'early'} disabled={!singleDay} onPress={() => { setDuration('early'); clearError('partialTime'); }} />
                 </View>
                 {duration !== 'full' ? (
                   <>
-                    <Text style={styles.hint}>{duration === 'late' ? 'You will start at:' : 'You will leave at:'}</Text>
+                    <Text style={styles.hint} ref={errorScroll.anchor('partialTime')}>{duration === 'late' ? 'You will start at:' : 'You will leave at:'}</Text>
                     <Dropdown
-                      style={styles.dropdown}
+                      style={[styles.dropdown, fieldErrors.partialTime && styles.dropdownInvalid]}
                       {...dropdownListProps}
                       data={partialOptions}
                       labelField="label"
                       valueField="value"
                       value={partialTime}
                       placeholder="Select time"
-                      onChange={(item) => setPartialTime(item.value)}
+                      onChange={(item) => { setPartialTime(item.value); clearError('partialTime'); }}
                     />
                   </>
                 ) : null}
+                <FieldError text={fieldErrors.partialTime} />
                 {!singleDay ? <Text style={styles.hint}>Part-day leave is only for a single date.</Text> : null}
                 {singleDay && dayShift?.start ? <Text style={styles.hint}>Your shift that day: {formatHours(dayShift.start, dayShift.end)}</Text> : null}
                 {singleDay && dayShift?.off ? <Text style={styles.hint}>You're not scheduled that day.</Text> : null}
@@ -431,15 +500,14 @@ export default function VetLeaveRequestModal({ visible, mode = 'Leave', veterina
 
           <View style={styles.footer}>
             {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
-            {canSubmit && !hasReason ? <Text style={styles.footerHint}>Describe what happened above to continue.</Text> : null}
             <View style={styles.footerButtons}>
               <TouchableOpacity style={styles.secondaryButton} onPress={onClose} disabled={saving} activeOpacity={0.9}>
                 <Text style={styles.secondaryText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.primaryButton, isEmergency && styles.primaryDanger, !canSubmit && styles.buttonDisabled]}
+                style={[styles.primaryButton, isEmergency && styles.primaryDanger, saving && styles.buttonDisabled]}
                 onPress={submit}
-                disabled={!canSubmit}
+                disabled={saving}
                 activeOpacity={0.9}
               >
                 <Text style={styles.primaryText}>{saving ? 'Submitting…' : isEmergency ? 'Apply now' : 'Send for approval'}</Text>
@@ -473,10 +541,10 @@ const styles = StyleSheet.create({
   chipTextDanger: { color: '#b0392b' },
   dropdown: { minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: '#d7e8f0', backgroundColor: '#fbfeff', paddingHorizontal: 12 },
   reason: { minHeight: 84, borderRadius: 14, borderWidth: 1, borderColor: '#d7e8f0', backgroundColor: '#fbfeff', padding: 12, fontSize: 14, color: '#123a5e', textAlignVertical: 'top' },
+  dropdownInvalid: { borderColor: '#dc2626' },
   reasonInvalid: { borderColor: '#e08a80', backgroundColor: '#fffafa' },
   reasonError: { color: '#c0392b', fontSize: 12.5, fontWeight: '700', marginTop: 6 },
   required: { color: '#8aa0ab', fontWeight: '600' },
-  footerHint: { color: '#9d6817', fontSize: 13, fontWeight: '700', marginBottom: 8 },
   counter: { alignSelf: 'flex-end', marginTop: 4, fontSize: 11, color: '#8aa0ab', fontWeight: '700' },
   sectionTitle: { marginTop: 16, marginBottom: 8, fontSize: 15, fontWeight: '900', color: '#123a5e' },
   impact: { gap: 8 },

@@ -287,6 +287,7 @@ const PetOwnerMyPetsView = ({ navigation, route }) => {
                 loading={recordsLoading}
                 error={recordsError}
                 onRetry={loadRecords}
+                viewer={loggedInUser}
               />
             ) : null}
 

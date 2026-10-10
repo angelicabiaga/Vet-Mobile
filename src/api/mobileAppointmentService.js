@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabaseClient';
+import { templateLabelFor } from '../constants/medicalRecordTemplates';
 import { createNotification } from './notificationService';
 
 export const APPOINTMENT_STATUSES = ['Confirmed', 'Completed', 'Cancelled'];
@@ -286,6 +287,37 @@ export async function createAppointment(payload) {
   return data;
 }
 
+// The medical record template the vet used for a visit = the specific
+// consultation (Vaccination Record, Dental Record, ...). Bookings are saved as
+// "General Consultation" until the vet records what was done.
+export const consultationTemplateLabel = templateLabelFor;
+
+// What a visit's "Consultation Type" should say: the record's template when
+// the vet has written one, otherwise the booked consultation type.
+export function consultationTypeLabel(appointment) {
+  return appointment?.consultation_template || appointment?.consultation_type || 'General Consultation';
+}
+
+// Adds `consultation_template` (a readable label) to each appointment that
+// has a medical record. Best effort: a failed lookup leaves rows unchanged.
+async function withConsultationTemplates(rows) {
+  const ids = rows.map((row) => row.id).filter(Boolean);
+  if (!ids.length) return rows;
+  const { data, error } = await supabase
+    .from('medical_records')
+    .select('appointment_id, record_template, updated_at')
+    .in('appointment_id', ids);
+  if (error || !data?.length) return rows;
+  const byAppointment = {};
+  [...data]
+    .sort((a, b) => new Date(a.updated_at || 0) - new Date(b.updated_at || 0))
+    .forEach((record) => {
+      const label = consultationTemplateLabel(record.record_template);
+      if (label) byAppointment[String(record.appointment_id)] = label;
+    });
+  return rows.map((row) => (byAppointment[String(row.id)] ? { ...row, consultation_template: byAppointment[String(row.id)] } : row));
+}
+
 export async function getOwnerAppointments(ownerId) {
   if (!ownerId) return [];
   const { data, error } = await supabase
@@ -310,7 +342,7 @@ export async function getOwnerAppointments(ownerId) {
     const { data: creatorRows } = await supabase.from('profiles').select('id, full_name, username').in('id', creatorIds);
     creators = Object.fromEntries((creatorRows || []).map((item) => [String(item.id), item]));
   }
-  return rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null }));
+  return withConsultationTemplates(rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null })));
 }
 
 // Rolls back a partly-saved multi-pet booking (web cancelAppointmentsByIds).
@@ -506,7 +538,7 @@ export async function getVeterinarianAppointments(veterinarianId) {
     const { data: creatorRows } = await supabase.from('profiles').select('id, full_name, username').in('id', creatorIds);
     creators = Object.fromEntries((creatorRows || []).map((item) => [String(item.id), item]));
   }
-  return rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null }));
+  return withConsultationTemplates(rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null })));
 }
 
 const APPOINTMENT_SELECT = `
@@ -525,7 +557,7 @@ async function hydrateCreators(rows) {
     const { data: creatorRows } = await supabase.from('profiles').select('id, full_name, username').in('id', creatorIds);
     creators = Object.fromEntries((creatorRows || []).map((item) => [String(item.id), item]));
   }
-  return rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null }));
+  return withConsultationTemplates(rows.map((item) => ({ ...item, creator: creators[String(item.created_by)] || null })));
 }
 
 export async function getAllAppointments() {

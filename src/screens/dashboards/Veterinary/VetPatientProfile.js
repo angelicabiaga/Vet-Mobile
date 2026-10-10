@@ -174,7 +174,7 @@ export default function VetPatientProfile({ navigation, route }) {
           </View>
 
           {activeTab === 'medical' ? (
-            <PetOwnerMyPetsMedicalHistory pet={patient} records={records} loading={recordsLoading} error={recordsError} onRetry={loadRecords} />
+            <PetOwnerMyPetsMedicalHistory viewer={currentUser} pet={patient} records={records} loading={recordsLoading} error={recordsError} onRetry={loadRecords} />
           ) : null}
 
           {aiTabVisited ? (

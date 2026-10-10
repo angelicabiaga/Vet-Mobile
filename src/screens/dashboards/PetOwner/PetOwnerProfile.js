@@ -319,7 +319,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
                 </View>
                 <View style={styles.brandBlock}>
                   <Text style={styles.headerTitle}>PawCruz</Text>
-                  <Text style={styles.headerSubtitle}>Pet Owner Profile</Text>
+                  <Text style={styles.headerSubtitle}>Profile</Text>
                 </View>
               </TouchableOpacity>
 

@@ -12,7 +12,7 @@ async function loadRelations(records = []) {
 
   const [petsRes, profilesRes, appointmentsRes] = await Promise.all([
     petIds.length ? supabase.from('pets').select('*').in('id', petIds) : Promise.resolve({ data: [], error: null }),
-    profileIds.length ? supabase.from('profiles').select('id, full_name, username, email, role, account_status').in('id', profileIds) : Promise.resolve({ data: [], error: null }),
+    profileIds.length ? supabase.from('profiles').select('id, full_name, username, email, role, account_status, phone, address, license_number').in('id', profileIds) : Promise.resolve({ data: [], error: null }),
     appointmentIds.length ? supabase.from('appointments').select('*').in('id', appointmentIds) : Promise.resolve({ data: [], error: null }),
   ]);
 

@@ -35,7 +35,7 @@ export async function getMessageContacts(profile) {
   if (!profile?.id) throw new Error("Your login session is incomplete.");
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,full_name,username,email,role,account_status")
+    .select("id,full_name,username,email,role,account_status,avatar_url")
     .neq("id", profile.id)
     .order("full_name");
   if (!error) {
@@ -102,7 +102,7 @@ async function getConversationsNormally(profile) {
   const profileIds = [...new Set((participantResult.data || []).map((row) => row.profile_id))];
   let profiles = [];
   if (profileIds.length) {
-    const result = await supabase.from("profiles").select("id,full_name,username,email,role").in("id", profileIds);
+    const result = await supabase.from("profiles").select("id,full_name,username,email,role,avatar_url").in("id", profileIds);
     if (result.error) return { data: null, error: result.error };
     profiles = result.data || [];
   }
@@ -175,7 +175,7 @@ export async function getMessages(conversationIds) {
     const senderIds = [...new Set((data || []).map((item) => item.sender_id))];
     let profiles = [];
     if (senderIds.length) {
-      const result = await supabase.from("profiles").select("id,full_name,role").in("id", senderIds);
+      const result = await supabase.from("profiles").select("id,full_name,role,avatar_url").in("id", senderIds);
       if (!result.error) profiles = result.data || [];
     }
     const profileMap = new Map(profiles.map((item) => [item.id, item]));

@@ -18,7 +18,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { cancelAppointment, formatTime, getCancellationBlockReason, getOwnerAppointments, todayLocal } from '../../../api/mobileAppointmentService';
+import { Dropdown } from 'react-native-element-dropdown';
+import { cancelAppointment, consultationTypeLabel, formatTime, getCancellationBlockReason, getOwnerAppointments, todayLocal } from '../../../api/mobileAppointmentService';
 import { getQueue, subscribeToQueue } from '../../../api/queueService';
 import { supabase } from '../../../config/supabaseClient';
 
@@ -36,12 +37,26 @@ function isUpcoming(row) {
       (row.appointment_date === today && String(row.start_time).slice(0, 5) > `${pad2(now.getHours())}:${pad2(now.getMinutes())}`));
 }
 
+// "Neil Cruz" / "Dr. Neil Cruz" -> "Dr. Neil Cruz".
+const vetLabel = (name) => {
+  const bare = String(name || '').trim().replace(/^(?:dr\.\s*|dr\s+)+/i, '').trim();
+  return bare ? `Dr. ${bare}` : 'Veterinarian';
+};
 const getOwnerId = (user) => user?.id || user?.user_id || user?.profile_id || '';
 const formatDate = (value) => {
   if (!value) return '—';
   const date = new Date(`${value}T12:00:00`);
   return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 };
+// Same filter as the vet's Appointments screen, plus Confirmed (owners have
+// upcoming visits).
+const STATUS_FILTERS = [
+  { label: 'All Statuses', value: 'All' },
+  { label: 'Confirmed', value: 'Confirmed' },
+  { label: 'Completed', value: 'Completed' },
+  { label: 'Cancelled', value: 'Cancelled' },
+];
+
 // Every way someone might type an appointment's date, so the one search box
 // finds "2026-10-08", "Oct 8", "October 8, 2026", "10/08/2026" or "Thursday".
 const dateSearchText = (value) => {
@@ -78,13 +93,15 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
   const [appointments, setAppointments] = useState([]);
   const [queueEntries, setQueueEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedAppointmentId, setExpandedAppointmentId] = useState(null);
+  // The appointment whose details sheet is open (same as the vet's Appointments).
+  const [selected, setSelected] = useState(null);
   const [message, setMessage] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   // Search / status / date filters and paging, same as the web table.
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
   const scrollRef = useRef(null);
 
@@ -162,7 +179,13 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
     navigation.navigate('PetOwnerAppointment', { user, rescheduleAppointment: appointment });
   };
 
-  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+
+  const hasActiveFilters = Boolean(search) || statusFilter !== 'All';
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('All');
+  };
 
   // Pets booked together share a visit_group_id; a row names the other pets.
   const visitGroups = useMemo(() => {
@@ -187,6 +210,7 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
     // time. Each word must match somewhere ("completed oct 8", "chu confirmed").
     const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const rows = appointments.filter((row) => {
+      if (statusFilter !== 'All' && row.status !== statusFilter) return false;
       if (!terms.length) return true;
       const haystack = [
         row.pet?.pet_name, row.pet?.species, row.visit_reason, row.status,
@@ -204,7 +228,7 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
       if (a.appointment_date !== b.appointment_date) return a.appointment_date < b.appointment_date ? 1 : -1;
       return String(b.start_time || '').localeCompare(String(a.start_time || ''));
     });
-  }, [appointments, search]);
+  }, [appointments, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -214,6 +238,18 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
     setPage(nextPage);
     setExpandedAppointmentId(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  // Web rules: Cancel on upcoming visits; Rebook only on your own online booking.
+  const actionsFor = (item) => {
+    const canViewQueue = queueEntries.some((entry) => String(entry.appointment_id) === String(item.id));
+    const canManage = isUpcoming(item);
+    return {
+      canViewQueue,
+      canManage,
+      canRebook: canManage && (item.appointment_source || 'Online') === 'Online',
+      cancelBlockReason: canManage ? getCancellationBlockReason(item, { checkedIn: canViewQueue }) : null,
+    };
   };
 
   // Alert.alert does nothing on web, so the confirmation uses the in-app modal.
@@ -295,106 +331,62 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
 
 
         <ScrollView onScroll={headerMotion.handleScroll} scrollEventThrottle={16} ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <View style={styles.filtersCard}>
-            <TextInput
-              style={styles.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search pet, vet, status, date, reason or notes"
-              placeholderTextColor="#87a0b1"
-              returnKeyType="search"
-              clearButtonMode="while-editing"
+          <View style={styles.searchBar}>
+            <View style={styles.searchRow}>
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search pet, vet, reason, date"
+                placeholderTextColor="#8aa2b4"
+                returnKeyType="search"
+              />
+              {hasActiveFilters ? (
+                <TouchableOpacity style={styles.clearButton} onPress={clearFilters} activeOpacity={0.85}>
+                  <Text style={styles.clearButtonText}>Clear</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <Dropdown
+              style={styles.statusDropdown}
+              containerStyle={styles.statusDropdownList}
+              data={STATUS_FILTERS}
+              labelField="label"
+              valueField="value"
+              value={statusFilter}
+              placeholder="Filter by status"
+              selectedTextStyle={styles.statusDropdownText}
+              placeholderStyle={styles.statusDropdownText}
+              onChange={(item) => setStatusFilter(item.value)}
             />
           </View>
 
-          <View style={styles.card}>
+          {/* Cards sit directly on the page, like the vet's Appointments list. */}
+          <View style={styles.appointmentList}>
             {!pageRows.length ? <Text style={styles.empty}>No appointments found.</Text> : pageRows.map((item) => {
-              const isExpanded = expandedAppointmentId === item.id;
-              const canViewQueue = queueEntries.some((entry) => String(entry.appointment_id) === String(item.id));
-              // Web rules: Cancel on upcoming visits; Rebook only on your own online booking.
-              const canManage = isUpcoming(item);
-              const canRebook = canManage && (item.appointment_source || 'Online') === 'Online';
-              const cancelBlockReason = canManage ? getCancellationBlockReason(item, { checkedIn: canViewQueue }) : null;
               const partners = visitPartners(item);
               return (
-                <View key={item.id} style={styles.appointmentCard}>
-                  <View style={styles.compactAppointmentRow}>
-                    <TouchableOpacity
-                      style={styles.appointmentRowMain}
-                      onPress={() => setExpandedAppointmentId(isExpanded ? null : item.id)}
-                      activeOpacity={0.78}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${isExpanded ? 'Hide' : 'Show'} details for ${item.pet?.pet_name || 'pet'} appointment`}
-                      accessibilityState={{ expanded: isExpanded }}
-                    >
-                      <Text style={styles.petName} numberOfLines={1}>{[item.pet?.pet_name || 'Pet', ...partners].join(', ')}</Text>
-                      {item.visit_group_id && !partners.length ? <Text style={styles.visitBadge}>Part of a multi-pet visit</Text> : null}
-                      <Text style={styles.appointmentSub} numberOfLines={1}>
-                        {item.pet?.species || 'Pet'} · {item.visit_reason || 'General Consultation'}
-                      </Text>
-                      <Text style={styles.appointmentMeta} numberOfLines={1}>
-                        {formatDate(item.appointment_date)} · {formatTime(item.start_time)}
-                      </Text>
-                      <Text style={styles.appointmentSub} numberOfLines={1}>
-                        {item.veterinarian?.full_name || 'Veterinarian'} · {item.appointment_source || 'Online'}
-                      </Text>
-                      <Text style={styles.appointmentHint}>{isExpanded ? 'Hide details ▲' : 'Tap to view details ▼'}</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.appointmentRowActions}>
-                      <Text style={[styles.status, item.status === 'Cancelled' && styles.statusCancelled, item.status === 'Completed' && styles.statusCompleted]}>{item.status}</Text>
-                      {canViewQueue && (
-                        <TouchableOpacity
-                          style={styles.viewQueueButton}
-                          onPress={() => navigation.navigate('PetOwnerQueue', { user })}
-                          activeOpacity={0.88}
-                          accessibilityRole="button"
-                          accessibilityLabel={`View queue for ${item.pet?.pet_name || 'pet'} appointment`}
-                        >
-                          <Image source={require('../../assets/List.png')} style={styles.viewQueueIcon} resizeMode="contain" />
-                          <Text style={styles.viewQueueText}>View Queue</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.appointmentCard}
+                  onPress={() => setSelected(item)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Show details for ${item.pet?.pet_name || 'pet'} appointment`}
+                >
+                  <View style={styles.listRowTop}>
+                    <Text style={styles.petName} numberOfLines={1}>{[item.pet?.pet_name || 'Pet', ...partners].join(', ')}</Text>
+                    <Text style={[styles.status, item.status === 'Cancelled' && styles.statusCancelled, item.status === 'Completed' && styles.statusCompleted]}>{item.status}</Text>
                   </View>
-
-                  {canManage && (
-                    <>
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity
-                          style={[styles.cancelButton, cancelBlockReason && styles.cancelButtonDisabled]}
-                          onPress={() => requestCancel(item, cancelBlockReason)}
-                          accessibilityState={{ disabled: Boolean(cancelBlockReason) }}
-                        >
-                          <Text style={[styles.cancelText, cancelBlockReason && styles.cancelTextDisabled]}>Cancel</Text>
-                        </TouchableOpacity>
-                        {canRebook ? (
-                          <TouchableOpacity style={styles.rebookButton} onPress={() => startReschedule(item)}>
-                            <Text style={styles.rebookText}>Rebook</Text>
-                          </TouchableOpacity>
-                        ) : null}
-                      </View>
-                      {cancelBlockReason ? <Text style={styles.cancelNote}>{cancelBlockReason}</Text> : null}
-                    </>
-                  )}
-
-                  {isExpanded && (
-                    <View style={styles.appointmentDetails}>
-                      <SummaryRow label="Pet Owner" value={item.owner?.full_name || ownerName} />
-                      <SummaryRow label="Veterinarian" value={item.veterinarian?.full_name || '—'} />
-                      <SummaryRow label="Date" value={formatDate(item.appointment_date)} />
-                      <SummaryRow label="Start Time" value={formatTime(item.start_time)} />
-                      <SummaryRow label="End Time" value={formatTime(item.end_time)} />
-                      <SummaryRow label="Appointment Source" value={item.appointment_source || 'Online'} />
-                      <SummaryRow label="Consultation Type" value={item.consultation_type || 'General Consultation'} />
-                      <SummaryRow label="Visit Reason" value={item.visit_reason || '—'} />
-                      <SummaryRow label="Notes" value={item.notes || '—'} />
-                      <SummaryRow label="Created By" value={item.creator?.full_name || item.creator?.username || (String(item.created_by) === String(ownerId) ? ownerName : item.created_by || '—')} />
-                      <SummaryRow label="Created Date" value={formatTimestamp(item.created_at)} />
-                      <SummaryRow label="Updated Date" value={formatTimestamp(item.updated_at)} />
-                    </View>
-                  )}
-                </View>
+                  {item.visit_group_id && !partners.length ? <Text style={styles.visitBadge}>Part of a multi-pet visit</Text> : null}
+                  <Text style={styles.listOwner} numberOfLines={1}>{vetLabel(item.veterinarian?.full_name)}</Text>
+                  <Text style={styles.appointmentMeta}>
+                    {formatDate(item.appointment_date)} · {formatTime(item.start_time)}{item.end_time ? ` – ${formatTime(item.end_time)}` : ''}
+                  </Text>
+                  <Text style={styles.listReason} numberOfLines={1}>
+                    {consultationTypeLabel(item)}{item.visit_reason ? ` — ${item.visit_reason}` : ''}
+                  </Text>
+                </TouchableOpacity>
               );
             })}
 
@@ -425,6 +417,74 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
             ) : null}
           </View>
         </ScrollView>
+
+        {/* Details sheet: same layout as the vet's Appointments details. */}
+        <Modal transparent animationType="fade" visible={Boolean(selected)} onRequestClose={() => setSelected(null)}>
+          <View style={styles.detailOverlay}>
+            {selected ? (() => {
+              const { canViewQueue, canManage, canRebook, cancelBlockReason } = actionsFor(selected);
+              const close = (next) => { setSelected(null); next?.(); };
+              return (
+                <View style={styles.detailCard}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    <View style={styles.detailHeaderRow}>
+                      <Text style={styles.detailTitle}>{[selected.pet?.pet_name || 'Pet', ...visitPartners(selected)].join(', ')}</Text>
+                      <Text style={[styles.status, selected.status === 'Cancelled' && styles.statusCancelled, selected.status === 'Completed' && styles.statusCompleted]}>{selected.status}</Text>
+                    </View>
+                    <SummaryRow label="Pet Owner" value={selected.owner?.full_name || ownerName} />
+                    <SummaryRow label="Veterinarian" value={selected.veterinarian?.full_name || '—'} />
+                    <SummaryRow label="Date" value={formatDate(selected.appointment_date)} />
+                    <SummaryRow label="Start Time" value={formatTime(selected.start_time)} />
+                    <SummaryRow label="End Time" value={formatTime(selected.end_time)} />
+                    <SummaryRow label="Appointment Source" value={selected.appointment_source || 'Online'} />
+                    <SummaryRow label="Consultation Type" value={consultationTypeLabel(selected)} />
+                    <SummaryRow label="Visit Reason" value={selected.visit_reason || '—'} />
+                    <SummaryRow label="Notes" value={selected.notes || '—'} />
+                    <SummaryRow label="Status" value={selected.status || '—'} />
+                    <SummaryRow label="Created By" value={selected.creator?.full_name || selected.creator?.username || (String(selected.created_by) === String(ownerId) ? ownerName : selected.created_by || '—')} />
+                    <SummaryRow label="Created Date" value={formatTimestamp(selected.created_at)} />
+                    <SummaryRow label="Updated Date" value={formatTimestamp(selected.updated_at)} />
+                  </ScrollView>
+
+                  {canViewQueue ? (
+                    <TouchableOpacity
+                      style={[styles.viewQueueButton, styles.detailQueueButton]}
+                      onPress={() => close(() => navigation.navigate('PetOwnerQueue', { user }))}
+                      activeOpacity={0.88}
+                    >
+                      <Image source={require('../../assets/List.png')} style={styles.viewQueueIcon} resizeMode="contain" />
+                      <Text style={styles.viewQueueText}>View Queue</Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {canManage ? (
+                    <>
+                      <View style={styles.actionRow}>
+                        <TouchableOpacity
+                          style={[styles.cancelButton, cancelBlockReason && styles.cancelButtonDisabled]}
+                          onPress={() => { if (!cancelBlockReason) close(() => requestCancel(selected, null)); }}
+                          accessibilityState={{ disabled: Boolean(cancelBlockReason) }}
+                        >
+                          <Text style={[styles.cancelText, cancelBlockReason && styles.cancelTextDisabled]}>Cancel</Text>
+                        </TouchableOpacity>
+                        {canRebook ? (
+                          <TouchableOpacity style={styles.rebookButton} onPress={() => close(() => startReschedule(selected))}>
+                            <Text style={styles.rebookText}>Rebook</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                      {cancelBlockReason ? <Text style={styles.cancelNote}>{cancelBlockReason}</Text> : null}
+                    </>
+                  ) : null}
+
+                  <TouchableOpacity style={styles.detailCloseButton} onPress={() => setSelected(null)} activeOpacity={0.9}>
+                    <Text style={styles.detailCloseText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })() : null}
+          </View>
+        </Modal>
 
         <Modal transparent animationType="fade" visible={Boolean(cancelTarget)} onRequestClose={() => { if (!cancelling) setCancelTarget(null); }}>
           <View style={styles.cancelOverlay}>
@@ -545,26 +605,25 @@ const styles = StyleSheet.create({
   stickyNoticeText: { flex: 1, color: '#123a5e', fontSize: 13, lineHeight: 18, fontWeight: '800' },
   stickyNoticeClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
   stickyNoticeCloseText: { color: '#5e7886', fontSize: 26, fontWeight: '500', lineHeight: 28 },
-  card: {
-    backgroundColor: '#fcfeff', borderRadius: 28, padding: 18, borderWidth: 1, borderColor: '#edf7fd', marginBottom: 20,
-    shadowColor: '#3a7ab8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 18, elevation: 6,
-  },
   viewQueueButton: { minHeight: 40, paddingHorizontal: 11, borderRadius: 13, backgroundColor: '#2c6ba3', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   viewQueueIcon: { width: 17, height: 17, tintColor: '#ffffff' },
   viewQueueText: { color: '#ffffff', fontSize: 12, fontWeight: '900' },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 5, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2ecef' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e6eef2' },
   summaryLabel: { color: '#78909b', fontSize: 12, fontWeight: '600', flex: 0.42 },
   summaryValue: { color: '#365f72', fontSize: 12, fontWeight: '800', textAlign: 'right', flex: 0.58 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
   cancelButton: { flex: 1, borderWidth: 1, borderColor: '#e4a6a6', paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: '#fff8f8' },
   rebookButton: { flex: 1, paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: '#e0982f' },
   rebookText: { color: '#ffffff', fontWeight: '900' },
-  filtersCard: {
-    backgroundColor: '#fcfeff', borderRadius: 22, padding: 14, borderWidth: 1, borderColor: '#edf7fd', marginBottom: 14, gap: 10,
-    shadowColor: '#3a7ab8', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 3,
-  },
-  searchInput: { minHeight: 46, borderWidth: 1, borderColor: '#d6e7ee', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#ffffff', color: '#1d3a4a', fontSize: 14, fontWeight: '600' },
-  appointmentSub: { color: '#7b8e97', fontSize: 12, fontWeight: '600', marginTop: 3 },
+  // Filter panel: same as the vet's Appointments screen.
+  searchBar: { backgroundColor: '#fcfeff', borderRadius: 18, borderWidth: 1, borderColor: '#d7edf9', padding: 12, marginBottom: 14, gap: 10 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchInput: { flex: 1, minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: '#d7edf9', backgroundColor: '#ffffff', paddingHorizontal: 14, fontSize: 14, fontWeight: '700', color: '#123a5e' },
+  clearButton: { minHeight: 46, paddingHorizontal: 16, borderRadius: 14, backgroundColor: '#eef4f8', alignItems: 'center', justifyContent: 'center' },
+  clearButtonText: { color: '#2c6ba3', fontWeight: '900', fontSize: 12 },
+  statusDropdown: { minHeight: 46, borderWidth: 1, borderColor: '#d7edf9', borderRadius: 14, paddingHorizontal: 14, backgroundColor: '#ffffff' },
+  statusDropdownList: { borderRadius: 14, borderColor: '#d7edf9' },
+  statusDropdownText: { fontSize: 14, fontWeight: '700', color: '#123a5e' },
   visitBadge: { alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: '#eaf6fc', color: '#2c7fb8', fontSize: 11, fontWeight: '700' },
   pagination: { marginTop: 16, alignItems: 'center', gap: 8 },
   paginationButtons: { flexDirection: 'row', gap: 10 },
@@ -597,15 +656,21 @@ const styles = StyleSheet.create({
   modalCancelText: { color: '#ffffff', fontSize: 15, fontWeight: '900' },
   modalButtonBusy: { opacity: 0.7 },
   empty: { color: '#758b94', textAlign: 'center', paddingVertical: 24 },
-  appointmentCard: { marginTop: 10, borderWidth: 1, borderColor: '#dceef8', borderRadius: 20, padding: 12, backgroundColor: '#fcfeff' },
-  compactAppointmentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  appointmentRowMain: { flex: 1, minWidth: 0, paddingVertical: 3 },
-  appointmentRowActions: { alignItems: 'flex-end', gap: 8 },
-  appointmentMeta: { color: '#5d7b91', fontSize: 12, fontWeight: '700', marginTop: 4 },
-  appointmentHint: { color: '#2c6ba3', fontSize: 11, fontWeight: '800', marginTop: 5 },
-  appointmentDetails: { marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2eef2' },
-  petName: { color: '#123a5e', fontSize: 16, fontWeight: '900' },
-  status: { backgroundColor: '#def4e6', color: '#26704a', fontWeight: '800', fontSize: 11, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
+  appointmentList: { marginBottom: 20 },
+  appointmentCard: { marginBottom: 10, borderWidth: 1, borderColor: '#dceef8', borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#ffffff' },
+  listRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 4 },
+  listOwner: { fontSize: 13, fontWeight: '700', color: '#3f5f70' },
+  listReason: { fontSize: 12, fontWeight: '600', color: '#78909b', marginTop: 2 },
+  detailOverlay: { flex: 1, backgroundColor: 'rgba(20,40,50,0.45)', justifyContent: 'center', padding: 20 },
+  detailCard: { backgroundColor: '#ffffff', borderRadius: 22, padding: 20, maxHeight: '82%' },
+  detailHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  detailTitle: { fontSize: 19, fontWeight: '900', color: '#123a5e', flex: 1, marginRight: 10 },
+  detailQueueButton: { marginTop: 14 },
+  detailCloseButton: { marginTop: 16, minHeight: 46, borderRadius: 14, backgroundColor: '#2c6ba3', alignItems: 'center', justifyContent: 'center' },
+  detailCloseText: { color: '#ffffff', fontWeight: '900', fontSize: 13 },
+  appointmentMeta: { color: '#5d7b91', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  petName: { color: '#123a5e', fontSize: 16, fontWeight: '900', flex: 1 },
+  status: { backgroundColor: '#e7f6f8', color: '#2c6ba3', fontWeight: '900', fontSize: 11, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   statusCancelled: { backgroundColor: '#fde8e8', color: '#a74646' },
   statusCompleted: { backgroundColor: '#e8eefc', color: '#4567a6' },
 

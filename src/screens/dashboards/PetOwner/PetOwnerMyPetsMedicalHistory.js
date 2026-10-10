@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { styles } from '../../styles/PetOwnerMyPetsDesign';
 import { formatMedicalDate, formatMedicalTime12h } from '../../../api/medicalRecordService';
+import { getRecordTemplate } from '../../../constants/medicalRecordTemplates';
+import MedicalRecordFields from '../../../components/MedicalRecordFields';
 import { generateConsultationHealthInsight } from '../../../api/aiService';
 import { parseConsultationInsight, splitRiskName, toListItems, toSentences } from '../../../utils/predictiveHealthParsing';
-import { formatMoney, formatPurchaseDateTime, getPrescriptionPurchaseHistory, getPrescriptionsForConsultation, getTransactionsForQueueEntry, invoiceBalance } from '../../../api/consultationBillingService';
-import { printInvoice, printMedicalRecord, printPrescriptionPad } from '../../../utils/medicalDocuments';
+import { formatMoney, getTransactionsForQueueEntry, invoiceBalance } from '../../../api/consultationBillingService';
+import { printInvoice } from '../../../utils/medicalDocuments';
+import PrintMedicalRecordButton from '../../../components/PrintMedicalRecordButton';
+import PrescriptionsSection from '../../../components/PrescriptionsSection';
 
 // Vet full_name is sometimes saved with the title already included (e.g.
 // "Dr. Redmond Lopez"), which used to render as "Dr. Dr. Redmond Lopez"
@@ -17,15 +21,6 @@ const RISK_STYLE = {
   Moderate: { badge: 'statusBadgeWarn', text: 'statusBadgeWarnText' },
   High: { badge: 'statusBadgeRisk', text: 'statusBadgeRiskText' },
 };
-
-function Field({ label, value }) {
-  return (
-    <View style={styles.fieldBlock}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={styles.fieldValue}>{value || 'Not recorded'}</Text>
-    </View>
-  );
-}
 
 function ConsultationAiInsight({ record, previousRecords, onRiskLevel }) {
   const [open, setOpen] = useState(false);
@@ -186,18 +181,10 @@ function BillingSection({ record }) {
     if (billing && !force) return;
     setBilling({ loading: true });
     try {
-      const [invoices, prescriptions] = await Promise.all([
-        getTransactionsForQueueEntry(record.queue_entry_id),
-        getPrescriptionsForConsultation(record.queue_entry_id),
-      ]);
-      const purchaseHistory = await getPrescriptionPurchaseHistory(prescriptions.map((rx) => rx.id));
-      const purchaseHistoryByRxId = purchaseHistory.reduce((map, row) => {
-        (map[row.prescription_id] ||= []).push(row);
-        return map;
-      }, {});
-      setBilling({ loading: false, invoices, prescriptions, purchaseHistoryByRxId });
-    } catch (e) {
-      setBilling({ loading: false, error: e?.message || 'Unable to load billing details for this visit.' });
+      const invoices = await getTransactionsForQueueEntry(record.queue_entry_id);
+      setBilling({ loading: false, invoices });
+    } catch {
+      setBilling({ loading: false, error: 'Unable to load billing details for this visit right now.' });
     }
   };
 
@@ -247,82 +234,22 @@ function BillingSection({ record }) {
         ) : null}
       </View>
 
-      <View style={styles.billingCard}>
-        <View style={styles.billingHeadRow}>
-          <Text style={styles.billingTitle}>Veterinarian Prescriptions</Text>
-          <View style={styles.billingHeadActions}>
-            {billing?.prescriptions?.length > 0 ? (
-              <TouchableOpacity
-                style={styles.billingActionButton}
-                onPress={() => printPrescriptionPad(billing.prescriptions, {
-                  veterinarianName: record.veterinarian?.full_name || record.veterinarian?.username || '',
-                  ownerName: record.owner?.full_name || '',
-                  petName: record.pet?.pet_name || '',
-                  petSpecies: record.pet?.species || '',
-                  date: `${formatMedicalDate(record.consultation_date)}${formatMedicalTime12h(record) ? ` · ${formatMedicalTime12h(record)}` : ''}`,
-                })}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.billingActionButtonText}>Download</Text>
-              </TouchableOpacity>
-            ) : null}
-            <RefreshButton />
-          </View>
-        </View>
-        {billing?.error ? <Text style={styles.billingErrorText}>{billing.error}</Text> : null}
-        {billing && !billing.loading && !billing.error ? (
-          billing.prescriptions.length === 0 ? (
-            <Text style={styles.billingMutedText}>
-              {billing.invoices.length === 0 ? "Staff hasn't processed billing for this visit yet." : 'No Prescription Given'}
-            </Text>
-          ) : (
-            billing.prescriptions.map((rx, i) => {
-              const remaining = Math.max(0, Number(rx.prescribed_quantity) - Number(rx.total_quantity_purchased));
-              const history = billing.purchaseHistoryByRxId?.[rx.id] || [];
-              return (
-                <View key={rx.id} style={[styles.billingRow, i === 0 && styles.billingRowFirst]}>
-                  <View style={styles.billingRowMain}>
-                    <Text style={styles.billingRowTitle}>{rx.item_name}</Text>
-                    <Text style={styles.billingRowMeta}>
-                      Prescribed {rx.prescribed_quantity} · Purchased {rx.total_quantity_purchased} · Remaining {remaining}
-                    </Text>
-                    <Text style={styles.billingRowSig}>Sig: {rx.sig || 'No directions for use recorded.'}</Text>
-                    <View style={styles.billingStatusPill}>
-                      <Text style={styles.billingStatusPillText}>{rx.fulfillment_status}</Text>
-                    </View>
-                    {history.length > 0 ? (
-                      <View style={styles.rxHistoryList}>
-                        {history.map((entry) => (
-                          <View key={entry.id} style={styles.rxHistoryRow}>
-                            <Text style={styles.rxHistoryText}>{entry.quantity} purchased</Text>
-                            <Text style={styles.rxHistoryText}>{formatPurchaseDateTime(entry.created_at)}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })
-          )
-        ) : null}
-      </View>
     </>
   );
 }
 
-function ConsultationCard({ record, pet, index, previousRecords }) {
+function ConsultationCard({ record, pet, index, previousRecords, viewer }) {
   const [expanded, setExpanded] = useState(false);
   const [riskLevel, setRiskLevel] = useState(null);
   const vetName = withDrTitle(record.veterinarian?.full_name || record.veterinarian?.username);
-  const title = record.diagnosis || record.chief_complaint || 'Consultation';
+  // The template the doctor chose for this record; it also decides which
+  // fields are shown (same as the web Medical History).
+  const title = getRecordTemplate(record).label;
+  const reassigned = Boolean(record.original_veterinarian_id)
+    && String(record.original_veterinarian_id) !== String(record.veterinarian_id || '');
   const riskStyle = riskLevel ? RISK_STYLE[riskLevel] : null;
   const time12h = formatMedicalTime12h(record);
   const visitDateTime = `${formatMedicalDate(record.consultation_date)}${time12h ? ` · ${time12h}` : ''}`;
-  const appointment = record.appointment
-    ? [formatMedicalDate(record.appointment.appointment_date), record.appointment.status].filter(Boolean).join(' · ')
-    : '';
-  const isFinalized = record.record_status === 'Finalized';
 
   return (
     <View style={styles.consultationCard}>
@@ -348,6 +275,11 @@ function ConsultationCard({ record, pet, index, previousRecords }) {
             <View style={styles.recordStatusBadge}>
               <Text style={styles.recordStatusBadgeText}>{record.record_status || 'Finalized'}</Text>
             </View>
+            {reassigned ? (
+              <View style={styles.recordStatusBadge}>
+                <Text style={styles.recordStatusBadgeText}>Reassigned</Text>
+              </View>
+            ) : null}
             {riskStyle ? (
               <View style={[styles.riskBadgeSmall, styles[riskStyle.badge]]}>
                 <Text style={[styles.riskBadgeSmallText, styles[riskStyle.text]]}>{riskLevel} Risk</Text>
@@ -362,57 +294,19 @@ function ConsultationCard({ record, pet, index, previousRecords }) {
 
       {expanded ? (
         <View style={styles.consultationExpandedBody}>
-          <Field label="Chief Complaint" value={record.chief_complaint} />
-          <Field label="Symptoms" value={record.symptoms} />
-          <Field label="Vital Signs" value={record.vital_signs} />
-
-          <View style={styles.fieldRow2Col}>
-            <View style={styles.fieldCol}>
-              <Field label="Weight" value={record.weight != null ? `${record.weight} kg` : ''} />
-            </View>
-            <View style={styles.fieldCol}>
-              <Field label="Temperature" value={record.temperature != null ? `${record.temperature} °C` : ''} />
-            </View>
-          </View>
-
-          <Field label="Diagnosis" value={record.diagnosis} />
-          <Field label="Treatment" value={record.treatment} />
-          <Field label="Treatment Plan" value={record.treatment_plan} />
-
-          <View style={styles.fieldRow2Col}>
-            <View style={styles.fieldCol}>
-              <Field label="Medication" value={record.medication} />
-            </View>
-            <View style={styles.fieldCol}>
-              <Field label="Dosage" value={record.dosage} />
-            </View>
-          </View>
-          <View style={styles.fieldRow2Col}>
-            <View style={styles.fieldCol}>
-              <Field label="Frequency" value={record.frequency} />
-            </View>
-            <View style={styles.fieldCol}>
-              <Field label="Duration" value={record.duration} />
-            </View>
-          </View>
-
-          <Field label="Laboratory Request" value={record.laboratory_request} />
-          <Field label="Laboratory Result" value={record.laboratory_result} />
-          <Field label="Vaccination" value={record.vaccination} />
-          <Field label="Veterinarian Notes" value={record.veterinarian_notes} />
-          <Field label="Follow-up Date" value={record.follow_up_date ? formatMedicalDate(record.follow_up_date) : ''} />
-          <Field label="Related Appointment" value={appointment} />
+          <MedicalRecordFields record={record} />
 
           <BillingSection record={record} />
+          <PrescriptionsSection record={record} pet={pet} viewer={viewer} />
 
-          <TouchableOpacity
-            style={[styles.printButton, !isFinalized && styles.printButtonDisabled]}
-            disabled={!isFinalized}
-            onPress={() => printMedicalRecord(record, pet, { veterinarianName: record.veterinarian?.full_name || record.veterinarian?.username || '', visitDateTime })}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.printButtonText}>{isFinalized ? 'Print Medical Record' : 'Complete this consultation before printing'}</Text>
-          </TouchableOpacity>
+          <PrintMedicalRecordButton
+            record={record}
+            pet={pet}
+            viewer={viewer}
+            buttonStyle={styles.printButton}
+            disabledStyle={styles.printButtonDisabled}
+            textStyle={styles.printButtonText}
+          />
 
           <ConsultationAiInsight record={record} previousRecords={previousRecords} onRiskLevel={setRiskLevel} />
         </View>
@@ -421,7 +315,8 @@ function ConsultationCard({ record, pet, index, previousRecords }) {
   );
 }
 
-export default function PetOwnerMyPetsMedicalHistory({ pet, records = [], loading, error, onRetry }) {
+// viewer: the logged-in user (role decides pet-owner-only actions).
+export default function PetOwnerMyPetsMedicalHistory({ pet, records = [], loading, error, onRetry, viewer }) {
   if (loading) {
     return (
       <View style={styles.aiEmptyCard}>
@@ -446,7 +341,7 @@ export default function PetOwnerMyPetsMedicalHistory({ pet, records = [], loadin
     return (
       <View style={styles.aiEmptyCard}>
         <Text style={styles.aiEmptyText}>
-          No consultations recorded yet. Once your veterinarian finalizes a visit, it will appear here automatically.
+          No completed medical consultations yet.
         </Text>
       </View>
     );
@@ -461,6 +356,7 @@ export default function PetOwnerMyPetsMedicalHistory({ pet, records = [], loadin
           pet={pet}
           index={index}
           previousRecords={records.filter((r) => r.id !== record.id).slice(0, 8)}
+          viewer={viewer}
         />
       ))}
     </View>

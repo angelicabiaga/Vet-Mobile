@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import VetShell, { getVetUser } from './VetShell';
-import { formatTime, getCancellationBlockReason, getVeterinarianAppointments, isAppointmentCheckedIn, veterinarianCancelAppointment } from '../../../api/mobileAppointmentService';
+import { consultationTypeLabel, formatTime, getCancellationBlockReason, getVeterinarianAppointments, isAppointmentCheckedIn, veterinarianCancelAppointment } from '../../../api/mobileAppointmentService';
 import { supabase } from '../../../config/supabaseClient';
 
 const ALLOWED = ['Confirmed', 'Completed', 'Cancelled'];
@@ -148,6 +148,7 @@ export default function VetAppointment({ navigation, route }) {
       item.pet?.pet_name,
       item.owner?.full_name,
       item.consultation_type,
+      item.consultation_template,
       item.visit_reason,
       item.status,
     ].some((value) => String(value || '').toLowerCase().includes(query));
@@ -201,9 +202,10 @@ export default function VetAppointment({ navigation, route }) {
           <Text style={styles.pet} numberOfLines={1}>{label(item.pet?.pet_name)}</Text>
           <Text style={[styles.status, item.status === 'Cancelled' && styles.cancelled, item.status === 'Completed' && styles.completed]}>{item.status}</Text>
         </View>
-        <Text style={styles.listMeta} numberOfLines={1}>{label(item.owner?.full_name)} • {formatDate(item.appointment_date)} • {formatTime(item.start_time)}–{formatTime(item.end_time)}</Text>
+        <Text style={styles.listOwner} numberOfLines={1}>{label(item.owner?.full_name)}</Text>
+        <Text style={styles.listMeta}>{formatDate(item.appointment_date)} · {formatTime(item.start_time)} – {formatTime(item.end_time)}</Text>
         {item.visit_reason || item.consultation_type ? (
-          <Text style={styles.listReason} numberOfLines={1}>{label(item.consultation_type)}{item.visit_reason ? ` — ${item.visit_reason}` : ''}</Text>
+          <Text style={styles.listReason} numberOfLines={1}>{consultationTypeLabel(item)}{item.visit_reason ? ` — ${item.visit_reason}` : ''}</Text>
         ) : null}
       </TouchableOpacity>)}
 
@@ -244,7 +246,7 @@ export default function VetAppointment({ navigation, route }) {
             <Info label="Start Time" value={formatTime(selected?.start_time)} />
             <Info label="End Time" value={formatTime(selected?.end_time)} />
             <Info label="Appointment Source" value={label(selected?.appointment_source)} />
-            <Info label="Consultation Type" value={label(selected?.consultation_type)} />
+            <Info label="Consultation Type" value={consultationTypeLabel(selected)} />
             <Info label="Visit Reason" value={label(selected?.visit_reason)} />
             <Info label="Notes" value={label(selected?.notes)} />
             <Info label="Status" value={label(selected?.status)} />
@@ -326,7 +328,8 @@ const styles = StyleSheet.create({
   pet:{fontSize:16,fontWeight:'900',color:'#123a5e',flex:1},
   status:{backgroundColor:'#e7f6f8',color:'#2c6ba3',fontWeight:'900',fontSize:11,paddingHorizontal:10,paddingVertical:5,borderRadius:999},
   cancelled:{backgroundColor:'#fde8e8',color:'#a74646'}, completed:{backgroundColor:'#e8eefc',color:'#4567a6'},
-  listMeta:{fontSize:12,fontWeight:'700',color:'#5d7b91'},
+  listOwner:{fontSize:13,fontWeight:'700',color:'#3f5f70'},
+  listMeta:{fontSize:12,fontWeight:'700',color:'#5d7b91',marginTop:2},
   listReason:{fontSize:12,fontWeight:'600',color:'#78909b',marginTop:2},
   empty:{backgroundColor:'#fff',borderRadius:22,padding:24,alignItems:'center',borderWidth:1,borderColor:'#dceef8'},
   emptyTitle:{fontSize:17,fontWeight:'900',color:'#123a5e'}, emptyText:{marginTop:7,textAlign:'center',color:'#5d7b91'},
