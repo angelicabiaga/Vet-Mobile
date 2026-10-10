@@ -17,9 +17,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles as messageStyles } from '../../styles/PetOwnerMessagesDesign';
-import { Dropdown } from 'react-native-element-dropdown';
 import { SUGGESTED_PROMPTS, askPetAssistant, getLocalReply } from '../../../api/chatbotService';
-import { getOwnerPets } from '../../../api/petService';
 import { loadQuickAssistHistory, appendQuickAssistHistory, clearQuickAssistHistory } from '../../../api/quickAssistHistoryService';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
@@ -43,41 +41,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
   const [sending, setSending] = React.useState(false);
   const [chatMessages, setChatMessages] = React.useState([]);
   const [historyLoaded, setHistoryLoaded] = React.useState(false);
-  // "Question about": '' = general question, otherwise one of the owner's pets.
-  const [pets, setPets] = React.useState([]);
-  const [petsLoading, setPetsLoading] = React.useState(true);
-  const [selectedPetId, setSelectedPetId] = React.useState('');
   const chatScrollRef = React.useRef(null);
-
-  React.useEffect(() => {
-    let active = true;
-    const ownerId = loggedInUser?.id;
-    if (!ownerId) {
-      setPetsLoading(false);
-      return undefined;
-    }
-    getOwnerPets(ownerId)
-      .then((rows) => {
-        if (!active) return;
-        setPets(rows);
-        setSelectedPetId((current) => (rows.some((pet) => pet.id === current) ? current : ''));
-      })
-      .catch(() => {
-        if (active) setPets([]);
-      })
-      .finally(() => {
-        if (active) setPetsLoading(false);
-      });
-    return () => { active = false; };
-  }, [loggedInUser?.id]);
-
-  const petContextOptions = React.useMemo(
-    () => [
-      { value: '', label: petsLoading ? 'Loading pets...' : 'General question' },
-      ...pets.map((pet) => ({ value: pet.id, label: `${pet.name} (${pet.species || 'Pet'})` })),
-    ],
-    [pets, petsLoading],
-  );
 
   const nowTime = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
   const createWelcomeMessage = () => ({
@@ -167,7 +131,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
       setTimeout(scrollToEnd, 80);
       return;
     }
-    requestAssistant(history, selectedPetId || null);
+    requestAssistant(history, null);
   };
 
   const sendAiMessage = () => sendMessage(inputText);
@@ -532,31 +496,7 @@ const PetOwnerQuickAssist = ({ navigation, route }) => {
             </ScrollView>
           </View>
 
-          <View style={styles.petContextBar}>
-            <Text style={styles.petContextLabel}>Question about</Text>
-            <Dropdown
-              style={[styles.petContextDropdown, (petsLoading || sending) && { opacity: 0.6 }]}
-              containerStyle={styles.petContextDropdownList}
-              selectedTextStyle={styles.petContextSelectedText}
-              placeholderStyle={styles.petContextSelectedText}
-              itemTextStyle={styles.petContextItemText}
-              activeColor="#edf7fd"
-              data={petContextOptions}
-              labelField="label"
-              valueField="value"
-              value={selectedPetId}
-              placeholder="General question"
-              disable={petsLoading || sending}
-              dropdownPosition="top"
-              maxHeight={260}
-              onChange={(item) => setSelectedPetId(item.value)}
-            />
-          </View>
-          <Text style={styles.petContextNote}>
-            Only basic health context is sent; your pet's name and records are excluded.
-          </Text>
-
-          <View style={[messageStyles.inputBar, styles.aiInputBar, styles.aiInputBarJoined]}>
+          <View style={[messageStyles.inputBar, styles.aiInputBar]}>
             <View style={[messageStyles.inlineInputWrap, styles.aiInputWrap]}>
               <TextInput
                 editable={!sending && historyLoaded}
@@ -1022,21 +962,7 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
 
-  aiInputBarJoined: {
-    borderTopWidth: 0,
-    paddingTop: 4,
-  },
 
-  petContextBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#eef4f7',
-  },
 
   suggestionBar: {
     paddingTop: 8,
@@ -1176,44 +1102,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c6ba3',
   },
   retryText: { fontSize: 12.5, fontWeight: '900', color: '#ffffff' },
-  petContextLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#123a5e',
-  },
-  petContextDropdown: {
-    flex: 1,
-    minHeight: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#bfdce7',
-    backgroundColor: '#f6fbff',
-    paddingHorizontal: 12,
-  },
-  petContextDropdownList: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#d7edf9',
-    overflow: 'hidden',
-  },
-  petContextSelectedText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#123a5e',
-  },
-  petContextItemText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#123a5e',
-  },
-  petContextNote: {
-    paddingHorizontal: 14,
-    paddingTop: 4,
-    backgroundColor: '#ffffff',
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: '#7a93a2',
-  },
 
   aiInputWrap: {
     minHeight: 50,
