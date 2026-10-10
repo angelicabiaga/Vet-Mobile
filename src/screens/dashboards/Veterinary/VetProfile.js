@@ -308,7 +308,7 @@ const VetProfile = ({ navigation, route }) => {
   );
 
   return (
-    <VetShell navigation={navigation} route={route} subtitle="Veterinarian Profile" showGreeting={false}>
+    <VetShell navigation={navigation} route={route} subtitle="Profile" showGreeting={false}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
         {mode === 'view' ? <ProfileNotice message={message} /> : null}
 

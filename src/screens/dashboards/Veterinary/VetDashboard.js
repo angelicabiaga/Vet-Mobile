@@ -212,7 +212,7 @@ const VetDashboard = ({ navigation, route }) => {
     <VetShell
       navigation={navigation}
       route={route}
-      subtitle="Veterinary Dashboard"
+      subtitle="Dashboard"
       caption="Welcome back"
       lowerHeaderAnimation={lowerHeaderAnimation}
     >

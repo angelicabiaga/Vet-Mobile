@@ -53,7 +53,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
       notificationRoute: "VetNotif",
       profileRoute: "VetProfile",
       showQuickAssist: false,
-      subtitle: "Veterinarian Messages",
+      subtitle: "Messages",
       sideDrawerRole: "veterinarian",
       headerMenuItems: [
         { key: "dashboard", label: "Dashboard", icon: require("../screens/assets/Dashboard_Icon.png"), route: "vet-screen" },
