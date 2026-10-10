@@ -330,11 +330,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('PetOwnerProfile', { user: currentUser })} activeOpacity={0.85}>
-                  {profile.avatar_url ? (
-                    <Image source={{ uri: profile.avatar_url }} style={styles.profileButtonImage} resizeMode="cover" />
-                  ) : (
-                    <Image source={DEFAULT_PROFILE_IMAGE} style={styles.profileIcon} resizeMode="contain" />
-                  )}
+                  <Image source={DEFAULT_PROFILE_IMAGE} style={styles.profileIcon} resizeMode="contain" />
                 </TouchableOpacity>
               </View>
             </View>

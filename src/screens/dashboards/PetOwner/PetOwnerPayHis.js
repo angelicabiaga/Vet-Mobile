@@ -65,7 +65,7 @@ export default function PetOwnerPayHis({ navigation, route }) {
               </TouchableOpacity>
               <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.notifButton} onPress={() => navigation.navigate('PetOwnerNotif', { user })} activeOpacity={0.85}><View style={styles.notifBadge} /><Image source={require('../../assets/Bell_Icon.png')} style={styles.notifIcon} resizeMode="contain" /></TouchableOpacity>
-                <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('PetOwnerProfile', { user })} activeOpacity={0.85}><Image source={profileImageUri ? { uri: profileImageUri } : DEFAULT_PROFILE_IMAGE} style={profileImageUri ? styles.profileButtonImage : styles.profileIcon} resizeMode={profileImageUri ? 'cover' : 'contain'} /></TouchableOpacity>
+                <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('PetOwnerProfile', { user })} activeOpacity={0.85}><Image source={DEFAULT_PROFILE_IMAGE} style={styles.profileIcon} resizeMode="contain" /></TouchableOpacity>
               </View>
             </View>
           </LinearGradient>

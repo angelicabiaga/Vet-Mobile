@@ -119,11 +119,7 @@ const VetShell = ({ navigation, route, subtitle, caption, children, showBack = f
                   <Image source={require('../../assets/Bell_Icon.png')} style={dashboardStyles.notifIcon} resizeMode="contain" />
                 </TouchableOpacity>
                 <TouchableOpacity style={dashboardStyles.profileButton} onPress={() => navigateVet('VetProfile')} activeOpacity={0.85}>
-                  {profileImageUri ? (
-                    <Image source={{ uri: profileImageUri }} style={dashboardStyles.profileButtonImage} resizeMode="cover" />
-                  ) : (
-                    <Image source={DEFAULT_PROFILE_IMAGE} style={dashboardStyles.profileIcon} resizeMode="contain" />
-                  )}
+                  <Image source={DEFAULT_PROFILE_IMAGE} style={dashboardStyles.profileIcon} resizeMode="contain" />
                 </TouchableOpacity>
               </View>
             </View>

@@ -187,7 +187,7 @@ const PetOwnerNotif = ({ navigation, route }) => {
                   <Image source={require('../../assets/Bell_Icon.png')} style={styles.notifIcon} resizeMode="contain" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.profileButton} onPress={() => navigate('PetOwnerProfile')} activeOpacity={0.85}>
-                  {profileImageUri ? <Image source={{ uri: profileImageUri }} style={styles.profileButtonImage} resizeMode="cover" /> : <Image source={DEFAULT_PROFILE_IMAGE} style={styles.profileIcon} resizeMode="contain" />}
+                  <Image source={DEFAULT_PROFILE_IMAGE} style={styles.profileIcon} resizeMode="contain" />
                 </TouchableOpacity>
               </View>
             </View>

@@ -340,7 +340,7 @@ export default function MobileMessagingScreen({ navigation, route, allowedRoles 
                   <Image source={require("../screens/assets/Bell_Icon.png")} style={styles.notifIcon} resizeMode="contain" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate(profileRoute, { user: profile })} activeOpacity={0.85}>
-                  {profileImageUri ? <Image source={{ uri: profileImageUri }} style={styles.profileButtonImage} resizeMode="cover" /> : <Image source={DEFAULT_PROFILE_IMAGE} style={styles.profileIcon} resizeMode="contain" />}
+                  <Image source={DEFAULT_PROFILE_IMAGE} style={styles.profileIcon} resizeMode="contain" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -524,9 +524,9 @@ const styles = StyleSheet.create({
   brandSubtitle:{fontSize:12,fontWeight:"700",color:"#c3ddee",marginTop:3},
   headerActions:{flexDirection:"row",alignItems:"center"},
   notifButton:{width:46,height:46,borderRadius:15,backgroundColor:"rgba(44, 107, 163,0.42)",borderWidth:1,borderColor:"rgba(222,242,247,0.34)",justifyContent:"center",alignItems:"center"},
-  notifIcon:{width:24,height:24,tintColor:"#ffffff"},
+  notifIcon:{width:21,height:21,tintColor:"#ffffff"},
   profileButton:{width:46,height:46,borderRadius:15,backgroundColor:"rgba(44, 107, 163,0.42)",borderWidth:1,borderColor:"rgba(222,242,247,0.34)",justifyContent:"center",alignItems:"center",marginLeft:10,overflow:"hidden"},
-  profileIcon:{width:25,height:25,tintColor:"#ffffff"},
+  profileIcon:{width:20,height:20,tintColor:"#ffffff"},
   profileButtonImage:{width:"100%",height:"100%"},
   dashboardBottomRow:{marginTop:14,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
   menuTriggerButton:{width:58,height:58,borderRadius:18,backgroundColor:"rgba(44, 107, 163,0.36)",borderWidth:1,borderColor:"rgba(222,242,247,0.3)",justifyContent:"center",alignItems:"center"},
