@@ -223,9 +223,11 @@ export function PasswordChecklist({ password }) {
 
 // Change password: the form's state plus the emailed-code step. setMessage
 // shows errors and the final success; onChanged runs once the code is accepted.
+// onCancelled (optional) runs when the code step is cancelled, after the form
+// is cleared, so the screen can go straight back to the profile.
 // errorScroll (optional, from useScrollToError): scroll back to the first
 // password field outlined in red when the form doesn't pass.
-export function usePasswordChange(profileId, { setMessage, onChanged, errorScroll }) {
+export function usePasswordChange(profileId, { setMessage, onChanged, onCancelled, errorScroll }) {
   const [passwords, setPasswords] = useState(EMPTY_PASSWORDS);
   const [errors, setErrors] = useState({});
   const [sending, setSending] = useState(false);
@@ -306,6 +308,10 @@ export function usePasswordChange(profileId, { setMessage, onChanged, errorScrol
       if (otpBusy) return;
       setOtpVisible(false);
       setOtpError('');
+      if (onCancelled) {
+        reset();
+        onCancelled();
+      }
     },
   };
 

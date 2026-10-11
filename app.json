@@ -6,6 +6,9 @@
     "orientation": "portrait",
     "icon": "./src/screens/assets/paw2.png",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pawcruz.app",
@@ -45,6 +48,7 @@
         {
           "image": "./src/screens/assets/paw2-splash.png",
           "resizeMode": "contain",
+          "imageWidth": 240,
           "backgroundColor": "#FFFFFF"
         }
       ],
@@ -55,6 +59,9 @@
       "eas": {
         "projectId": "261aac43-01b0-4811-93dc-98d30f976696"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/261aac43-01b0-4811-93dc-98d30f976696"
     }
   }
 }

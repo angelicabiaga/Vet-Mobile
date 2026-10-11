@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import VetShell, { getVetUser } from './VetShell';
 import { useLowerHeaderMotion } from './useLowerHeaderMotion';
@@ -9,6 +9,7 @@ import { computePatientStatus, formatAge, formatBirthday, getPetPhotoSource } fr
 import { getMobileMedicalRecords, subscribeToMedicalRecords } from '../../../api/medicalRecordService';
 import PetOwnerMyPetsMedicalHistory from '../PetOwner/PetOwnerMyPetsMedicalHistory';
 import PetOwnerMyPetsAIHealth from '../PetOwner/PetOwnerMyPetsAIHealth';
+import ArchivePatientModal from '../../../components/ArchivePatientModal';
 
 const STATUS_STYLE = {
   good: { badge: 'statusBadgeGood', text: 'statusBadgeGoodText' },
@@ -28,6 +29,7 @@ export default function VetPatientProfile({ navigation, route }) {
   const [recordsError, setRecordsError] = useState('');
   const [activeTab, setActiveTab] = useState('medical');
   const [aiTabVisited, setAiTabVisited] = useState(false);
+  const [archiveVisible, setArchiveVisible] = useState(false);
   // Set when returning from Edit after a successful save; reload + confirm.
   const savedAt = route?.params?.savedAt;
   const [savedNotice, setSavedNotice] = useState(false);
@@ -164,6 +166,18 @@ export default function VetPatientProfile({ navigation, route }) {
             <Text style={styles.editButtonText}>Edit Details</Text>
           </TouchableOpacity>
 
+          {!patient.is_archived ? (
+            <TouchableOpacity
+              style={styles.archiveButton}
+              onPress={() => setArchiveVisible(true)}
+              activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={`Archive ${patient.pet_name || 'animal patient'}`}
+            >
+              <Text style={styles.archiveButtonText}>Archive Animal Patient</Text>
+            </TouchableOpacity>
+          ) : null}
+
           <View style={styles.tabRow}>
             <TouchableOpacity style={[styles.tabButton, activeTab === 'medical' && styles.tabButtonActive]} onPress={() => selectTab('medical')} activeOpacity={0.9} accessibilityRole="tab" accessibilityState={{ selected: activeTab === 'medical' }}>
               <Text style={[styles.tabButtonText, activeTab === 'medical' && styles.tabButtonTextActive]}>Medical History</Text>
@@ -184,6 +198,18 @@ export default function VetPatientProfile({ navigation, route }) {
           ) : null}
         </View>
       </ScrollView>
+
+      <ArchivePatientModal
+        visible={archiveVisible}
+        patient={patient}
+        veterinarian={currentUser}
+        onClose={() => setArchiveVisible(false)}
+        onArchived={() => {
+          setArchiveVisible(false);
+          navigation.navigate('VetPatientOwners', { user: currentUser });
+          Alert.alert('Animal Patients', 'Pet record archived successfully.');
+        }}
+      />
     </VetShell>
   );
 }
@@ -211,6 +237,8 @@ const styles = StyleSheet.create({
   tabRow: { flexDirection: 'row', backgroundColor: '#eef6fb', borderRadius: 16, padding: 4, marginBottom: 16 },
   editButton: { height: 46, borderRadius: 14, backgroundColor: '#2c6ba3', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   editButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '900' },
+  archiveButton: { height: 46, borderRadius: 14, borderWidth: 1.5, borderColor: '#f3c4c0', backgroundColor: '#fdf2f1', alignItems: 'center', justifyContent: 'center', marginTop: -4, marginBottom: 14 },
+  archiveButtonText: { color: '#c0392b', fontSize: 14, fontWeight: '900' },
   successBox: { marginBottom: 12, paddingVertical: 11, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, borderColor: '#b9e8ca', backgroundColor: '#effbf4' },
   successText: { color: '#1f7a4a', fontSize: 13, fontWeight: '800', textAlign: 'center' },
   tabButton: { flex: 1, minHeight: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },

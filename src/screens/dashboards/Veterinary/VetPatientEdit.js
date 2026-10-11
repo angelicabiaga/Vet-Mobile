@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import VetShell, { getVetUser } from './VetShell';
 import { loadPatientById } from './VetPatients';
 import InlineSelect from '../../../components/InlineSelect';
 import useScrollToError from '../../../hooks/useScrollToError';
 import { PET_SEX_OPTIONS, updatePatientDetails, validatePatientDetails } from '../../../api/petService';
+import ArchivePatientModal from '../../../components/ArchivePatientModal';
 import { PET_SPECIES_OPTIONS } from '../PetOwner/PetOwnerMyPetsInfo';
 
 const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -48,6 +49,7 @@ export default function VetPatientEdit({ navigation, route }) {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [archiveVisible, setArchiveVisible] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -203,8 +205,31 @@ export default function VetPatientEdit({ navigation, route }) {
               <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
             </TouchableOpacity>
           </View>
+
+          {!patient.is_archived ? (
+            <TouchableOpacity
+              style={[styles.archiveButton, saving && styles.saveButtonBusy]}
+              onPress={() => setArchiveVisible(true)}
+              disabled={saving}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.archiveText}>Archive Animal Patient</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </ScrollView>
+
+      <ArchivePatientModal
+        visible={archiveVisible}
+        patient={patient}
+        veterinarian={currentUser}
+        onClose={() => setArchiveVisible(false)}
+        onArchived={() => {
+          setArchiveVisible(false);
+          navigation.navigate('VetPatientOwners', { user: currentUser });
+          Alert.alert('Animal Patients', 'Pet record archived successfully.');
+        }}
+      />
     </VetShell>
   );
 }
@@ -234,6 +259,8 @@ const styles = StyleSheet.create({
   saveButton: { flex: 1, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2c6ba3' },
   saveButtonBusy: { opacity: 0.7 },
   saveText: { color: '#ffffff', fontSize: 15, fontWeight: '900' },
+  archiveButton: { minHeight: 50, marginTop: 14, borderRadius: 16, borderWidth: 1.5, borderColor: '#f3c4c0', backgroundColor: '#fdf2f1', alignItems: 'center', justifyContent: 'center' },
+  archiveText: { color: '#c0392b', fontSize: 14, fontWeight: '900' },
   centerCard: { margin: 18, padding: 24, borderRadius: 22, backgroundColor: '#fcfeff', borderWidth: 1, borderColor: '#dceef8', alignItems: 'center' },
   centerText: { fontSize: 15, fontWeight: '800', color: '#123a5e' },
 });

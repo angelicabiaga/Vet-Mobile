@@ -329,6 +329,32 @@ export async function updatePatientDetails(petId, values, veterinarian) {
   return data[0];
 }
 
+// Veterinarian: archive (or restore, with archived=false) an animal patient.
+// Same is_archived / archived_at columns the owner's archiveOwnerPet sets, but
+// not limited to one owner_id; the activity is logged under the veterinarian.
+export async function setPatientArchived(petId, archived, veterinarian) {
+  if (!petId) throw new Error("This animal patient could not be found. Please go back and try again.");
+  const { data, error } = await supabase
+    .from("pets")
+    .update({ is_archived: archived, archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", petId)
+    .select("id,pet_name")
+    .maybeSingle();
+  if (error || !data) throw new Error("Unable to update the archive status. Please try again.");
+
+  const vetId = veterinarian?.id || veterinarian?.user_id || veterinarian?.profile_id || null;
+  if (vetId) {
+    supabase.from("activity_logs").insert({
+      user_id: vetId,
+      role: "veterinarian",
+      action: archived ? "Animal patient archived" : "Animal patient restored",
+      module: "Animal Patients",
+      description: `${data.pet_name || "Pet"} ${archived ? "archived" : "restored"} from the mobile app.`,
+    }).then(() => {}, () => {});
+  }
+  return data;
+}
+
 export function subscribeToOwnerPets(ownerId, onChange) {
   if (!ownerId) return null;
   return supabase

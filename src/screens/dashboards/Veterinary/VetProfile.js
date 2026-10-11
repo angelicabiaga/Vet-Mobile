@@ -152,7 +152,7 @@ const VetProfile = ({ navigation, route }) => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const passwordChange = usePasswordChange(profileId, { setMessage, onChanged: () => changeMode('view'), errorScroll });
+  const passwordChange = usePasswordChange(profileId, { setMessage, onChanged: () => changeMode('view'), onCancelled: () => changeMode('view'), errorScroll });
 
   const openMode = (next) => {
     setMessage(NO_MESSAGE);
