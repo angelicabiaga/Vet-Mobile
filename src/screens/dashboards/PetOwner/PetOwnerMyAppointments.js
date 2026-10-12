@@ -239,7 +239,7 @@ export default function PetOwnerMyAppointments({ navigation, route }) {
 
   const goToPage = (nextPage) => {
     setPage(nextPage);
-    setExpandedAppointmentId(null);
+    setSelected(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
