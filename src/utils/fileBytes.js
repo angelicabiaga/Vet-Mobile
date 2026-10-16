@@ -31,16 +31,57 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
+// Bytes the picker already handed over (ImagePicker `base64: true`), keyed by
+// uri, so the upload never has to read the file back from the phone's cache.
+const pickedBase64 = new Map();
+export function rememberPickedBase64(uri, base64) {
+  if (!uri || !base64) return;
+  pickedBase64.clear();
+  pickedBase64.set(String(uri), base64);
+}
+
+async function readNative(value) {
+  const base64 = await FileSystem.readAsStringAsync(value, { encoding: FileSystem.EncodingType.Base64 });
+  const buffer = base64ToArrayBuffer(base64);
+  if (!buffer.byteLength) throw new Error('Empty file.');
+  return buffer;
+}
+
+async function readWithFetch(value) {
+  const response = await fetch(value);
+  if (!response.ok) throw new Error('Unable to read the selected file.');
+  const buffer = await response.arrayBuffer();
+  if (!buffer.byteLength) throw new Error('Empty file.');
+  return buffer;
+}
+
 export async function readFileBytes(uri) {
   const value = String(uri || '');
   if (!value) throw new Error('No file was selected.');
-  if (Platform.OS !== 'web' && /^(file|content):/i.test(value)) {
-    const base64 = await FileSystem.readAsStringAsync(value, { encoding: FileSystem.EncodingType.Base64 });
-    return base64ToArrayBuffer(base64);
+  const remembered = pickedBase64.get(value);
+  if (remembered) {
+    const buffer = base64ToArrayBuffer(remembered);
+    if (buffer.byteLength) return buffer;
   }
-  const response = await fetch(value);
-  if (!response.ok) throw new Error('Unable to read the selected file.');
-  return response.arrayBuffer();
+  if (Platform.OS === 'web' || !/^(file|content):/i.test(value)) return readWithFetch(value);
+
+  // Phone cache paths can be stored encoded ("%2540anonymous") or not, so
+  // try the uri as given, then decoded, then fetch, before giving up.
+  const attempts = [() => readNative(value)];
+  let decoded = value;
+  try { decoded = decodeURI(value); } catch {}
+  if (decoded !== value) attempts.push(() => readNative(decoded));
+  attempts.push(() => readWithFetch(value));
+  let lastError;
+  for (const attempt of attempts) {
+    try {
+      return await attempt();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  console.warn('Unable to read picked file:', lastError?.message || lastError);
+  throw lastError || new Error('Unable to read the selected file.');
 }
 
 // The image type from the file's first bytes, or '' when it isn't a

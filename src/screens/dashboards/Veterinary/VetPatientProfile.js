@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import VetShell, { getVetUser } from './VetShell';
 import { useLowerHeaderMotion } from './useLowerHeaderMotion';
@@ -204,10 +204,12 @@ export default function VetPatientProfile({ navigation, route }) {
         patient={patient}
         veterinarian={currentUser}
         onClose={() => setArchiveVisible(false)}
-        onArchived={() => {
+        onArchived={(pet) => {
           setArchiveVisible(false);
-          navigation.navigate('VetPatientOwners', { user: currentUser });
-          Alert.alert('Animal Patients', 'Pet record archived successfully.');
+          navigation.navigate('VetPatientOwners', {
+            user: currentUser,
+            notice: `${pet?.pet_name || 'The pet'} was archived successfully. You can restore it anytime from View Archived.`,
+          }, { merge: true });
         }}
       />
     </VetShell>

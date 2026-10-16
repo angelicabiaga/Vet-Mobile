@@ -35,6 +35,7 @@ import {
  } from './PetOwnerMyPetsInfo';
 import { archiveOwnerPet, getOwnerPet, saveOwnerPet, validatePatientDetails } from '../../../api/petService';
 import { validatePickedImageAsset } from '../../../utils/imageValidation';
+import CustomModal from '../../../components/CustomModal';
 import useScrollToError from '../../../hooks/useScrollToError';
 
 const DEFAULT_PROFILE_IMAGE = require('../../assets/Profile.png');
@@ -104,6 +105,8 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
     Boolean(initialPet.breed) && !getBreedOptionsForSpecies(initialPet.species).some((item) => item.value === initialPet.breed)
   ));
   const [showDoneConfirm, setShowDoneConfirm] = useState(false);
+  // In-app archive confirmation (Alert buttons do nothing on web).
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   // Save state: blocks a second tap; errors show on screen (Alert is a no-op on web).
   const [savingPet, setSavingPet] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -463,29 +466,29 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
   const [archiving, setArchiving] = useState(false);
 
   const archivePet = async () => {
+    if (archiving) return;
+    setArchiving(true);
+    setSaveError('');
     try {
-      setArchiving(true);
       await archiveOwnerPet(petId, loggedInUser?.id, true);
-      navigation.navigate('PetOwnerMyPets', { user: loggedInUser });
-      Alert.alert('Animal Patients', 'Pet record archived successfully.');
-    } catch (error) {
-      Alert.alert('Animal Patients', error.message || 'Unable to update the pet archive status.');
-    } finally {
+      setShowArchiveConfirm(false);
       setArchiving(false);
+      navigation.navigate('PetOwnerMyPets', {
+        user: loggedInUser,
+        notice: `${draftPet.name || 'The pet'} was archived successfully. You can restore it anytime from View Archived.`,
+      });
+    } catch (error) {
+      setShowArchiveConfirm(false);
+      setArchiving(false);
+      setSaveError(error?.message || 'Unable to archive this pet right now. Please try again.');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
   };
 
   // Same confirmation the web app shows before archiving.
   const handleArchivePress = () => {
     if (archiving) return;
-    Alert.alert(
-      'Archive this pet?',
-      `${draftPet.name || 'This pet'}'s record will be archived and hidden from the active list. You can restore it anytime from View Archived.`,
-      [
-        { text: 'No', style: 'cancel' },
-        { text: 'Yes, Archive', style: 'destructive', onPress: archivePet },
-      ],
-    );
+    setShowArchiveConfirm(true);
   };
 
   const handleSavePet = async () => {
@@ -1050,6 +1053,23 @@ const PetOwnerMyPetsEdit = ({ navigation, route }) => {
             </View>
           </View>
         </Modal>
+        {/* Same look as the logout confirmation ("Are you sure you want to logout?"). */}
+        <CustomModal
+          show={showArchiveConfirm}
+          onClose={() => !archiving && setShowArchiveConfirm(false)}
+          extraAction={
+            <>
+              <TouchableOpacity style={[archiveModalStyles.confirmBtn, archiving && { opacity: 0.6 }]} onPress={archivePet} disabled={archiving} activeOpacity={0.9}>
+                <Text style={archiveModalStyles.confirmBtnText}>{archiving ? 'Archiving…' : 'Archive'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={archiveModalStyles.cancelBtn} onPress={() => setShowArchiveConfirm(false)} disabled={archiving} activeOpacity={0.9}>
+                <Text style={archiveModalStyles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          }
+        >
+          Are you sure you want to archive {draftPet.name || 'this pet'}? It will be hidden from the active list. You can restore it anytime from View Archived.
+        </CustomModal>
         <PetOwnerBottomNav navigation={navigation} user={loggedInUser} activeKey="pets" />
       </SafeAreaView>
     </LinearGradient>
@@ -1062,4 +1082,12 @@ const inlineStyles = StyleSheet.create({
   invalid: { borderColor: '#dc2626', borderWidth: 1 },
   errorText: { marginTop: 6, fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#dc2626' },
   saveError: { marginTop: 12, padding: 10, borderRadius: 12, backgroundColor: '#fff1f1', borderWidth: 1, borderColor: '#f4cccc', color: '#a33f3f', fontSize: 12.5, fontWeight: '700' },
+});
+
+// Buttons copied from the logout confirmation (PetOwnerProfileDesign).
+const archiveModalStyles = StyleSheet.create({
+  confirmBtn: { backgroundColor: '#cf5353', paddingVertical: 12, borderRadius: 14, marginBottom: 10, width: '80%', alignItems: 'center' },
+  confirmBtnText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
+  cancelBtn: { backgroundColor: '#e7edf2', paddingVertical: 12, borderRadius: 14, width: '80%', alignItems: 'center' },
+  cancelBtnText: { color: '#4f6a7b', fontWeight: '800', fontSize: 14 },
 });

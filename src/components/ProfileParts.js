@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { confirmPasswordChangeOtp, requestPasswordChangeOtp } from '../api/profileService';
 import { validatePickedImageAsset } from '../utils/imageValidation';
+import { rememberPickedBase64 } from '../utils/fileBytes';
 import { styles as profileStyles } from '../screens/styles/PetOwnerProfileDesign';
 
 // Building blocks shared by the Pet Owner and Veterinarian profile screens,
@@ -354,34 +355,48 @@ export function ChangePasswordForm({ change, onCancel }) {
 
 // Album / Files / Camera choice for a new profile photo. Calls onPicked with
 // the local uri of a valid image.
-export function useProfilePhotoPicker(onPicked) {
+// onError(message): shown on the screen (Alert is a no-op on web). Used by
+// both the Pet Owner and Veterinarian profiles, so both validate the same way.
+export function useProfilePhotoPicker(onPicked, onError) {
   const [visible, setVisible] = useState(false);
+  const report = (message) => (onError ? onError(message) : Alert.alert('Profile Photo', message));
 
   const pick = async (launch) => {
     try {
       const result = await launch();
       if (!result || result.canceled || !result.assets?.length) return;
+      // JPG/JPEG/PNG/WEBP only, 25 MB max (checked again on upload).
       const validationError = validatePickedImageAsset(result.assets[0]);
       if (validationError) {
-        Alert.alert('Invalid Photo', validationError);
+        report(validationError);
         return;
       }
+      // Keep the picker's own bytes so the upload doesn't depend on reading
+      // the cached file again (that read fails on some phones).
+      rememberPickedBase64(result.assets[0].uri, result.assets[0].base64);
       onPicked(result.assets[0].uri);
     } catch (error) {
       console.warn('Unable to pick a profile photo:', error?.message || error);
+      report('Unable to open the selected photo. Please try another one.');
     }
   };
 
   const fromAlbum = () => pick(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return null;
-    return ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.85 });
+    if (!permission.granted) {
+      report('Allow photo access in your phone settings to choose a profile photo.');
+      return null;
+    }
+    return ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.85, base64: true });
   });
   const fromFiles = () => pick(() => DocumentPicker.getDocumentAsync({ type: ['image/*'], copyToCacheDirectory: true, multiple: false }));
   const fromCamera = () => pick(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) return null;
-    return ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.85 });
+    if (!permission.granted) {
+      report('Allow camera access in your phone settings to take a profile photo.');
+      return null;
+    }
+    return ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.85, base64: true });
   });
 
   const choose = (action) => {

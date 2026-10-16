@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import VetShell, { getVetUser } from './VetShell';
 import { loadPatientById } from './VetPatients';
 import InlineSelect from '../../../components/InlineSelect';
@@ -224,10 +224,12 @@ export default function VetPatientEdit({ navigation, route }) {
         patient={patient}
         veterinarian={currentUser}
         onClose={() => setArchiveVisible(false)}
-        onArchived={() => {
+        onArchived={(pet) => {
           setArchiveVisible(false);
-          navigation.navigate('VetPatientOwners', { user: currentUser });
-          Alert.alert('Animal Patients', 'Pet record archived successfully.');
+          navigation.navigate('VetPatientOwners', {
+            user: currentUser,
+            notice: `${pet?.pet_name || 'The pet'} was archived successfully. You can restore it anytime from View Archived.`,
+          }, { merge: true });
         }}
       />
     </VetShell>

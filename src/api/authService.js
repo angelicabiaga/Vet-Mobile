@@ -289,13 +289,20 @@ export async function registerUser(values) {
   if (!/^[a-z0-9_.-]{3,30}$/.test(username)) throw new Error("Username must be 3–30 characters and may use letters, numbers, dots, dashes, or underscores.");
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Please enter a valid email address.");
   if (!password) throw new Error("Password is required.");
+  if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    throw new Error("Password must have at least 8 characters with uppercase, lowercase, a number and a special character.");
+  }
   if (!phone) throw new Error(CONTACT_REQUIRED_ERROR);
   if (!isValidRegisterContact(phone)) throw new Error(CONTACT_FORMAT_ERROR);
   if (!address) throw new Error("Address is required.");
-  const { data: existing, error } = await supabase.from("profiles").select("username,email").or(`username.eq.${username},email.eq.${email}`);
-  if (error) throw new Error("Unable to check the account details.");
+  const [usernameRows, emailRows] = await Promise.all([
+    supabase.from("profiles").select("username").ilike("username", exactIlike(username)).limit(1),
+    supabase.from("profiles").select("email").ilike("email", exactIlike(email)).limit(1),
+  ]);
+  if (usernameRows.error || emailRows.error) throw new Error("Unable to check the account details. Please try again.");
+  const existing = [...(usernameRows.data || []), ...(emailRows.data || [])];
   const { data: phoneOwner, error: phoneError } = await supabase.from("profiles").select("id").in("phone", phoneVariants(phone)).limit(1);
-  if (phoneError) throw new Error("Unable to check the account details.");
+  if (phoneError) throw new Error("Unable to check the account details. Please try again.");
   const takenFields = {};
   if (existing?.some((row) => normalizeIdentifier(row.username) === username)) takenFields.username = USERNAME_TAKEN_ERROR;
   if (existing?.some((row) => normalizeIdentifier(row.email) === email)) takenFields.email = EMAIL_TAKEN_ERROR;
@@ -324,8 +331,11 @@ export async function completeRegistrationOtp(code) {
   }).select("*").single();
   if (isDuplicatePhoneError(error)) throw new Error(CONTACT_TAKEN_ERROR);
   if (error) {
-    console.log("Registration error:", error);
-    throw new Error(error.message || "Registration failed. Check your Supabase policies and required columns.");
+    console.warn("Registration failed:", error.code, error.message);
+    const detail = `${error.message || ""} ${error.details || ""}`.toLowerCase();
+    if (error.code === "23505" && detail.includes("username")) throw new Error(USERNAME_TAKEN_ERROR);
+    if (error.code === "23505" && detail.includes("email")) throw new Error(EMAIL_TAKEN_ERROR);
+    throw new Error("Unable to create your account right now. Please try again.");
   }
   await SecureStore.deleteItemAsync(OTP_KEY);
   await writeActivity(profile, "Account creation", `Pet-owner account created for ${values.username}.`);

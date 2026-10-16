@@ -128,6 +128,14 @@ export async function updateVeterinarianProfile(profileId, values) {
   };
 
   if (payload.full_name.split(/\s+/).filter(Boolean).length < 2) throw new Error('First name and last name are both required.');
+  // Username is optional here: only changed when the form sends one.
+  if (values.username !== undefined) {
+    const username = String(values.username ?? '').trim().toLowerCase();
+    const usernameError = validateUsername(username);
+    if (usernameError) throw new Error(usernameError);
+    if (await isUsernameTaken(username, profileId)) throw new Error(USERNAME_TAKEN_ERROR);
+    payload.username = username;
+  }
   if (!payload.phone) throw new Error('Contact number is required.');
   if (!isValidPhMobile(payload.phone)) throw new Error(PH_MOBILE_FORMAT_ERROR);
   if (!payload.address) throw new Error('Address is required.');

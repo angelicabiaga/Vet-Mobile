@@ -264,7 +264,7 @@ const PetOwnerProfile = ({ navigation, route }) => {
   const { openPhotoOptions, photoOptionsModal } = useProfilePhotoPicker((uri) => {
     setMessage(NO_MESSAGE);
     setPhotoDraft(uri);
-  });
+  }, (text) => setMessage({ type: 'error', text }));
 
   const savePhoto = async () => {
     if (!photoDraft) return;

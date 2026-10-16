@@ -11,6 +11,7 @@ import {
   Easing,
   Image,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -30,6 +31,20 @@ const PAGE_SIZE = 8;
 
 const PetOwnerMyPets = ({ navigation, route }) => {
   const loggedInUser = route?.params?.user;
+  // "X was archived successfully." / restore results, shown on this screen
+  // (Alert is a no-op on web).
+  const [notice, setNotice] = useState(null);
+  useEffect(() => {
+    if (!route?.params?.notice) return undefined;
+    setNotice({ text: route.params.notice, isError: false });
+    navigation.setParams({ notice: undefined });
+    return undefined;
+  }, [route?.params?.notice, navigation]);
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
   const scrollViewRef = useRef(null);
   const profileImageUri = loggedInUser?.profileImageUri || loggedInUser?.avatar || '';
   const headerDisplayName =
@@ -153,9 +168,9 @@ const PetOwnerMyPets = ({ navigation, route }) => {
       setRestoringId(pet.id);
       await archiveOwnerPet(pet.id, loggedInUser?.id, false);
       await loadData();
-      Alert.alert('Animal Patients', 'Pet record restored successfully.');
+      setNotice({ text: `${pet.name || pet.pet_name || 'The pet'} was restored successfully.`, isError: false });
     } catch (e) {
-      Alert.alert('Animal Patients', e?.message || 'Unable to update the pet archive status.');
+      setNotice({ text: e?.message || 'Unable to restore this pet right now. Please try again.', isError: true });
     } finally {
       setRestoringId(null);
     }
@@ -261,6 +276,11 @@ const PetOwnerMyPets = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {notice ? (
+            <View style={[noticeStyles.box, notice.isError && noticeStyles.errorBox]}>
+              <Text style={[noticeStyles.text, notice.isError && noticeStyles.errorText]}>{notice.isError ? '' : '✓ '}{notice.text}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.petListCard}>
             <View style={styles.searchBarWrap}>
@@ -493,3 +513,10 @@ const PetOwnerMyPets = ({ navigation, route }) => {
 };
 
 export default PetOwnerMyPets;
+
+const noticeStyles = StyleSheet.create({
+  box: { marginBottom: 12, padding: 12, borderRadius: 14, backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#bbf7d0' },
+  text: { color: '#166534', fontSize: 13, fontWeight: '800' },
+  errorBox: { backgroundColor: '#fff1f1', borderColor: '#f4cccc' },
+  errorText: { color: '#a33f3f' },
+});

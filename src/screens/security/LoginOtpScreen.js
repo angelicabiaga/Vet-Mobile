@@ -118,7 +118,7 @@ const LoginOtpScreen = () => {
     try {
       if (purpose === "register") {
         await completeRegistrationOtp(otpValue);
-        navigation.replace("login");
+        navigation.replace("login", { accountCreated: true });
         return;
       }
       if (purpose === "forgot_password") {

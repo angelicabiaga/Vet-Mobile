@@ -59,7 +59,7 @@ const RegisterScreen = ({ navigation }) => {
 
   const handleChange = (name, value) => {
     let nextValue = value;
-    if (name === "middleName") nextValue = value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g, "");
+    if (name === "middleName") nextValue = value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ.' -]/g, "");
     else if (name === "contact") nextValue = value.replace(/\D/g, "").slice(0, 11);
     const nextForm = { ...formData, [name]: nextValue };
     setFormData(nextForm);
@@ -83,10 +83,10 @@ const RegisterScreen = ({ navigation }) => {
     const nextErrors = {};
 
     if (!data.firstName.trim()) nextErrors.firstName = "First name is required.";
-    else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$/.test(data.firstName.trim())) nextErrors.firstName = "Enter a valid first name.";
+    else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ.' -]+$/.test(data.firstName.trim())) nextErrors.firstName = "Enter a valid first name (letters only).";
 
     if (!data.lastName.trim()) nextErrors.lastName = "Last name is required.";
-    else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$/.test(data.lastName.trim())) nextErrors.lastName = "Enter a valid last name.";
+    else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ.' -]+$/.test(data.lastName.trim())) nextErrors.lastName = "Enter a valid last name (letters only).";
 
     if (!data.contact.trim()) nextErrors.contact = CONTACT_REQUIRED_ERROR;
     else if (!isValidRegisterContact(data.contact)) nextErrors.contact = CONTACT_FORMAT_ERROR;

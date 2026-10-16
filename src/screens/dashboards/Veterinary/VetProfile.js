@@ -7,7 +7,6 @@ import {
   FieldError,
   FormLabel,
   FormTitle,
-  LockedField,
   ProfileButton,
   ProfileDetails,
   ProfileHero,
@@ -21,7 +20,22 @@ import {
 } from '../../../components/ProfileParts';
 import useScrollToError from '../../../hooks/useScrollToError';
 import VetShell, { getVetUser } from './VetShell';
-import { getProfile, subscribeProfile, updateProfileAvatar, updateVeterinarianProfile, uploadProfileAvatar } from '../../../api/profileService';
+import {
+  EMAIL_TAKEN_ERROR,
+  USERNAME_TAKEN_ERROR,
+  cancelEmailChange,
+  confirmEmailChange,
+  getProfile,
+  isEmailTaken,
+  isUsernameTaken,
+  requestEmailChange,
+  subscribeProfile,
+  updateProfileAvatar,
+  updateVeterinarianProfile,
+  uploadProfileAvatar,
+  validateEmail,
+  validateUsername,
+} from '../../../api/profileService';
 import { logoutAndResetToLogin } from '../../../api/authService';
 import { isValidPhMobile, PH_MOBILE_FORMAT_ERROR } from '../../../utils/contactValidation';
 import { isValidPrcLicense, INVALID_PRC_LICENSE_MESSAGE } from '../../../utils/prcValidation';
@@ -72,6 +86,8 @@ const VERIFICATION = {
 // The edit form's values from the saved profile.
 const formFromProfile = (row) => ({
   ...splitFullName(row?.full_name),
+  username: row?.username || '',
+  email: row?.email || '',
   phone: row?.phone || '',
   address: row?.address || '',
   specialization: row?.specialization || '',
@@ -87,6 +103,10 @@ const validateDetails = (form) => {
   const errors = {};
   if (!form.firstName.trim()) errors.firstName = 'First name is required.';
   if (!form.lastName.trim()) errors.lastName = 'Last name is required.';
+  const usernameError = validateUsername(form.username);
+  if (usernameError) errors.username = usernameError;
+  const emailError = validateEmail(form.email);
+  if (emailError) errors.email = emailError;
   if (!form.phone.trim()) errors.phone = 'Contact number is required.';
   else if (!isValidPhMobile(form.phone)) errors.phone = PH_MOBILE_FORMAT_ERROR;
   if (!form.address.trim()) errors.address = 'Address is required.';
@@ -100,7 +120,7 @@ const VetProfile = ({ navigation, route }) => {
   const scrollViewRef = useRef(null);
   // A failed save scrolls back to the first field outlined in red.
   const errorScroll = useScrollToError(scrollViewRef);
-  const FIELD_ORDER = ['firstName', 'lastName', 'middleName', 'phone', 'specialization', 'address', 'education', 'years_experience'];
+  const FIELD_ORDER = ['firstName', 'lastName', 'middleName', 'username', 'email', 'phone', 'specialization', 'address', 'education', 'years_experience'];
 
   // `profile` is the saved row the page shows; `form` is only the draft while editing.
   const [profile, setProfile] = useState(routeUser);
@@ -108,6 +128,9 @@ const VetProfile = ({ navigation, route }) => {
   const [form, setForm] = useState(() => formFromProfile(routeUser));
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  // A pending email change waiting for the OTP sent to the CURRENT email
+  // (same flow as the pet owner profile).
+  const [emailChange, setEmailChange] = useState({ visible: false, challengeId: '', email: '', username: null, details: null, busy: false, error: '' });
   const [message, setMessage] = useState(NO_MESSAGE);
   const [photoDraft, setPhotoDraft] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -167,6 +190,12 @@ const VetProfile = ({ navigation, route }) => {
     setFieldErrors((current) => (current[name] ? { ...current, [name]: undefined } : current));
   };
 
+  const NO_EMAIL_CHANGE = { visible: false, challengeId: '', email: '', username: null, details: null, busy: false, error: '' };
+  const normalized = (value) => String(value || '').trim().toLowerCase();
+
+  // Same rules as the pet owner profile: username saves directly; an email
+  // change waits for the code sent to the CURRENT email, then everything in
+  // the form is saved together (a cancelled or failed code saves nothing).
   const saveDetails = async () => {
     const errors = validateDetails(form);
     setFieldErrors(errors);
@@ -175,13 +204,35 @@ const VetProfile = ({ navigation, route }) => {
       setMessage({ type: 'error', text: 'Please fix the highlighted fields before saving.' });
       return;
     }
+    const username = normalized(form.username);
+    const email = normalized(form.email);
+    const usernameChanged = username !== normalized(profile?.username);
+    const emailChanged = email !== normalized(profile?.email);
+    const details = { ...form, username, full_name: joinFullName(form, titleOf(profile?.full_name)) };
+
     setSaving(true);
     setMessage(NO_MESSAGE);
     try {
-      const updated = await updateVeterinarianProfile(profileId, { ...form, full_name: joinFullName(form, titleOf(profile?.full_name)) });
+      const taken = {};
+      if (usernameChanged && await isUsernameTaken(username, profileId)) taken.username = USERNAME_TAKEN_ERROR;
+      if (emailChanged && await isEmailTaken(email, profileId)) taken.email = EMAIL_TAKEN_ERROR;
+      if (Object.keys(taken).length) {
+        setFieldErrors(taken);
+        errorScroll.scrollToFirstError(taken, FIELD_ORDER);
+        setMessage({ type: 'error', text: taken.username || taken.email });
+        return;
+      }
+
+      if (emailChanged) {
+        const { challengeId } = await requestEmailChange(profileId, email, usernameChanged ? username : undefined);
+        setEmailChange({ ...NO_EMAIL_CHANGE, visible: true, challengeId, email, username: usernameChanged ? username : null, details });
+        return;
+      }
+
+      const updated = await updateVeterinarianProfile(profileId, details);
       apply(updated);
       changeMode('view');
-      setMessage({ type: 'success', text: 'Profile updated successfully.' });
+      setMessage({ type: 'success', text: usernameChanged ? 'Username updated successfully.' : 'Profile updated successfully.' });
     } catch (error) {
       setMessage({ type: 'error', text: error?.message || 'Unable to save your profile.' });
     } finally {
@@ -189,10 +240,53 @@ const VetProfile = ({ navigation, route }) => {
     }
   };
 
+  const verifyEmailChange = async (code) => {
+    if (emailChange.busy) return;
+    setEmailChange((current) => ({ ...current, busy: true, error: '' }));
+    try {
+      // The server checks the code and saves the new email (and username).
+      let updated = await confirmEmailChange(emailChange.challengeId, code);
+      apply(updated);
+      let text = emailChange.username ? 'Email address and username updated successfully.' : 'Email address updated successfully.';
+      let type = 'success';
+      try {
+        updated = await updateVeterinarianProfile(profileId, { ...emailChange.details, username: updated.username });
+        apply(updated);
+      } catch (error) {
+        type = 'error';
+        text = `${text} Your other changes were not saved: ${error?.message || 'please try again.'}`;
+      }
+      setEmailChange(NO_EMAIL_CHANGE);
+      changeMode('view');
+      setMessage({ type, text });
+    } catch (error) {
+      setEmailChange((current) => ({ ...current, busy: false, error: error?.message || 'Invalid verification code.' }));
+    }
+  };
+
+  const resendEmailChange = async () => {
+    try {
+      const { challengeId } = await requestEmailChange(profileId, emailChange.email, emailChange.username || undefined);
+      setEmailChange((current) => ({ ...current, challengeId, error: '' }));
+      return true;
+    } catch (error) {
+      setEmailChange((current) => ({ ...current, error: error?.message || 'Unable to send a new code.' }));
+      return false;
+    }
+  };
+
+  // Nothing was saved; the email field goes back to the registered email.
+  const cancelEmailChangeFlow = () => {
+    cancelEmailChange(emailChange.challengeId);
+    setEmailChange(NO_EMAIL_CHANGE);
+    updateField('email', profile?.email || '');
+    setMessage({ type: 'error', text: 'Email change cancelled. Your email address was not changed.' });
+  };
+
   const { openPhotoOptions, photoOptionsModal } = useProfilePhotoPicker((uri) => {
     setMessage(NO_MESSAGE);
     setPhotoDraft(uri);
-  });
+  }, (text) => setMessage({ type: 'error', text }));
 
   const savePhoto = async () => {
     if (!photoDraft) return;
@@ -360,10 +454,20 @@ const VetProfile = ({ navigation, route }) => {
                   maxLength: 50,
                   transform: (value) => value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ.' -]/g, ''),
                 })}
-                <FormLabel label="Username" />
-                <LockedField icon="at" value={profile?.username} />
-                <FormLabel label="Email" />
-                <LockedField icon="mail" value={profile?.email} />
+                {textField('username', 'Username', {
+                  required: true,
+                  placeholder: 'Enter username',
+                  autoCapitalize: 'none',
+                  autoCorrect: false,
+                  maxLength: 30,
+                })}
+                {textField('email', 'Email', {
+                  required: true,
+                  placeholder: 'Enter email address',
+                  keyboardType: 'email-address',
+                  autoCapitalize: 'none',
+                  autoCorrect: false,
+                })}
                 {textField('phone', 'Contact number', {
                   required: true,
                   placeholder: '09XXXXXXXXX or +639XXXXXXXXX',
@@ -384,7 +488,7 @@ const VetProfile = ({ navigation, route }) => {
                 })}
                 {BACKGROUND_TEXT_FIELDS.map(([key, , formLabel]) => textField(key, formLabel, { optional: true, multiline: true }))}
 
-                <Text style={pfStyles.hint}>Username, email and license number can't be changed here.</Text>
+                <Text style={pfStyles.hint}>Changing your email sends a 6-digit code to your current email. It changes only after you enter the code. License number can't be changed here.</Text>
                 <View style={pfStyles.formActions}>
                   <ProfileButton icon="x" label="Cancel" ghost onPress={() => openMode('view')} disabled={saving} />
                   <ProfileButton icon="check" label={saving ? 'Saving…' : 'Save changes'} onPress={saveDetails} disabled={saving} />
@@ -437,6 +541,18 @@ const VetProfile = ({ navigation, route }) => {
       </ScrollView>
 
       <ProfileOtpModal {...passwordChange.otpModalProps} destinationEmail={profile?.email} />
+      <ProfileOtpModal
+        visible={emailChange.visible}
+        purpose="change_email"
+        destinationEmail={profile?.email}
+        busy={emailChange.busy}
+        error={emailChange.error}
+        autoVerify
+        onVerify={verifyEmailChange}
+        onResend={resendEmailChange}
+        onCancel={cancelEmailChangeFlow}
+        onClearError={() => setEmailChange((current) => (current.error ? { ...current, error: '' } : current))}
+      />
 
       {photoOptionsModal}
 

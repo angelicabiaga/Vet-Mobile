@@ -1,7 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   RefreshControl,
   ScrollView,
@@ -64,6 +63,20 @@ const VetPatientOwners = ({ navigation, route }) => {
   const [restoringId, setRestoringId] = useState(null);
   // The pet whose Archive button was tapped; shows the confirm modal.
   const [archiveTarget, setArchiveTarget] = useState(null);
+  // Archive/restore results on this screen, like the pet owner's Animal
+  // Patients (Alert is a no-op on web).
+  const [notice, setNotice] = useState(null);
+  useEffect(() => {
+    if (!route?.params?.notice) return undefined;
+    setNotice({ text: route.params.notice, isError: false });
+    navigation.setParams({ notice: undefined });
+    return undefined;
+  }, [route?.params?.notice, navigation]);
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const loadPatients = useCallback(async () => {
     try {
@@ -121,9 +134,9 @@ const VetPatientOwners = ({ navigation, route }) => {
       setRestoringId(pet.id);
       await setPatientArchived(pet.id, false, currentUser);
       await loadPatients();
-      Alert.alert('Animal Patients', 'Pet record restored successfully.');
+      setNotice({ text: `${pet.pet_name || 'The pet'} was restored successfully.`, isError: false });
     } catch (restoreError) {
-      Alert.alert('Animal Patients', restoreError?.message || 'Unable to update the pet archive status.');
+      setNotice({ text: restoreError?.message || 'Unable to restore this pet right now. Please try again.', isError: true });
     } finally {
       setRestoringId(null);
     }
@@ -148,6 +161,11 @@ const VetPatientOwners = ({ navigation, route }) => {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadPatients} />}
       >
+        {notice ? (
+          <View style={[noticeStyles.box, notice.isError && noticeStyles.errorBox]}>
+            <Text style={[noticeStyles.text, notice.isError && noticeStyles.errorText]}>{notice.isError ? '' : '✓ '}{notice.text}</Text>
+          </View>
+        ) : null}
         <View style={styles.searchCard}>
           <TextInput
             style={styles.searchInput}
@@ -328,10 +346,11 @@ const VetPatientOwners = ({ navigation, route }) => {
         patient={archiveTarget}
         veterinarian={currentUser}
         onClose={() => setArchiveTarget(null)}
-        onArchived={async () => {
+        onArchived={async (pet) => {
           setArchiveTarget(null);
+          setNotice({ text: `${pet?.pet_name || 'The pet'} was archived successfully. You can restore it anytime from View Archived.`, isError: false });
+          scrollViewRef.current?.scrollTo?.({ y: 0, animated: true });
           await loadPatients();
-          Alert.alert('Animal Patients', 'Pet record archived successfully.');
         }}
       />
     </VetShell>
@@ -403,3 +422,10 @@ const styles = StyleSheet.create({
 });
 
 export default VetPatientOwners;
+
+const noticeStyles = StyleSheet.create({
+  box: { marginBottom: 12, padding: 12, borderRadius: 14, backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#bbf7d0' },
+  text: { color: '#166534', fontSize: 13, fontWeight: '800' },
+  errorBox: { backgroundColor: '#fff1f1', borderColor: '#f4cccc' },
+  errorText: { color: '#a33f3f' },
+});

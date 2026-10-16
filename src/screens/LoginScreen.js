@@ -60,6 +60,12 @@ export default function LoginScreen({ navigation, route }) {
   }, [contentTranslateY, contentOpacity, logoScale]);
 
   useEffect(() => {
+    if (!route?.params?.accountCreated) return;
+    setAlertModal({ show: true, message: "Account created successfully. You can now log in with your username or email and password.", extraAction: null });
+    navigation.setParams({ accountCreated: undefined });
+  }, [route?.params?.accountCreated, navigation]);
+
+  useEffect(() => {
     if (!route?.params?.passwordReset) return;
     setAlertModal({ show: true, message: "Password reset successfully. You can now log in using your new password.", extraAction: null });
     navigation.setParams({ passwordReset: undefined });

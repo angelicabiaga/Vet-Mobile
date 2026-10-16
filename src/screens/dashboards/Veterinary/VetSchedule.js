@@ -363,7 +363,6 @@ export default function VetSchedule({ navigation, route }) {
 
             <View style={styles.sectionHeaderWrap}>
               <Text style={styles.sectionTitle}>My Weekly Schedule</Text>
-              <Text style={styles.sectionSubtitle}>Your hours as pet owners see them. Tap a future working day to request leave, or go back to see past weeks.</Text>
             </View>
             <View style={styles.card}>
               <View style={styles.pager}>
