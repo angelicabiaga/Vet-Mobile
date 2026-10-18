@@ -66,6 +66,24 @@ export async function createNotification({
   return data;
 }
 
+// Notifications about something the user just did on this phone (e.g. the
+// database trigger reporting their own cancellation back to them) stay in the
+// list but don't pop up over the screen's own confirmation message.
+const SILENCE_MS = 60 * 1000;
+const silencedRecords = new Map();
+
+export function silenceNextPopupFor(relatedRecord) {
+  if (relatedRecord) silencedRecords.set(String(relatedRecord), Date.now() + SILENCE_MS);
+}
+
+export function isPopupSilenced(notification) {
+  const key = String(notification?.related_record || '');
+  const until = silencedRecords.get(key);
+  if (!until) return false;
+  silencedRecords.delete(key);
+  return until > Date.now();
+}
+
 export async function notificationExists({ recipientId, type, relatedRecord }) {
   if (!recipientId || !relatedRecord) return false;
   const { data, error } = await supabase

@@ -6,6 +6,7 @@ import {
   markNotificationRead,
   createNotification,
   notificationExists,
+  isPopupSilenced,
 } from '../api/notificationService';
 import { getOwnerAppointments } from '../api/mobileAppointmentService';
 import { getStoredSession } from '../api/authService';
@@ -106,7 +107,7 @@ export function NotificationProvider({ navigationRef, children }) {
     }
     unsubscribeRef.current = subscribeNotifications(profileId, {
       onInsert: (row) => {
-        if (!row) return;
+        if (!row || isPopupSilenced(row)) return;
         showToast(row);
       },
     });

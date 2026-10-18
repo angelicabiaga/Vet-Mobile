@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabaseClient';
 import { templateLabelFor } from '../constants/medicalRecordTemplates';
-import { createNotification } from './notificationService';
+import { createNotification, silenceNextPopupFor } from './notificationService';
 
 export const APPOINTMENT_STATUSES = ['Confirmed', 'Completed', 'Cancelled'];
 const ACTIVE_STATUSES = ['Confirmed'];
@@ -399,6 +399,10 @@ export async function cancelAppointment(id, ownerId) {
   const blockReason = getCancellationBlockReason(appointment, { checkedIn: Boolean(queueRows?.length) });
   if (blockReason) throw new Error(blockReason);
 
+  // The database trigger reports this cancellation back to the owner; the
+  // screen already confirms it, so keep that notification out of the pop-up.
+  // Set before the update: the realtime insert can arrive before the response.
+  silenceNextPopupFor(id);
   const { data: cancelled, error } = await supabase
     .from('appointments')
     .update({ status: 'Cancelled' })
@@ -448,16 +452,9 @@ export async function veterinarianCancelAppointment(id, veterinarianId) {
     .select('id');
   if (error) throw new Error('Unable to cancel the appointment.');
   if (!cancelled?.length) throw new Error('This appointment is no longer active. Refresh and try again.');
-
-  createNotification({
-    recipientId: appointment.owner_id,
-    type: 'Appointment',
-    title: 'Appointment Cancelled',
-    message: `Your appointment on ${formatFullDate(appointment.appointment_date)} at ${formatTime(appointment.start_time)} was cancelled by the veterinarian.`,
-    relatedModule: 'Appointments',
-    relatedRecord: id,
-    createdBy: veterinarianId,
-  }).catch(() => {});
+  // No createNotification here: the trg_notify_owner_appointment_change
+  // database trigger already notifies the owner of every status change, so a
+  // second insert made the owner get the cancellation twice.
 }
 
 // Rebooking keeps the same pet and owner, so only what changes is checked
