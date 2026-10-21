@@ -2,6 +2,7 @@
   "expo": {
     "name": "PawCruz",
     "slug": "frontend-mobile",
+    "owner": "angeliepanilag",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/screens/assets/paw2.png",
@@ -26,7 +27,17 @@
         "backgroundColor": "#FFFFFF"
       },
       "softwareKeyboardLayoutMode": "resize",
-      "package": "PawCruz.App"
+      "package": "PawCruz.App",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "favicon": "./src/screens/assets/webpaw.png"
@@ -57,11 +68,11 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "261aac43-01b0-4811-93dc-98d30f976696"
+        "projectId": "b06a5ca9-ea0d-4bb7-ab04-582c5d43fe30"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/261aac43-01b0-4811-93dc-98d30f976696"
+      "url": "https://u.expo.dev/b06a5ca9-ea0d-4bb7-ab04-582c5d43fe30"
     }
   }
 }
