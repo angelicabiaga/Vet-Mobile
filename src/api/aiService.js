@@ -1,5 +1,5 @@
 import {
-  GROQ_API_KEY,
+  aiRequestHeaders,
   GROQ_ENDPOINT,
   GROQ_MODEL,
   isGroqConfigured,
@@ -36,7 +36,7 @@ export async function askPawCruzAI(message, history = []) {
 
   if (!isGroqConfigured()) {
     throw new Error(
-      "Groq API key is not configured. Set EXPO_PUBLIC_GROQ_API_KEY in the mobile .env file and restart Expo."
+      "PawCruz AI is not available right now. Please try again later."
     );
   }
 
@@ -44,10 +44,7 @@ export async function askPawCruzAI(message, history = []) {
   try {
     response = await fetch(GROQ_ENDPOINT, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-      },
+      headers: aiRequestHeaders(),
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0.35,
@@ -74,7 +71,7 @@ export async function askPawCruzAI(message, history = []) {
 
   if (!response.ok) {
     if (response.status === 401) {
-      throw new Error("The Groq API key is invalid or missing.");
+      throw new Error("PawCruz AI is not set up correctly. Please tell the clinic.");
     }
     if (response.status === 403) {
       throw new Error("The Groq API request is not authorized.");
@@ -235,7 +232,7 @@ async function callGroqChat({ systemPrompt, prompt, maxTokens, notConfiguredErro
   try {
     response = await fetch(GROQ_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ_API_KEY}` },
+      headers: aiRequestHeaders(),
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0.15,
@@ -251,7 +248,7 @@ async function callGroqChat({ systemPrompt, prompt, maxTokens, notConfiguredErro
   }
 
   if (!response.ok) {
-    if (response.status === 401) throw new Error("The Groq API key is invalid or missing.");
+    if (response.status === 401) throw new Error("PawCruz AI is not set up correctly. Please tell the clinic.");
     if (response.status === 403) throw new Error("The AI request is not authorized.");
     if (response.status === 404) throw new Error("The configured AI model is unavailable.");
     if (response.status === 429) throw new Error("The AI health service has reached its request limit. Please wait and try again.");
@@ -357,7 +354,7 @@ AI predictive health analysis is based only on available PawCruz medical records
       "You are a veterinary clinical decision-support assistant. Analyze only the supplied pet medical records, identify documented patterns carefully, never fabricate medical information, and never replace a veterinarian's clinical judgment. Do not use markdown or asterisks.",
     prompt,
     maxTokens: 1500,
-    notConfiguredError: "Groq API key is not configured. Set EXPO_PUBLIC_GROQ_API_KEY in the mobile .env file and restart Expo.",
+    notConfiguredError: "PawCruz AI is not available right now. Please try again later.",
     emptyResponseError: "The AI predictive health analysis returned an empty response.",
   });
 }
@@ -454,7 +451,7 @@ This AI health insight is based only on this consultation's recorded information
       "You are a veterinary clinical decision-support assistant. Analyze only the supplied single consultation record, never fabricate medical information, and never replace a veterinarian's clinical judgment. Do not use markdown or asterisks.",
     prompt,
     maxTokens: 900,
-    notConfiguredError: "Groq API key is not configured. Set EXPO_PUBLIC_GROQ_API_KEY in the mobile .env file and restart Expo.",
+    notConfiguredError: "PawCruz AI is not available right now. Please try again later.",
     emptyResponseError: "The AI health insight returned an empty response.",
   });
 }

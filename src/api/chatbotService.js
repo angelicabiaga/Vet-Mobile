@@ -1,5 +1,5 @@
 import { supabase } from "../config/supabaseClient";
-import { GROQ_API_KEY, GROQ_ENDPOINT, GROQ_MODEL, isGroqConfigured } from "../config/aiConfig";
+import { aiRequestHeaders, GROQ_ENDPOINT, GROQ_MODEL, isGroqConfigured } from "../config/aiConfig";
 
 // PawCruz Pet Care Assistant (Quick Assist). Ported from the web app's
 // chatbotService.js + ChatBot.jsx so both give the same answers: Groq replies
@@ -331,10 +331,7 @@ async function callGroq(messages, jsonMode) {
   try {
     response = await fetch(GROQ_ENDPOINT, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-      },
+      headers: aiRequestHeaders(),
       body: JSON.stringify({
         model: GROQ_MODEL,
         messages,
