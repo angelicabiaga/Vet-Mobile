@@ -6,7 +6,7 @@ import InlineSelect from '../../../components/InlineSelect';
 import useScrollToError from '../../../hooks/useScrollToError';
 import { PET_SEX_OPTIONS, updatePatientDetails, validatePatientDetails } from '../../../api/petService';
 import ArchivePatientModal from '../../../components/ArchivePatientModal';
-import { PET_SPECIES_OPTIONS } from '../PetOwner/PetOwnerMyPetsInfo';
+import { OTHER_OPTION_VALUE, PET_SPECIES_OPTIONS, getBreedOptionsForSpecies } from '../PetOwner/PetOwnerMyPetsInfo';
 
 const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTH_OPTIONS = MONTH_LABELS.map((label, index) => ({ value: String(index + 1), label }));
@@ -16,6 +16,18 @@ const YEAR_OPTIONS = Array.from({ length: 41 }, (_, index) => {
   const year = String(CURRENT_YEAR - index);
   return { value: year, label: year };
 });
+
+// Breeds offered for a species. A species saved from the web that the mobile list
+// doesn't know only offers "Other", so its breed is typed in.
+function breedOptionsFor(species) {
+  if (!species) return [];
+  if (!PET_SPECIES_OPTIONS.includes(species)) return [{ label: 'Other', value: OTHER_OPTION_VALUE }];
+  return getBreedOptionsForSpecies(species);
+}
+
+// A saved breed that isn't in the species' list is shown as "Other" + its text.
+const isCustomBreed = (species, breed) =>
+  Boolean(breed) && !breedOptionsFor(species).some((option) => option.value === breed);
 
 // Turns a pets row into form values.
 function toForm(row) {
@@ -50,6 +62,7 @@ export default function VetPatientEdit({ navigation, route }) {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [archiveVisible, setArchiveVisible] = useState(false);
+  const [customBreedMode, setCustomBreedMode] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -57,7 +70,11 @@ export default function VetPatientEdit({ navigation, route }) {
       const row = await loadPatientById(petId);
       if (!active) return;
       setPatient(row);
-      if (row) setForm(toForm(row));
+      if (row) {
+        const nextForm = toForm(row);
+        setForm(nextForm);
+        setCustomBreedMode(isCustomBreed(nextForm.species, nextForm.breed));
+      }
       setLoaded(true);
     })();
     return () => { active = false; };
@@ -69,6 +86,8 @@ export default function VetPatientEdit({ navigation, route }) {
     if (form.species && !PET_SPECIES_OPTIONS.includes(form.species)) list.unshift({ value: form.species, label: form.species });
     return list;
   }, [form.species]);
+
+  const breedOptions = useMemo(() => breedOptionsFor(form.species), [form.species]);
 
   // Editing a field clears its error once the value is valid again.
   const setField = useCallback((field, value) => {
@@ -86,6 +105,20 @@ export default function VetPatientEdit({ navigation, route }) {
     });
     setFormError('');
   }, []);
+
+  // A new species has a different breed list, so the breed is picked again.
+  const handleSpeciesChange = (value) => {
+    if (value === form.species) return;
+    setField('species', value);
+    setField('breed', '');
+    setCustomBreedMode(false);
+  };
+
+  const handleBreedChange = (value) => {
+    const other = value === OTHER_OPTION_VALUE;
+    setCustomBreedMode(other);
+    setField('breed', other ? '' : value);
+  };
 
   const goBackToProfile = (params = {}) =>
     navigation.navigate('VetPatientProfile', { user: currentUser, petId, ...params }, { merge: true });
@@ -162,11 +195,32 @@ export default function VetPatientEdit({ navigation, route }) {
 
           <View style={styles.field} ref={errorScroll.anchor('species')}>
             <Text style={styles.label}>Species<Text style={styles.required}> *</Text></Text>
-            <InlineSelect options={speciesOptions} value={form.species} placeholder="Select species" error={Boolean(errors.species)} onChange={(value) => setField('species', value)} />
+            <InlineSelect options={speciesOptions} value={form.species} placeholder="Select species" error={Boolean(errors.species)} onChange={handleSpeciesChange} />
             {errors.species ? <Text style={styles.errorText}>{errors.species}</Text> : null}
           </View>
 
-          {renderInput('breed', 'Breed', { required: true, placeholder: 'Enter breed', maxLength: 60 })}
+          <View style={styles.field} ref={errorScroll.anchor('breed')}>
+            <Text style={styles.label}>Breed<Text style={styles.required}> *</Text></Text>
+            <InlineSelect
+              options={breedOptions}
+              value={customBreedMode ? OTHER_OPTION_VALUE : form.breed}
+              placeholder={form.species ? 'Select breed' : 'Select a species first'}
+              disabled={!form.species}
+              error={Boolean(errors.breed) && !customBreedMode}
+              onChange={handleBreedChange}
+            />
+            {customBreedMode ? (
+              <TextInput
+                style={[styles.input, styles.customBreedInput, errors.breed && styles.inputError]}
+                value={form.breed}
+                onChangeText={(value) => setField('breed', value)}
+                placeholder="Type breed"
+                placeholderTextColor="#8d98a5"
+                maxLength={60}
+              />
+            ) : null}
+            {errors.breed ? <Text style={styles.errorText}>{errors.breed}</Text> : null}
+          </View>
 
           <View style={styles.field} ref={errorScroll.anchor('sex')}>
             <Text style={styles.label}>Sex<Text style={styles.required}> *</Text></Text>
@@ -250,6 +304,7 @@ const styles = StyleSheet.create({
   input: { minHeight: 52, borderWidth: 1, borderColor: '#cee2e9', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11, color: '#294b5d', backgroundColor: '#fbfdfe', fontWeight: '600', fontSize: 14 },
   inputMultiline: { minHeight: 84, textAlignVertical: 'top' },
   inputError: { borderColor: '#EF4444', borderWidth: 1.5 },
+  customBreedInput: { marginTop: 8 },
   errorText: { color: '#D32F2F', fontSize: 12, fontWeight: '700', marginTop: 6, marginLeft: 4 },
   birthdayRow: { flexDirection: 'row', gap: 8 },
   birthdayMonth: { flex: 1.5 },

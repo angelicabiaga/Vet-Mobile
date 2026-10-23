@@ -20,10 +20,15 @@ import {
   verifyPasswordResetOtp,
   resendAuthOtp,
   resetToDashboard,
+  getPendingOtp,
+  OTP_EXPIRY_MINUTES,
+  OTP_RESEND_SECONDS,
 } from "../../api/authService";
 import otpBg from "../assets/reset.jpg";
 
 const OTP_LENGTH = 6;
+const EXPIRED_MESSAGE = "This code has expired. Please request a new code.";
+const formatTime = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
 const LoginOtpScreen = () => {
   const navigation = useNavigation();
@@ -33,8 +38,12 @@ const LoginOtpScreen = () => {
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(""));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [cooldown, setCooldown] = useState(60);
+  // Timestamps of the active code; the stored request overrides these on mount.
+  const [expiresAt, setExpiresAt] = useState(() => Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+  const [resendAt, setResendAt] = useState(() => Date.now() + OTP_RESEND_SECONDS * 1000);
+  const [now, setNow] = useState(Date.now());
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(false);
 
   const inputsRef = useRef([]);
@@ -43,14 +52,37 @@ const LoginOtpScreen = () => {
   // The code last auto-submitted, so a rejected code is not resubmitted on its own.
   const lastAutoSubmittedRef = useRef("");
 
+  const cooldown = Math.max(0, Math.ceil((resendAt - now) / 1000));
+  const secondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+  const expired = secondsLeft === 0;
+
   useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setInterval(() => setCooldown((c) => c - 1), 1000);
+    getPendingOtp()
+      .then((pending) => {
+        if (pending?.purpose !== purpose) return;
+        setExpiresAt(Number(pending.expiresAt || 0));
+        setResendAt(Number(pending.resendAvailableAt || 0));
+      })
+      .catch(() => {});
+  }, [purpose]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [cooldown]);
+  }, []);
+
+  // The expired code can no longer be used: clear it and point the user to resend.
+  useEffect(() => {
+    if (!expired) return;
+    setOtp(Array(OTP_LENGTH).fill(""));
+    lastAutoSubmittedRef.current = "";
+    setMessage("");
+    setError(EXPIRED_MESSAGE);
+    Keyboard.dismiss();
+  }, [expired]);
 
   const handleChange = (value, index) => {
-    if (isVerifyingRef.current) return;
+    if (isVerifyingRef.current || expired) return;
     const digits = String(value).replace(/\D/g, "");
     if (value && !digits) return;
     setError("");
@@ -107,6 +139,10 @@ const LoginOtpScreen = () => {
     setMessage("");
     const otpValue = typeof code === "string" ? code : otp.join("");
 
+    if (Date.now() >= expiresAt) {
+      setError(EXPIRED_MESSAGE);
+      return;
+    }
     if (otpValue.length !== OTP_LENGTH) {
       setError("Please enter the complete 6-digit code.");
       return;
@@ -141,18 +177,24 @@ const LoginOtpScreen = () => {
   };
 
   const resendOtp = async () => {
-    if (cooldown > 0) return;
+    if (cooldown > 0 || resending) return;
 
+    setResending(true);
     try {
       setError("");
       setMessage("");
-      await resendAuthOtp(purpose);
+      const sent = await resendAuthOtp(purpose);
       setOtp(Array(OTP_LENGTH).fill(""));
       lastAutoSubmittedRef.current = "";
-      setMessage("A new code has been sent.");
-      setCooldown(60);
+      setExpiresAt(sent.expiresAt);
+      setResendAt(sent.resendAvailableAt);
+      setNow(Date.now());
+      setMessage("A new code has been sent. The previous code is no longer valid.");
+      setTimeout(() => inputsRef.current[0]?.focus(), 100);
     } catch (err) {
       setError(err.message || "Failed to resend code.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -187,7 +229,9 @@ const LoginOtpScreen = () => {
               <Text style={styles.title}>OTP Verification</Text>
               <Text style={styles.subtitle}>Enter the 6-digit code sent to:</Text>
               <Text style={styles.email}>{maskedEmail}</Text>
-              <Text style={styles.expiry}>This code expires in 10 minutes.</Text>
+              <Text style={[styles.expiry, expired && styles.expiryExpired]}>
+                {expired ? "This code has expired." : `This code expires in ${formatTime(secondsLeft)}.`}
+              </Text>
 
               {message ? <Text style={styles.success}>{message}</Text> : null}
 
@@ -204,7 +248,7 @@ const LoginOtpScreen = () => {
                     maxLength={OTP_LENGTH}
                     onKeyPress={(e) => handleKeyPress(e, i)}
                     autoFocus={i === 0}
-                    editable={!loading}
+                    editable={!loading && !expired}
                     selectTextOnFocus
                   />
                 ))}
@@ -231,9 +275,9 @@ const LoginOtpScreen = () => {
               ) : null}
 
               <TouchableOpacity
-                style={[styles.button, (loading || !otpComplete) && styles.disabledButton]}
+                style={[styles.button, (loading || expired || !otpComplete) && styles.disabledButton]}
                 onPress={() => handleVerify()}
-                disabled={loading || !otpComplete}
+                disabled={loading || expired || !otpComplete}
                 activeOpacity={0.9}
               >
                 <LinearGradient
@@ -253,15 +297,15 @@ const LoginOtpScreen = () => {
                   {cooldown > 0 ? `Resend code in ${cooldown}s` : ""}
                 </Text>
 
-                <TouchableOpacity onPress={resendOtp} disabled={cooldown > 0}>
-                  <Text style={styles.helpText}>Didn't get the code?</Text>
+                <TouchableOpacity onPress={resendOtp} disabled={cooldown > 0 || resending}>
+                  <Text style={styles.helpText}>{expired ? "Need a new code?" : "Didn't get the code?"}</Text>
                   <Text
                     style={[
                       styles.resendLink,
-                      cooldown > 0 && styles.disabledResend,
+                      (cooldown > 0 || resending) && styles.disabledResend,
                     ]}
                   >
-                    Resend New Code
+                    {resending ? "Sending..." : "Resend New Code"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -351,6 +395,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -14,
     marginBottom: 18,
+  },
+
+  expiryExpired: {
+    color: "#fecaca",
+    fontWeight: "700",
   },
 
   otpContainer: {

@@ -170,6 +170,9 @@ export async function createAndSendOtp(email, purpose, payload = {}) {
   if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) throw new Error("A valid email address is required.");
   const code = generateOtp();
   await sendOtpEmail(cleanEmail, code, purpose);
+  // Overwrites any previous request, so an older code stops working.
+  const resendAvailableAt = Date.now() + OTP_RESEND_SECONDS * 1000;
+  const expiresAt = Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000;
   await writeJson(OTP_KEY, {
     email: cleanEmail,
     purpose,
@@ -177,20 +180,17 @@ export async function createAndSendOtp(email, purpose, payload = {}) {
     payload,
     attempts: 0,
     createdAt: Date.now(),
-    resendAvailableAt: Date.now() + OTP_RESEND_SECONDS * 1000,
-    expiresAt: Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000,
+    resendAvailableAt,
+    expiresAt,
   });
-  return { email: cleanEmail, purpose, expiresMinutes: OTP_EXPIRY_MINUTES };
+  return { email: cleanEmail, purpose, expiresMinutes: OTP_EXPIRY_MINUTES, expiresAt, resendAvailableAt };
 }
 
+// Expired requests are returned (not deleted) so resendAuthOtp can still issue a new code.
 export async function getPendingOtp() {
   const pending = await readJson(OTP_KEY);
   if (!pending) return null;
-  if (Date.now() > Number(pending.expiresAt || 0)) {
-    await SecureStore.deleteItemAsync(OTP_KEY);
-    return null;
-  }
-  return { ...pending, code: undefined };
+  return { ...pending, code: undefined, expired: Date.now() > Number(pending.expiresAt || 0) };
 }
 
 async function verifyOtpCode(purpose, code) {
