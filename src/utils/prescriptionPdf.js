@@ -167,6 +167,7 @@ function buildJsPdf(slip) {
   pdf.setFontSize(8);
   pdf.setTextColor(120, 135, 143);
   pdf.text('Attending Veterinarian', right - 34, sigY + 9.5, { align: 'center' });
+  pdf.text(`License No.: ${text(slip.vet?.license) || 'N/A'}`, right - 34, sigY + 13.5, { align: 'center' });
 
   pdf.setFont('helvetica', 'bolditalic');
   pdf.setFontSize(7.5);
@@ -227,7 +228,8 @@ function slipHtml(slip) {
     <div class="rx"><div class="rx-mark">Rx</div><ol>${items}</ol></div>
     <div class="signature"><div class="line"></div>
       <div class="name">${esc(withDrTitle(slip.vet?.name))}</div>
-      <div class="role">Attending Veterinarian</div></div>
+      <div class="role">Attending Veterinarian</div>
+      <div class="role">License No.: ${esc(text(slip.vet?.license) || 'N/A')}</div></div>
     <div class="footer">${FOOTER}</div>
   </div></div></body></html>`;
 }

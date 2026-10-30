@@ -7,6 +7,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { jsPDF } from './jspdfLoader';
 import { DENTAL_FIELDS, VACCINE_FIELDS, getRecordTemplate, parseJsonColumn } from '../constants/medicalRecordTemplates';
 import { petAgeText } from './medicalDocuments';
+import { PAW_LOGO } from './pawLogo';
 
 // "Official Medical Record / Consultation Summary" for ONE consultation, the
 // same sections, order and wording as the web app's printMedicalRecordDocument.
@@ -41,6 +42,13 @@ const dayFormat = (value) => {
   const date = new Date(`${day}T12:00:00`);
   return Number.isNaN(date.getTime()) ? str(value) : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
+// "October 8, 2026" (same as the web's printed record).
+const longDay = (value) => {
+  const day = str(value).slice(0, 10);
+  if (!day) return '';
+  const date = new Date(`${day}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? str(value) : date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+};
 const timeFormat = (value) => {
   const date = value ? new Date(value) : null;
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
@@ -62,8 +70,10 @@ function buildModel({ record, pet, owner, vet }) {
   const template = getRecordTemplate(record);
   const data = parseJsonColumn(record.template_data, {});
   const sex = str(pet?.sex);
-  const dob = dayFormat(pet?.date_of_birth);
-  const age = petAgeText(pet?.date_of_birth);
+  const dob = longDay(pet?.date_of_birth);
+  const license = na(vet?.license_number);
+  const rawAge = petAgeText(pet?.date_of_birth);
+  const age = rawAge && !/old$/i.test(rawAge) ? `${rawAge} old` : rawAge;
 
   const sections = [
     { title: 'Animal Patient Information', grid: [
@@ -79,11 +89,12 @@ function buildModel({ record, pet, owner, vet }) {
       ['Full Name', na(owner?.full_name || owner?.username)],
       ['Contact Number', na(owner?.phone)],
       ['Email', na(owner?.email)],
-      ['Address', na(owner?.address), true],
+      ['Address', na(owner?.address)],
     ] },
     { title: 'Attending Veterinarian', grid: [
       ['Attending Veterinarian', withDr(vet?.full_name || vet?.username)],
       ['Veterinarian Contact Number', na(vet?.phone)],
+      ['Veterinary License Number', license],
     ] },
   ];
 
@@ -158,15 +169,16 @@ function buildModel({ record, pet, owner, vet }) {
   const finalized = str(record.record_status).toLowerCase() === 'finalized';
   sections.push(
     { title: 'Veterinarian Notes', grid: [['Notes', na(record.veterinarian_notes), true]] },
-    { title: 'Follow-up', grid: [['Follow-up Date', na(dayFormat(record.follow_up_date))]] },
+    { title: 'Follow-up', grid: [['Follow-up Date', na(longDay(record.follow_up_date))]] },
     { title: 'Consultation Status', grid: [['Status', finalized ? 'Finalized / Completed' : 'Draft']] },
   );
 
   return {
     recordNo: `MR-${str(record.id).slice(0, 8).toUpperCase()}`,
-    dateTime: [dayFormat(record.consultation_date), timeFormat(record.created_at)].filter(Boolean).join(', ') || 'N/A',
+    dateTime: [longDay(record.consultation_date), timeFormat(record.created_at)].filter(Boolean).join(' · ') || 'N/A',
     finalized,
     vetName: withDr(vet?.full_name || vet?.username),
+    vetLicense: license,
     petName: str(pet?.pet_name),
     consultationDay: str(record.consultation_date).slice(0, 10),
     sections,
@@ -285,7 +297,15 @@ function renderPdf(model, photo) {
   } else {
     pdf.rect(MARGIN, y, box, box);
   }
-  const textX = MARGIN + box + 6;
+  // PawCruz paw-with-heart logo next to the clinic name (same as the web).
+  const pawSize = 10;
+  const pawX = MARGIN + box + 4;
+  try {
+    pdf.addImage(PAW_LOGO, 'PNG', pawX, y + 0.5, pawSize, pawSize);
+  } catch {
+    // the clinic name still prints without the logo
+  }
+  const textX = pawX + pawSize + 3;
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(16);
   pdf.setTextColor(...BLUE);
@@ -296,7 +316,11 @@ function renderPdf(model, photo) {
   pdf.text(SUBTITLE, textX, y + 15);
   pdf.setFontSize(8);
   pdf.text(ADDRESS, textX, y + 21);
-  y += box + 7;
+  y += box + 6;
+  pdf.setDrawColor(214, 228, 235);
+  pdf.setLineWidth(0.3);
+  pdf.line(MARGIN, y, PAGE_W - MARGIN, y);
+  y += 8;
 
   // Record number, date and status badge.
   pdf.setFont('helvetica', 'bold');
@@ -304,8 +328,13 @@ function renderPdf(model, photo) {
   pdf.setTextColor(...DARK);
   pdf.text(`Medical Record No: ${model.recordNo}`, MARGIN, y);
   pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
   pdf.setTextColor(...GREY);
-  pdf.text(`Consultation: ${model.dateTime}`, MARGIN, y + 5);
+  const dateLabel = 'Consultation Date & Time:';
+  pdf.text(dateLabel, MARGIN, y + 6);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...DARK);
+  pdf.text(model.dateTime, MARGIN + pdf.getTextWidth(dateLabel) + 3, y + 6);
   const badge = model.finalized ? 'FINALIZED' : 'DRAFT';
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8.5);
@@ -314,45 +343,45 @@ function renderPdf(model, photo) {
   pdf.roundedRect(PAGE_W - MARGIN - badgeW, y - 4.2, badgeW, 6.5, 3, 3, 'F');
   if (model.finalized) pdf.setTextColor(22, 101, 52); else pdf.setTextColor(154, 106, 18);
   pdf.text(badge, PAGE_W - MARGIN - badgeW / 2, y + 0.3, { align: 'center' });
-  y += 9;
-  pdf.setDrawColor(...BLUE);
-  pdf.setLineWidth(0.6);
+  y += 12;
+  pdf.setDrawColor(214, 228, 235);
+  pdf.setLineWidth(0.3);
   pdf.line(MARGIN, y, PAGE_W - MARGIN, y);
-  y += 6;
+  y += 10;
 
+  // Blue section title with a thin rule under it. nextHeight = the first row
+  // of the section, so a title never sits alone at the bottom of a page.
   const titleBar = (title, nextHeight = 12) => {
-    ensure(9 + nextHeight);
-    pdf.setFillColor(44, 107, 163);
-    pdf.rect(MARGIN, y, CONTENT_W, 7, 'F');
+    ensure(10 + nextHeight);
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(9.5);
-    pdf.setTextColor(255, 255, 255);
-    pdf.text(title, MARGIN + 3, y + 4.9);
-    y += 11.5;
+    pdf.setFontSize(11);
+    pdf.setTextColor(...BLUE);
+    pdf.text(title.toUpperCase(), MARGIN, y);
+    pdf.setDrawColor(214, 228, 235);
+    pdf.setLineWidth(0.3);
+    pdf.line(MARGIN, y + 2.5, PAGE_W - MARGIN, y + 2.5);
+    y += 9;
   };
 
   // A label/value cell; returns its height. Measures only when draw is false.
   const LINE = 4.3;
-  const cell = (label, value, x, width, draw) => {
-    pdf.setFont('helvetica', 'bold');
+  const cell = (label, value, x, width, draw, plain = false) => {
+    pdf.setFont('helvetica', plain ? 'normal' : 'bold');
     pdf.setFontSize(9.5);
     const lines = pdf.splitTextToSize(value, width);
     if (draw) {
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(...GREY);
-      pdf.text(label, x, y);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(9.5);
-      pdf.setTextColor(...DARK);
+      pdf.text(label.toUpperCase(), x, y);
     }
     return { lines, height: 3 + lines.length * LINE };
   };
 
   // Value lines are drawn one by one at exactly LINE spacing, so the measured
   // height always matches what is printed.
-  const drawLines = (lines, x, top) => {
-    pdf.setFont('helvetica', 'bold');
+  const drawLines = (lines, x, top, plain = false) => {
+    pdf.setFont('helvetica', plain ? 'normal' : 'bold');
     pdf.setFontSize(9.5);
     pdf.setTextColor(...DARK);
     lines.forEach((line, i) => pdf.text(line, x, top + i * LINE));
@@ -367,7 +396,7 @@ function renderPdf(model, photo) {
       const cells = pair
         ? [{ label, value, x: MARGIN, w: colW }, { label: pair[0], value: pair[1], x: MARGIN + colW + 8, w: colW }]
         : [{ label, value, x: MARGIN, w: full ? CONTENT_W : colW }];
-      const measured = cells.map((c) => cell(c.label, c.value, c.x, c.w, false));
+      const measured = cells.map((c) => cell(c.label, c.value, c.x, c.w, false, Boolean(full)));
       const rowHeight = Math.max(...measured.map((m) => m.height));
 
       if (!pair && y + rowHeight > BOTTOM && measured[0].lines.length > 4) {
@@ -381,7 +410,7 @@ function renderPdf(model, photo) {
             newPage();
             lineY = y;
           }
-          drawLines([line], c.x, lineY);
+          drawLines([line], c.x, lineY, Boolean(full));
           lineY += LINE;
         });
         y = lineY - LINE + 3.5;
@@ -389,9 +418,9 @@ function renderPdf(model, photo) {
         ensure(rowHeight + 2);
         cells.forEach((c, i) => {
           cell(c.label, c.value, c.x, c.w, true);
-          drawLines(measured[i].lines, c.x, y + 4);
+          drawLines(measured[i].lines, c.x, y + 4, Boolean(full));
         });
-        y += rowHeight + 2;
+        y += rowHeight + 4;
       }
       index += pair ? 2 : 1;
     }
@@ -436,11 +465,19 @@ function renderPdf(model, photo) {
       pdf.setLineWidth(0.2);
       pdf.line(MARGIN, y - 1, PAGE_W - MARGIN, y - 1);
     });
-    y += 3;
+    y += 7;
+  };
+
+  // Height of a section's first row, so its title moves with it.
+  const firstRowHeight = (section) => {
+    const first = section.grid?.[0] || section.groups?.[0]?.grid?.[0];
+    if (!first) return 16;
+    const width = first[2] ? CONTENT_W : (CONTENT_W - 8) / 2;
+    return Math.min(cell(first[0], first[1], MARGIN, width, false, Boolean(first[2])).height, 40) + 6;
   };
 
   model.sections.forEach((section) => {
-    titleBar(section.title);
+    titleBar(section.title, firstRowHeight(section));
     if (section.grid) drawGrid(section.grid);
     else if (section.table) drawTable(section.table);
     else if (section.groups) {
@@ -465,8 +502,8 @@ function renderPdf(model, photo) {
   });
 
   // Signature, bottom right of the last page.
-  ensure(24);
-  y = Math.min(BOTTOM - 12, y + 16);
+  ensure(32);
+  y = Math.min(BOTTOM - 16, y + 16);
   const sigW = 78;
   const sigX = PAGE_W - MARGIN - sigW;
   pdf.setDrawColor(...DARK);
@@ -475,11 +512,13 @@ function renderPdf(model, photo) {
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(10);
   pdf.setTextColor(...DARK);
-  pdf.text(model.vetName, sigX + sigW / 2, y + 5, { align: 'center' });
+  const sigMid = sigX + sigW / 2;
+  pdf.text(model.vetName, sigMid, y + 5, { align: 'center' });
   pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(7.5);
+  pdf.setFontSize(8);
   pdf.setTextColor(...GREY);
-  pdf.text('Attending Veterinarian — Signature over Printed Name', sigX + sigW / 2, y + 9.5, { align: 'center' });
+  pdf.text('Attending Veterinarian', sigMid, y + 9.5, { align: 'center' });
+  pdf.text(`License No.: ${model.vetLicense}`, sigMid, y + 13.5, { align: 'center' });
 
   // Footer on every page.
   const printed = `Printed: ${new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
@@ -516,38 +555,41 @@ function renderHtml(model, photo) {
   return `<!doctype html><html><head><meta charset="utf-8" /><style>
     @page { size: A4; margin: 15mm 15mm 20mm; }
     body { font-family: Helvetica, Arial, sans-serif; color: #1e313a; margin: 0; font-size: 9.5pt; }
-    .mast { display: flex; gap: 6mm; align-items: center; }
+    .mast { display: flex; gap: 6mm; align-items: flex-start; padding-bottom: 5mm; border-bottom: 1px solid #d6e4eb; }
+    .paw { flex-shrink: 0; width: 10mm; height: 10mm; margin-top: 0.5mm; }
     .photo { width: 28mm; height: 28mm; border: 1px solid #b4cdd9; object-fit: cover; }
     .nophoto { width: 28mm; height: 28mm; border: 1px solid #b4cdd9; background: #eef2f5; color: #61767f; font-weight: bold; font-size: 8pt; display: flex; align-items: center; justify-content: center; }
     h1 { margin: 0; color: #255065; font-size: 16pt; }
     .sub { color: #61767f; font-size: 10pt; margin-top: 2px; }
     .addr { color: #61767f; font-size: 8pt; margin-top: 2px; }
-    .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6mm; padding-bottom: 3mm; border-bottom: 2px solid #255065; }
+    .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 5mm; padding-bottom: 5mm; border-bottom: 1px solid #d6e4eb; }
+    .meta .when { margin-top: 2mm; color: #61767f; } .meta .when b { color: #1e313a; margin-left: 2mm; }
     .badge { border-radius: 99px; padding: 3px 10px; font-weight: bold; font-size: 8.5pt; }
     .final { background: #dcfce7; color: #166534; } .draft { background: #fff4dc; color: #9a6a12; }
-    section { margin-top: 5mm; }
-    h2 { background: #2c6ba3; color: #fff; font-size: 9.5pt; margin: 0 0 3mm; padding: 1.6mm 3mm; break-after: avoid; }
+    section { margin-top: 7mm; }
+    h2 { color: #255065; font-size: 11pt; text-transform: uppercase; margin: 0 0 4mm; padding-bottom: 1.5mm; border-bottom: 1px solid #d6e4eb; break-after: avoid; page-break-after: avoid; }
     h3 { color: #255065; font-size: 9pt; margin: 2mm 0; }
     .grid { display: flex; flex-wrap: wrap; column-gap: 8mm; }
     .cell { width: calc(50% - 4mm); margin-bottom: 2.5mm; break-inside: avoid; }
     .cell.full { width: 100%; }
-    .label { color: #61767f; font-size: 7.5pt; }
+    .label { color: #61767f; font-size: 7.5pt; text-transform: uppercase; }
     .value { font-weight: bold; word-break: break-word; white-space: pre-wrap; }
+    .cell.full .value { font-weight: normal; }
     table { width: 100%; border-collapse: collapse; }
     th { text-align: left; background: #eef7fc; color: #255065; font-size: 8pt; padding: 1.5mm 2mm; }
     td { padding: 1.5mm 2mm; border-bottom: 1px solid #e2ecf1; word-break: break-word; }
     .muted { color: #61767f; }
-    .sig { margin: 14mm 0 0 auto; width: 78mm; text-align: center; break-inside: avoid; }
+    .sig { margin: 14mm 0 0 auto; width: 78mm; text-align: center; break-inside: avoid; page-break-inside: avoid; }
     .sig .line { border-top: 1px solid #1e313a; margin-bottom: 1.5mm; }
     .sig .role { color: #61767f; font-size: 7.5pt; }
     .printed { margin-top: 8mm; color: #61767f; font-size: 7.5pt; }
   </style></head><body>
     <div class="mast">${photo ? `<img class="photo" src="${photo}" />` : '<div class="nophoto">No Photo</div>'}
-      <div><h1>${CLINIC}</h1><div class="sub">${SUBTITLE}</div><div class="addr">${ADDRESS}</div></div></div>
-    <div class="meta"><div><b>Medical Record No: ${esc(model.recordNo)}</b><div class="muted">Consultation: ${esc(model.dateTime)}</div></div>
+      <img class="paw" src="${PAW_LOGO}" /><div><h1>${CLINIC}</h1><div class="sub">${SUBTITLE}</div><div class="addr">${ADDRESS}</div></div></div>
+    <div class="meta"><div><b>Medical Record No: ${esc(model.recordNo)}</b><div class="when">Consultation Date &amp; Time:<b>${esc(model.dateTime)}</b></div></div>
       <span class="badge ${model.finalized ? 'final' : 'draft'}">${model.finalized ? 'FINALIZED' : 'DRAFT'}</span></div>
     ${sections}
-    <div class="sig"><div class="line"></div><b>${esc(model.vetName)}</b><div class="role">Attending Veterinarian — Signature over Printed Name</div></div>
+    <div class="sig"><div class="line"></div><b>${esc(model.vetName)}</b><div class="role">Attending Veterinarian</div><div class="role">License No.: ${esc(model.vetLicense)}</div></div>
     <div class="printed">Printed: ${esc(printed)}</div>
   </body></html>`;
 }
