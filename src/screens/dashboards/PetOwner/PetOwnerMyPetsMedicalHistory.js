@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { styles } from '../../styles/PetOwnerMyPetsDesign';
 import { formatMedicalDate, formatMedicalTime12h } from '../../../api/medicalRecordService';
 import { getRecordTemplate } from '../../../constants/medicalRecordTemplates';
@@ -7,7 +7,7 @@ import MedicalRecordFields from '../../../components/MedicalRecordFields';
 import { generateConsultationHealthInsight } from '../../../api/aiService';
 import { parseConsultationInsight, splitRiskName, toListItems, toSentences } from '../../../utils/predictiveHealthParsing';
 import { formatMoney, getTransactionsForQueueEntry, invoiceBalance } from '../../../api/consultationBillingService';
-import { printInvoice } from '../../../utils/medicalDocuments';
+import { INVOICE_ERROR_MESSAGE, viewInvoice } from '../../../utils/invoicePdf';
 import PrintMedicalRecordButton from '../../../components/PrintMedicalRecordButton';
 import PrescriptionsSection from '../../../components/PrescriptionsSection';
 
@@ -175,6 +175,36 @@ function ConsultationAiInsight({ record, previousRecords, onRiskLevel }) {
 
 function BillingSection({ record }) {
   const [billing, setBilling] = useState(null);
+  // Download builds the web's "Official POS Invoice" PDF (never prints the screen).
+  // busy = { id } while the invoice PDF is being made.
+  const [busy, setBusy] = useState(null);
+  const [downloadError, setDownloadError] = useState('');
+  // Web: the invoice preview (View) with Cancel / Download, like the web app.
+  const [preview, setPreview] = useState(null);
+  const run = async (invoice) => {
+    if (busy) return;
+    setBusy({ id: invoice.id });
+    setDownloadError('');
+    try {
+      const result = await viewInvoice(invoice);
+      if (result) setPreview(result);
+    } catch (error) {
+      console.warn('Invoice failed:', error?.message || error);
+      setDownloadError(INVOICE_ERROR_MESSAGE);
+    } finally {
+      setBusy(null);
+    }
+  };
+  const closePreview = () => setPreview(null);
+  const downloadPreview = () => {
+    try {
+      preview?.download();
+      setPreview(null);
+    } catch (error) {
+      console.warn('Invoice download failed:', error?.message || error);
+      setDownloadError(INVOICE_ERROR_MESSAGE);
+    }
+  };
 
   const load = async (force = false) => {
     if (!record.queue_entry_id) return;
@@ -195,20 +225,14 @@ function BillingSection({ record }) {
 
   if (!record.queue_entry_id) return null;
 
-  const RefreshButton = () => (
-    <TouchableOpacity style={styles.billingRefreshButton} onPress={() => load(true)} disabled={billing?.loading} activeOpacity={0.85}>
-      <Text style={styles.billingRefreshText}>{billing?.loading ? 'Loading…' : 'Refresh'}</Text>
-    </TouchableOpacity>
-  );
-
   return (
     <>
       <View style={styles.billingCard}>
         <View style={styles.billingHeadRow}>
           <Text style={styles.billingTitle}>Billing</Text>
-          <RefreshButton />
         </View>
         {billing?.error ? <Text style={styles.billingErrorText}>{billing.error}</Text> : null}
+        {downloadError ? <Text style={styles.billingErrorText}>{downloadError}</Text> : null}
         {billing && !billing.loading && !billing.error ? (
           billing.invoices.length === 0 ? (
             <Text style={styles.billingMutedText}>Staff hasn't processed billing for this visit yet.</Text>
@@ -225,8 +249,10 @@ function BillingSection({ record }) {
                     <Text style={styles.billingStatusPillText}>{invoice.payment_status}</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.billingActionButton} onPress={() => printInvoice(invoice)} activeOpacity={0.9}>
-                  <Text style={styles.billingActionButtonText}>Download</Text>
+                {/* Download shows the invoice first (web: preview with Cancel /
+                    Download; phone: the PDF preview, where it can be saved). */}
+                <TouchableOpacity style={styles.billingActionButton} onPress={() => run(invoice)} disabled={Boolean(busy)} activeOpacity={0.9}>
+                  <Text style={styles.billingActionButtonText}>{busy?.id === invoice.id ? 'Opening…' : 'Download'}</Text>
                 </TouchableOpacity>
               </View>
             ))
@@ -234,6 +260,31 @@ function BillingSection({ record }) {
         ) : null}
       </View>
 
+      {Platform.OS === 'web' && preview ? (
+        <Modal transparent animationType="fade" visible onRequestClose={closePreview}>
+          <View style={invoiceButtonStyles.overlay}>
+            <View style={invoiceButtonStyles.sheet}>
+              <View style={invoiceButtonStyles.sheetHead}>
+                <Text style={invoiceButtonStyles.sheetTitle} numberOfLines={1}>{preview.title}</Text>
+                <TouchableOpacity onPress={closePreview} activeOpacity={0.85} accessibilityLabel="Close">
+                  <Text style={invoiceButtonStyles.close}>×</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={invoiceButtonStyles.frame}>
+                {React.createElement('iframe', { src: preview.url, title: preview.title, style: { flex: 1, width: '100%', height: '100%', border: 0, backgroundColor: '#ffffff' } })}
+              </View>
+              <View style={invoiceButtonStyles.sheetFoot}>
+                <TouchableOpacity style={invoiceButtonStyles.cancel} onPress={closePreview} activeOpacity={0.9}>
+                  <Text style={invoiceButtonStyles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={invoiceButtonStyles.download} onPress={downloadPreview} activeOpacity={0.9}>
+                  <Text style={invoiceButtonStyles.downloadText}>Download</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </>
   );
 }
@@ -362,3 +413,17 @@ export default function PetOwnerMyPetsMedicalHistory({ pet, records = [], loadin
     </View>
   );
 }
+
+const invoiceButtonStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(10,25,35,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  sheet: { width: '100%', maxWidth: 1000, height: '92%', backgroundColor: '#ffffff', borderRadius: 18, overflow: 'hidden' },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#f4f9fc', borderBottomWidth: 1, borderColor: '#e1edf2' },
+  sheetTitle: { flex: 1, marginRight: 12, fontSize: 16, fontWeight: '900', color: '#17445a' },
+  close: { fontSize: 26, lineHeight: 28, color: '#4f6a7b' },
+  frame: { flex: 1, backgroundColor: '#525659' },
+  sheetFoot: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderColor: '#e1edf2' },
+  cancel: { paddingHorizontal: 22, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: '#cfe2eb', backgroundColor: '#ffffff' },
+  cancelText: { fontSize: 14, fontWeight: '800', color: '#17445a' },
+  download: { paddingHorizontal: 22, paddingVertical: 11, borderRadius: 12, backgroundColor: '#2f8f5b' },
+  downloadText: { fontSize: 14, fontWeight: '900', color: '#ffffff' },
+});
